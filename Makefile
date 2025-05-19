@@ -2,7 +2,7 @@ CC      = c++
 NAME    = webserv
 CFLAGS  = -Wall -Wextra -Werror -std=c++98 -MMD -MP
 
-SRCS    = webserv.cpp
+SRCS    = webserv.cpp src/Lexer.cpp src/Parser.cpp
 OBJS    = $(SRCS:%.cpp=objs/%.o)
 DEPS    = $(OBJS:.o=.d)
 
@@ -14,7 +14,7 @@ $(NAME): $(OBJS)
 	@$(CC) $(CFLAGS) $^ -o $@
 
 objs/%.o: %.cpp
-	@mkdir -p objs
+	@mkdir -p $(dir $@)
 	@printf "\033[1;36m[✓] Compiling %s...\033[0m\n" $<
 	@$(CC) $(CFLAGS) -c $< -o $@
 

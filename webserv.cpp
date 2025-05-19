@@ -1,17 +1,20 @@
 #include "inc/WebServ.hpp"
+#include <fstream>
+#include <iterator>
+#include <string>
 
-bool	has_conf_extension(const std::string &config_file)
+bool	hasConfExt(const std::string &config_file)
 {
 	if (config_file.length() < 5)
 		return (false);
 	return (".conf" == config_file.substr(config_file.length() - 5));
 }
 
-bool	regular_file(const char *config_file)
+bool	isRegularFile(const char *config_file)
 {
 	struct stat st;
 
-	if (!has_conf_extension(config_file))
+	if (!hasConfExt(config_file))
 	{
 		std::cerr << RED"Error: Configuration file must have a .conf extension.\n" << RESET;
 		return (false);
@@ -33,30 +36,55 @@ bool	regular_file(const char *config_file)
 	return (true);
 }
 
-bool	valid_config_file(int argc, char *argv[])
+std::string	readFile(const char *config_file)
+{
+	std::ifstream	input_file(config_file);
+
+	if (!input_file)
+	{
+		std::cerr << RED"Error: opening " << config_file
+				<< ": " << std::strerror(errno) << ".\n" RESET;
+		return ("");
+	}
+
+	std::string	content(std::istream_iterator<char>(input_file),
+				(std::istream_iterator<char>()));
+	return (content);
+}
+
+std::string	readConfigFile(int argc, char *argv[])
 {
 	const char		*config_file;
 	config_file = (argc == 1) ? "configs/default.conf" : argv[1];
 
-	if (!regular_file(config_file))
-		return (false);
-	std::ifstream	input_file(config_file);
+	if (!isRegularFile(config_file))
+		return ("");
 
-	if (input_file.peek() == EOF)
-		return (std::cerr << RED"Error: Empty file.\n" RESET,
-		false);
-	return (true);
+	std::string	config_content = readFile(config_file);
+	if (config_content.empty())
+		return ("");
+	return (config_content);
 }
+
+// bool	parseConfig(const std::string &config_content)
+// {
+//
+// 	return (true);
+// }
 
 int	main(int argc, char *argv[])
 {
+	std::string	config_content;
+
 	if (argc > 2)
 	{
 		std::cerr << RED"Error:\n"
 			<< "Usage: ./webserv [configuration file]\n" << RESET;
 		return (1);
 	}
-	if (!valid_config_file(argc, argv))
-		return (false);
+	config_content = readConfigFile(argc, argv);
+	if (config_content.empty())
+		return (1);
+	// parseConfig(config_content);
 	return (0);
 }
