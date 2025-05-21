@@ -1,4 +1,5 @@
 #include "../inc/ParseDirective.hpp"
+#include <clocale>
 #include <exception>
 
 DirectiveParser::DirectiveParser(Lexer& lexer) : lexer(lexer) {}
@@ -58,7 +59,6 @@ Location* DirectiveParser::parseLocationBlock(Server* server)
 {
 	expect(TOKEN_LOCATION);
 
-	std::cout << "Loction " << currentToken.type << '\n';
 	if (currentToken.type != TOKEN_STRING && currentToken.type != TOKEN_DIRECTIVE)
 		throw ParseException("Expected location path", currentToken.line);
 
@@ -106,6 +106,8 @@ void DirectiveParser::parseServerDirective(Server* server)
 		parseRoot(server, NULL, values);
 	else if (directive == "error_page")
 		parseErrorPage(server, values);
+	else if (directive == "return")
+		parseReturn(server, values);
 	else if (directive == "client_body_limit")
 		parseClientBodyLimit(server, NULL, values);
 	else if (directive == "autoindex")
@@ -135,7 +137,7 @@ void DirectiveParser::parseLocationDirective(Location* location)
 	else if (directive == "cgi_info")
 		parseCgiInfo(location, values);
 	else if (directive == "return")
-		parseReturn(location, values);
+		parseReturnLoc(location, values);
 	else if (directive == "upload_store")
 		parseUploadStore(location, values);
 	else
@@ -198,6 +200,40 @@ void DirectiveParser::parseRoot(Server* server, Location* location, const std::v
 		server->setRoot(values[0]);
 }
 
+void DirectiveParser::parseReturnLoc(Location *location, const std::vector<std::string>& values)
+{
+	if (values.size() < 1 || values.size() > 2)
+		throw ParseException("return directive must have 1 or 2 values", currentToken.line);
+
+	int code = atoi(values[0].c_str());
+	if (code < 100 || code > 599)
+		throw ParseException("Invalid error code (must be 4xx or 5xx)", currentToken.line);
+
+	ReturnDirective	return_d;
+
+	return_d.enabled = true;
+	return_d.status_code = code;
+	return_d.target = (values.size() == 1) ? "" : values[1];
+	location->addReturnDirective(return_d);
+}
+
+void DirectiveParser::parseReturn(Server* server, const std::vector<std::string>& values)
+{
+	if (values.size() < 1 || values.size() > 2)
+		throw ParseException("return directive must have 1 or 2 values", currentToken.line);
+
+	int code = atoi(values[0].c_str());
+	if (code < 100 || code > 599)
+		throw ParseException("Invalid error code (must be 4xx or 5xx)", currentToken.line);
+
+	ReturnDirective	return_d;
+
+	return_d.enabled = true;
+	return_d.status_code = code;
+	return_d.target = (values.size() == 1) ? "" : values[1];
+	server->addReturnDirective(return_d);
+}
+
 void DirectiveParser::parseErrorPage(Server* server, const std::vector<std::string>& values)
 {
 	if (values.size() < 2)
@@ -252,14 +288,6 @@ void DirectiveParser::parseCgiInfo(Location* location, const std::vector<std::st
 		throw ParseException("cgi_info directive requires exactly two values (extension and interpreter)", currentToken.line);
 
 	location->setCgiExtension(values[0], values[1]);
-}
-
-void DirectiveParser::parseReturn(Location* location, const std::vector<std::string>& values)
-{
-	if (values.size() != 1)
-		throw ParseException("return directive requires exactly one value (URL)", currentToken.line);
-
-	location->setReturn(values[0]);
 }
 
 void DirectiveParser::parseUploadStore(Location* location, const std::vector<std::string>& values)

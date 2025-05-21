@@ -23,8 +23,10 @@ class Server
 		void setClientBodyLimit(size_t limit);
 		void setAutoindex(bool autoindex);
 		void addIndex(const std::string& index);
+		void addReturnDirective(const ReturnDirective);
 
 		// Getters
+		const ReturnDirective			getReturnDirective() const;
 		const std::vector<std::string>& getAllowedMethods() const;
 		const std::string&				getHost() const;
 		const std::string&				getPort() const;
@@ -37,6 +39,7 @@ class Server
 		const std::vector<std::string>& getIndex() const;
 
 	private:
+		ReturnDirective				return_d;
 		std::string					host;
 		std::string					port;
 		std::vector<std::string>	allowed_methods;

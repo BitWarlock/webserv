@@ -24,6 +24,8 @@ void Location::setReturn(const std::string& return_url) {this->return_url = retu
 
 void Location::setUploadStore(const std::string& path) {upload_store = path;}
 
+void Location::addReturnDirective(const ReturnDirective rd) {return_d = rd;}
+
 void Location::inheritFrom(const Server* server)
 {
 	if (root.empty())
@@ -35,6 +37,8 @@ void Location::inheritFrom(const Server* server)
 }
 
 // Getters
+const ReturnDirective	Location::getReturnDirective() const {return return_d;}
+
 const std::string& Location::getPath() const {return path;}
 
 const std::vector<std::string>& Location::getAllowedMethods() const {return allowed_methods;}

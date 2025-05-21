@@ -35,6 +35,8 @@ class DirectiveParser
 		void parseServerName(Server* server, const std::vector<std::string>& values);
 		void parseRoot(Server* server, Location* location, const std::vector<std::string>& values);
 		void parseErrorPage(Server* server, const std::vector<std::string>& values);
+		void parseReturn(Server* server, const std::vector<std::string>& values);
+		void parseReturnLoc(Location *location, const std::vector<std::string>& values);
 		void parseClientBodyLimit(Server* server, Location* location, const std::vector<std::string>& values);
 		void parseAutoindex(Server* server, Location* location, const std::vector<std::string>& values);
 		void parseIndex(Server* server, Location* location, const std::vector<std::string>& values);

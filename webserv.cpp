@@ -98,6 +98,9 @@ int main(int argc, char *argv[])
 			std::cout << "Server #" << i + 1 << ":\n";
 			std::cout << "  Host: " << server->getHost() << "\n";
 			std::cout << "  Port: " << server->getPort() << "\n";
+			if (server->getReturnDirective().enabled)
+				std::cout << "  Return " << server->getReturnDirective().status_code <<
+					": Target: " << server->getReturnDirective().target << "\n";
 
 			// Print server names if they exist
 			if (!server->getServerNames().empty()) {

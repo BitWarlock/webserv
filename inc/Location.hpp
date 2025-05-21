@@ -5,6 +5,13 @@
 #include <map>
 #include <string>
 
+struct ReturnDirective
+{
+	int			status_code;
+	std::string target;
+	bool		enabled;
+};
+
 class Server;
 
 class Location
@@ -14,6 +21,7 @@ class Location
 		~Location();
 
 		// Setters
+		void addReturnDirective(const ReturnDirective);
 		void addAllowedMethod(const std::string& method);
 		void setRoot(const std::string& root);
 		void setAutoindex(bool autoindex);
@@ -25,6 +33,7 @@ class Location
 		void inheritFrom(const Server* server);
 
 		// Getters
+		const ReturnDirective			getReturnDirective() const;
 		const std::string&				getPath() const;
 		const std::vector<std::string>& getAllowedMethods() const;
 		const std::string&				getRoot() const;
@@ -38,6 +47,7 @@ class Location
 		bool							getUploadEnabled() const;
 
 	private:
+		ReturnDirective				return_d;
 		std::string					path;
 		std::vector<std::string>	allowed_methods;
 		std::string					root;

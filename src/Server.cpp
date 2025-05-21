@@ -20,6 +20,8 @@ void Server::addServerName(const std::string& name) {server_names.push_back(name
 
 void Server::addErrorPage(int code, const std::string& path) {error_pages[code] = path;}
 
+void Server::addReturnDirective(const ReturnDirective rd) {return_d = rd;}
+
 void Server::addLocation(Location* location) {locations.push_back(location);}
 
 void Server::setRoot(const std::string& root) {this->root = root;}
@@ -34,6 +36,8 @@ void Server::addIndex(const std::string& index) {this->index.push_back(index);}
 const std::vector<std::string>& Server::getAllowedMethods() const {return allowed_methods;}
 
 const std::string& Server::getHost() const {return host;}
+
+const ReturnDirective	Server::getReturnDirective() const {return return_d;}
 
 const std::string& Server::getPort() const {return port;}
 
