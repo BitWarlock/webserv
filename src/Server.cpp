@@ -1,7 +1,7 @@
 #include "../inc/Server.hpp"
 
 Server::Server() 
-	: host("0.0.0.0"), port("80"), client_body_limit(0), autoindex(false) {}
+	: host("0.0.0.0"), port("8000"), client_body_limit(0), autoindex(false) {return_d.enabled = false;}
 
 Server::~Server()
 {

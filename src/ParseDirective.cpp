@@ -207,7 +207,7 @@ void DirectiveParser::parseReturnLoc(Location *location, const std::vector<std::
 
 	int code = atoi(values[0].c_str());
 	if (code < 100 || code > 599)
-		throw ParseException("Invalid error code (must be 4xx or 5xx)", currentToken.line);
+		throw ParseException("Invalid HTTP status code", currentToken.line);
 
 	ReturnDirective	return_d;
 
@@ -224,7 +224,7 @@ void DirectiveParser::parseReturn(Server* server, const std::vector<std::string>
 
 	int code = atoi(values[0].c_str());
 	if (code < 100 || code > 599)
-		throw ParseException("Invalid error code (must be 4xx or 5xx)", currentToken.line);
+		throw ParseException("Invalid HTTP status code", currentToken.line);
 
 	ReturnDirective	return_d;
 

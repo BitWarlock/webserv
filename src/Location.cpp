@@ -2,7 +2,7 @@
 #include "../inc/Server.hpp"
 
 Location::Location(const std::string& path) 
-	: path(path), autoindex(false), client_body_limit(0) {}
+	: path(path), autoindex(false), client_body_limit(0) {return_d.enabled = false;}
 
 Location::~Location() {}
 

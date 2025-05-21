@@ -26,7 +26,7 @@ bool	isRegularFile(const char *config_file)
 
 	if (!S_ISREG(st.st_mode))
 	{
-		std::cerr << RED"Error: Not a regular file,\n" << RESET;
+		std::cerr << RED"Error: Not a regular file.\n" << RESET;
 		return (false);
 	}
 
@@ -59,7 +59,10 @@ std::string	readConfigFile(int argc, char *argv[])
 
 	std::string	config_content = readFile(config_file);
 	if (config_content.empty())
+	{
+		std::cerr << RED"Error: Empty file.\n" << RESET;
 		return ("");
+	}
 	return (config_content);
 }
 
@@ -117,6 +120,9 @@ int main(int argc, char *argv[])
 			for (size_t j = 0; j < locations.size(); ++j) {
 				const Location* loc = locations[j];
 				std::cout << "    Path: " << loc->getPath() << "\n";
+				if (loc->getReturnDirective().enabled)
+					std::cout << "    Return " << loc->getReturnDirective().status_code <<
+						": Target: " << loc->getReturnDirective().target << "\n";
 				std::cout << "      Methods:";
 				for (size_t k = 0; k < loc->getAllowedMethods().size(); ++k) {
 					std::cout << " " << loc->getAllowedMethods()[k];
