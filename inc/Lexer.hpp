@@ -3,6 +3,20 @@
 
 #include <iostream>
 #include <string>
+#include <vector>
+#include <map>
+
+struct ServerConfig
+{
+	std::string							server_name;
+	std::string							listen;
+	std::string							root;
+	std::vector<std::string>			index;
+	std::map<int, std::string>			error_pages;
+	std::map<std::string, std::string>	cgi_info;
+	size_t								client_body_limit;
+	bool								autoindex;
+};
 
 enum TokenType
 {
@@ -13,6 +27,7 @@ enum TokenType
     TOKEN_SEMICOLON,
     TOKEN_STRING,
     TOKEN_NUMBER,
+    TOKEN_IP_PORT,
     TOKEN_DIRECTIVE,
     TOKEN_EOF,
     TOKEN_ERROR
@@ -20,8 +35,9 @@ enum TokenType
 
 struct Token
 {
-	Token(TokenType	type, std::string value, int line) : type(type), value(value), line(line)
-	{}
+	Token() : type(TOKEN_EOF), value(""), line(0) {}
+	Token(TokenType	type, std::string value, int line)
+			: type(type), value(value), line(line) {}
 
 	TokenType	type;
 	std::string	value;

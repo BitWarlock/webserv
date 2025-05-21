@@ -1,5 +1,4 @@
 #include "../inc/Lexer.hpp"
-#include <cctype>
 
 Lexer::Lexer(const std::string &input) : input(input), pos(0), line(0)
 {}
@@ -28,7 +27,15 @@ Token	Lexer::getNextToken()
 			return (Token(TOKEN_SEMICOLON, ";", line));
 		}
 		if (chr == '"') { return readString(); };
-		if (std::isdigit(chr)) { return readNumber(); };
+		if (std::isdigit(chr))
+		{
+			Token num = readNumber();
+			if (num.value.find('.') != std::string::npos
+				|| num.value.find(':') != std::string::npos)
+				num.type = TOKEN_IP_PORT;
+			return num;
+		};
+		return (readWord());
 	}
 
 	return (Token(TOKEN_EOF, "", line));
@@ -78,7 +85,31 @@ Token	Lexer::readNumber()
 {
 	std::string	value;
 
-	while (currentChar() != '\0' && std::isdigit(currentChar()))
+	while (currentChar() != '\0' && 
+			(std::isdigit(currentChar() || currentChar() == '.'
+			 || currentChar() == ':')))
 		value += currentChar(), advance();
+
+	if (value.find_first_of("0123456789") == std::string::npos)
+		return (Token(TOKEN_ERROR, "Invalid number", line));
 	return (Token(TOKEN_NUMBER, value, line));
+}
+
+Token	Lexer::readWord()
+{
+	std::string	value;
+	char		chr = currentChar();
+
+	while (chr != '\0' && !std::isspace(chr)
+			&& chr != '{' && chr != '}'
+			&& chr != ';' && chr != '#')
+	{
+		value += chr;
+		advance(), chr = currentChar();
+	}
+	if (value == "server")
+		return (Token(TOKEN_SERVER, value, line));
+	if (value == "location")
+		return (Token(TOKEN_LOCATION, value, line));
+	return (Token(TOKEN_DIRECTIVE, value, line));
 }
