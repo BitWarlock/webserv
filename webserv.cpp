@@ -99,8 +99,11 @@ int main(int argc, char *argv[])
 		for (size_t i = 0; i < config->getServers().size(); ++i) {
 			const Server* server = config->getServers()[i];
 			std::cout << "Server #" << i + 1 << ":\n";
-			std::cout << "  Host: " << server->getHost() << "\n";
-			std::cout << "  Port: " << server->getPort() << "\n";
+			for (size_t i = 0; i < server->getListen().size(); i++)
+			{
+				std::cout << "  Host: " << server->getListen()[i].first << "\n";
+				std::cout << "  Port: " << server->getListen()[i].second << "\n";
+			}
 			if (server->getReturnDirective().enabled)
 				std::cout << "  Return " << server->getReturnDirective().status_code <<
 					": Target: " << server->getReturnDirective().target << "\n";

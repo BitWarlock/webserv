@@ -14,8 +14,7 @@ class Server
 
 		// Setters
 		void addAllowedMethod(const std::string& method);
-		void setHost(const std::string& host);
-		void setPort(const std::string& port);
+		void setListen(std::pair<std::string, std::string>);
 		void addServerName(const std::string& name);
 		void addErrorPage(int code, const std::string& path);
 		void addLocation(Location* location);
@@ -26,10 +25,10 @@ class Server
 		void addReturnDirective(const ReturnDirective);
 
 		// Getters
+		const std::vector<std::pair
+	 	  <std::string, std::string> > 	getListen() const;
 		const ReturnDirective			getReturnDirective() const;
 		const std::vector<std::string>& getAllowedMethods() const;
-		const std::string&				getHost() const;
-		const std::string&				getPort() const;
 		const std::vector<std::string>& getServerNames() const;
 		const std::string&				getErrorPage(int code) const;
 		const std::vector<Location*>&	getLocations() const;
@@ -40,8 +39,10 @@ class Server
 
 	private:
 		ReturnDirective				return_d;
-		std::string					host;
-		std::string					port;
+		std::vector
+			<std::pair
+			<std::string,
+			std::string> >			listen;
 		std::vector<std::string>	allowed_methods;
 		std::vector<std::string>	server_names;
 		std::map<int, std::string>	error_pages;

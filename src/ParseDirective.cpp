@@ -152,21 +152,24 @@ void DirectiveParser::parseListen(Server* server, const std::vector<std::string>
 	const std::string& value = values[0];
 	size_t colon = value.find(':');
 
+	std::string host, port;
+
 	if (colon == std::string::npos)
 	{
-		server->setHost("0.0.0.0");
-		server->setPort(value);
+		host = "0.0.0.0";
+		port = value;
 	}
 	else
 	{
-		server->setHost(value.substr(0, colon));
-		server->setPort(value.substr(colon + 1));
+		host = value.substr(0, colon);
+		port = value.substr(colon + 1);
 	}
 
 	char* end;
-	long port = strtol(server->getPort().c_str(), &end, 10);
-	if (*end != '\0' || port < 1 || port > 65535)
-		throw ParseException("Invalid port number: " + server->getPort(), currentToken.line);
+	long portNumber = strtol(port.c_str(), &end, 10);
+	if (*end != '\0' || portNumber < 1 || portNumber > 65535)
+		throw ParseException("Invalid port number: " + port, currentToken.line);
+	server->setListen(std::make_pair(host, port));
 }
 
 void DirectiveParser::parseClientBodyLimit(Server* server,

@@ -1,7 +1,11 @@
 #include "../inc/Server.hpp"
 
 Server::Server() 
-	: host("0.0.0.0"), port("8000"), client_body_limit(0), autoindex(false) {return_d.enabled = false;}
+	: client_body_limit(0), autoindex(false)
+{
+	listen.push_back(std::make_pair("0.0.0.0", "8000"));
+	return_d.enabled = false;
+}
 
 Server::~Server()
 {
@@ -12,9 +16,7 @@ Server::~Server()
 // Setters
 void Server::addAllowedMethod(const std::string& method) {allowed_methods.push_back(method);}
 
-void Server::setHost(const std::string& host) {this->host = host;}
-
-void Server::setPort(const std::string& port) {this->port = port;}
+void Server::setListen(std::pair<std::string, std::string> host_port) {listen.push_back(host_port);}
 
 void Server::addServerName(const std::string& name) {server_names.push_back(name);}
 
@@ -35,11 +37,9 @@ void Server::addIndex(const std::string& index) {this->index.push_back(index);}
 // Getters
 const std::vector<std::string>& Server::getAllowedMethods() const {return allowed_methods;}
 
-const std::string& Server::getHost() const {return host;}
-
 const ReturnDirective	Server::getReturnDirective() const {return return_d;}
 
-const std::string& Server::getPort() const {return port;}
+const std::vector<std::pair<std::string, std::string> > Server::getListen() const {return listen;}
 
 const std::vector<std::string>& Server::getServerNames() const {return server_names;}
 
