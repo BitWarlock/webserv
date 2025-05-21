@@ -13,6 +13,7 @@ class Server
 		~Server();
 
 		// Setters
+		void addAllowedMethod(const std::string& method);
 		void setHost(const std::string& host);
 		void setPort(const std::string& port);
 		void addServerName(const std::string& name);
@@ -24,6 +25,7 @@ class Server
 		void addIndex(const std::string& index);
 
 		// Getters
+		const std::vector<std::string>& getAllowedMethods() const;
 		const std::string&				getHost() const;
 		const std::string&				getPort() const;
 		const std::vector<std::string>& getServerNames() const;
@@ -37,6 +39,7 @@ class Server
 	private:
 		std::string					host;
 		std::string					port;
+		std::vector<std::string>	allowed_methods;
 		std::vector<std::string>	server_names;
 		std::map<int, std::string>	error_pages;
 		std::vector<Location*>		locations;

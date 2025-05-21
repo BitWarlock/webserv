@@ -1,7 +1,4 @@
 #include "inc/WebServ.hpp"
-#include <fstream>
-#include <iterator>
-#include <string>
 
 bool	hasConfExt(const std::string &config_file)
 {
@@ -36,20 +33,20 @@ bool	isRegularFile(const char *config_file)
 	return (true);
 }
 
-std::string	readFile(const char *config_file)
+std::string readFile(const char *config_file)
 {
-	std::ifstream	input_file(config_file);
-
+	std::ifstream input_file(config_file);
 	if (!input_file)
 	{
-		std::cerr << RED"Error: opening " << config_file
-				<< ": " << std::strerror(errno) << ".\n" RESET;
-		return ("");
+		std::cerr << "Error: opening " << config_file
+			<< ": " << std::strerror(errno) << ".\n";
+		return "";
 	}
 
-	std::string	content(std::istream_iterator<char>(input_file),
-				(std::istream_iterator<char>()));
-	return (content);
+	std::ostringstream ss;
+	ss << input_file.rdbuf();
+
+	return ss.str();
 }
 
 std::string	readConfigFile(int argc, char *argv[])
@@ -66,25 +63,80 @@ std::string	readConfigFile(int argc, char *argv[])
 	return (config_content);
 }
 
-// bool	parseConfig(const std::string &config_content)
-// {
-//
-// 	return (true);
-// }
-
-int	main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
-	std::string	config_content;
+	std::string config_content;
 
 	if (argc > 2)
 	{
 		std::cerr << RED"Error:\n"
 			<< "Usage: ./webserv [configuration file]\n" << RESET;
-		return (1);
+		return 1;
 	}
+
+	// 1. Read config file
 	config_content = readConfigFile(argc, argv);
 	if (config_content.empty())
-		return (1);
-	// parseConfig(config_content);
-	return (0);
+		return 1;
+ 
+	try
+	{
+		// 2. Initialize lexer and parser
+		Lexer lexer(config_content);
+		DirectiveParser parser(lexer);
+
+		// 3. Parse configuration
+		Config* config = parser.parseConfig();
+
+		// 4. Print parsed configuration (for testing)
+		std::cout << GRN "Successfully parsed configuration:\n" << RESET;
+		std::cout << "Found " << config->getServers().size() << " server blocks\n\n";
+
+		// 5. Iterate through servers
+		for (size_t i = 0; i < config->getServers().size(); ++i) {
+			const Server* server = config->getServers()[i];
+			std::cout << "Server #" << i + 1 << ":\n";
+			std::cout << "  Host: " << server->getHost() << "\n";
+			std::cout << "  Port: " << server->getPort() << "\n";
+
+			// Print server names if they exist
+			if (!server->getServerNames().empty()) {
+				std::cout << "  Server Names:";
+				for (size_t j = 0; j < server->getServerNames().size(); ++j) {
+					std::cout << " " << server->getServerNames()[j];
+				}
+				std::cout << "\n";
+			}
+
+			// Print locations
+			std::cout << "  Locations:\n";
+			const std::vector<Location*>& locations = server->getLocations();
+			for (size_t j = 0; j < locations.size(); ++j) {
+				const Location* loc = locations[j];
+				std::cout << "    Path: " << loc->getPath() << "\n";
+				std::cout << "      Methods:";
+				for (size_t k = 0; k < loc->getAllowedMethods().size(); ++k) {
+					std::cout << " " << loc->getAllowedMethods()[k];
+				}
+				std::cout << "\n";
+
+				if (!loc->getRoot().empty()) {
+					std::cout << "      Root: " << loc->getRoot() << "\n";
+				}
+
+				if (loc->getClientBodyLimit() != 0) {
+					std::cout << "      Client Body Limit: " << loc->getClientBodyLimit() << "\n";
+				}
+			}
+			std::cout << "\n";
+		}
+
+		// 6. Cleanup
+		delete config;
+
+	} catch (const std::exception& e) {
+		std::cerr << RED "Configuration error: " << e.what() << RESET "\n";
+		return 1;
+	}
+	return 0;
 }

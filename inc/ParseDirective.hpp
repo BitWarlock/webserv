@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 #include <stdexcept>
+#include <cstdlib>
+#include <sstream>
 
 class DirectiveParser
 {
@@ -37,6 +39,7 @@ class DirectiveParser
 		void parseAutoindex(Server* server, Location* location, const std::vector<std::string>& values);
 		void parseIndex(Server* server, Location* location, const std::vector<std::string>& values);
 		void parseAllowMethods(Location* location, const std::vector<std::string>& values);
+		void parseAllowMethodsServ(Server *server, const std::vector<std::string>& values);
 		void parseCgiInfo(Location* location, const std::vector<std::string>& values);
 		void parseReturn(Location* location, const std::vector<std::string>& values);
 		void parseUploadStore(Location* location, const std::vector<std::string>& values);
@@ -49,11 +52,18 @@ class DirectiveParser
 		size_t						parseSize(const std::string& sizeStr);
 };
 
+static std::string intToString(int value)
+{
+	std::ostringstream oss;
+	oss << value;
+	return oss.str();
+}
+
 class ParseException : public std::runtime_error
 {
 	public:
 		ParseException(const std::string& msg, int line) 
-			: std::runtime_error(msg + " at line " + std::to_string(line)) {}
+			: std::runtime_error(msg + " at line " + intToString(line)) {}
 };
 
 #endif

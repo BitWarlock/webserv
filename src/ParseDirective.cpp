@@ -1,4 +1,5 @@
 #include "../inc/ParseDirective.hpp"
+#include <exception>
 
 DirectiveParser::DirectiveParser(Lexer& lexer) : lexer(lexer) {}
 
@@ -57,7 +58,8 @@ Location* DirectiveParser::parseLocationBlock(Server* server)
 {
 	expect(TOKEN_LOCATION);
 
-	if (currentToken.type != TOKEN_STRING)
+	std::cout << "Loction " << currentToken.type << '\n';
+	if (currentToken.type != TOKEN_STRING && currentToken.type != TOKEN_DIRECTIVE)
 		throw ParseException("Expected location path", currentToken.line);
 
 	std::string path = currentToken.value;
@@ -79,13 +81,24 @@ Location* DirectiveParser::parseLocationBlock(Server* server)
 	return location;
 }
 
+void DirectiveParser::parseAllowMethodsServ(Server *server, const std::vector<std::string>& values)
+{
+	if (values.empty())
+		throw ParseException("allow_methods directive requires at least one value", currentToken.line);
+
+	for (size_t i = 0; i < values.size(); ++i)
+		server->addAllowedMethod(values[i]);
+}
+
 void DirectiveParser::parseServerDirective(Server* server)
 {
 	std::string directive = currentToken.value;
 	advance();
 	std::vector<std::string> values = gatherDirectiveValues();
 
-	if (directive == "listen")
+	if (directive == "allow_methods")
+		parseAllowMethodsServ(server, values);
+	else if (directive == "listen")
 		parseListen(server, values);
 	else if (directive == "server_name")
 		parseServerName(server, values);
@@ -149,7 +162,7 @@ void DirectiveParser::parseListen(Server* server, const std::vector<std::string>
 	}
 
 	char* end;
-	long port = std::strtol(server->getPort().c_str(), &end, 10);
+	long port = strtol(server->getPort().c_str(), &end, 10);
 	if (*end != '\0' || port < 1 || port > 65535)
 		throw ParseException("Invalid port number: " + server->getPort(), currentToken.line);
 }
@@ -166,6 +179,95 @@ void DirectiveParser::parseClientBodyLimit(Server* server,
 		location->setClientBodyLimit(limit);
 	else
 		server->setClientBodyLimit(limit);
+}
+
+void DirectiveParser::parseServerName(Server* server, const std::vector<std::string>& values)
+{
+	for (size_t i = 0; i < values.size(); ++i)
+		server->addServerName(values[i]);
+}
+
+void DirectiveParser::parseRoot(Server* server, Location* location, const std::vector<std::string>& values)
+{
+	if (values.size() != 1)
+		throw ParseException("root directive requires exactly one value", currentToken.line);
+
+	if (location)
+		location->setRoot(values[0]);
+	else if (server)
+		server->setRoot(values[0]);
+}
+
+void DirectiveParser::parseErrorPage(Server* server, const std::vector<std::string>& values)
+{
+	if (values.size() < 2)
+		throw ParseException("error_page directive requires at least two values", currentToken.line);
+
+	int code = atoi(values[0].c_str());
+	if (code < 400 || code > 599)
+		throw ParseException("Invalid error code (must be 4xx or 5xx)", currentToken.line);
+
+	for (size_t i = 1; i < values.size(); ++i)
+		server->addErrorPage(code, values[i]);
+}
+
+void DirectiveParser::parseAutoindex(Server* server, Location* location, const std::vector<std::string>& values)
+{
+	if (values.size() != 1)
+		throw ParseException("autoindex directive requires exactly one value (on/off)", currentToken.line);
+
+	bool autoindex = (values[0] == "on");
+	if (location)
+		location->setAutoindex(autoindex);
+	else if (server)
+		server->setAutoindex(autoindex);
+}
+
+void DirectiveParser::parseIndex(Server* server, Location* location, const std::vector<std::string>& values)
+{
+	if (values.empty())
+		throw ParseException("index directive requires at least one value", currentToken.line);
+
+	for (size_t i = 0; i < values.size(); ++i)
+	{
+		if (location)
+			location->addIndex(values[i]);
+		else if (server)
+			server->addIndex(values[i]);
+	}
+}
+
+void DirectiveParser::parseAllowMethods(Location* location, const std::vector<std::string>& values)
+{
+	if (values.empty())
+		throw ParseException("allow_methods directive requires at least one value", currentToken.line);
+
+	for (size_t i = 0; i < values.size(); ++i)
+		location->addAllowedMethod(values[i]);
+}
+
+void DirectiveParser::parseCgiInfo(Location* location, const std::vector<std::string>& values)
+{
+	if (values.size() != 2)
+		throw ParseException("cgi_info directive requires exactly two values (extension and interpreter)", currentToken.line);
+
+	location->setCgiExtension(values[0], values[1]);
+}
+
+void DirectiveParser::parseReturn(Location* location, const std::vector<std::string>& values)
+{
+	if (values.size() != 1)
+		throw ParseException("return directive requires exactly one value (URL)", currentToken.line);
+
+	location->setReturn(values[0]);
+}
+
+void DirectiveParser::parseUploadStore(Location* location, const std::vector<std::string>& values)
+{
+	if (values.size() != 1)
+		throw ParseException("upload_store directive requires exactly one value (path)", currentToken.line);
+
+	location->setUploadStore(values[0]);
 }
 
 void DirectiveParser::expect(TokenType expected)
@@ -188,8 +290,9 @@ std::vector<std::string> DirectiveParser::gatherDirectiveValues()
 			&& currentToken.type != TOKEN_EOF)
 	{
 		if (currentToken.type == TOKEN_STRING
-				|| currentToken.type == TOKEN_NUMBER || 
-				currentToken.type == TOKEN_IP_PORT)
+		 || currentToken.type == TOKEN_NUMBER || 
+			currentToken.type == TOKEN_IP_PORT
+		 || currentToken.type == TOKEN_DIRECTIVE)
 			values.push_back(currentToken.value);
 		else
 			throw ParseException("Unexpected token in directive values", currentToken.line);
@@ -203,7 +306,7 @@ std::vector<std::string> DirectiveParser::gatherDirectiveValues()
 size_t DirectiveParser::parseSize(const std::string& sizeStr)
 {
 	char* end;
-	long size = std::strtol(sizeStr.c_str(), &end, 10);
+	long size = strtol(sizeStr.c_str(), &end, 10);
 
 	if (*end != '\0')
 	{

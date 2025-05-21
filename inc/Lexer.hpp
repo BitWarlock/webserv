@@ -3,20 +3,10 @@
 
 #include <iostream>
 #include <string>
+#include <set>
+#include <algorithm>
 #include <vector>
 #include <map>
-
-struct ServerConfig
-{
-	std::string							server_name;
-	std::string							listen;
-	std::string							root;
-	std::vector<std::string>			index;
-	std::map<int, std::string>			error_pages;
-	std::map<std::string, std::string>	cgi_info;
-	size_t								client_body_limit;
-	bool								autoindex;
-};
 
 enum TokenType
 {
