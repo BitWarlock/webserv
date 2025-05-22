@@ -191,7 +191,7 @@ void DirectiveParser::parseListen(Server* server, const std::vector<std::string>
 	long portNumber = strtol(port.c_str(), &end, 10);
 	if (*end != '\0' || portNumber < 1 || portNumber > 65535)
 		throw ParseException("Invalid port number: " + port, currentToken.line);
-	if (host != "0.0.0.0" && !isValidIPv4(host))
+	if (host != "localhost" && host != "0.0.0.0" && !isValidIPv4(host))
 		throw ParseException("Listen must be a valid IPV4 address (e.g. 127.0.0.1) " + host, currentToken.line);
 	server->setListen(std::make_pair(host, port));
 }
