@@ -1,0 +1,32 @@
+| **Header**          | **Why It's Needed**                                                                 |
+| ------------------- | ----------------------------------------------------------------------------------- |
+
+| `Host`              | ✅ **Mandatory** in HTTP/1.1                                                         |
+
+| `Connection`        | To support persistent or close connections (`keep-alive`, `close`)                  |
+
+| `Content-Length`    | ✅ Required for POST/PUT requests with body                                          |
+
+| `Content-Type`      | ✅ Required to determine body format (e.g. form data, multipart)                     |
+
+| `Transfer-Encoding` | For `chunked` encoding (used by browsers or proxies)                                |
+
+| `Expect`            | For handling `Expect: 100-continue` (important for big POSTs from curl or browsers) |
+
+| `User-Agent`        | Optional, but common from browsers — helpful for debugging                          |
+
+| `Accept`            | Specifies which response types are acceptable                                       |
+
+| `Accept-Encoding`   | Tells if client supports gzip or deflate (optional to support)                      |
+
+| `Authorization`     | For handling basic auth or token-based APIs                                         |
+
+| `Cookie`            | If you implement sessions or need to support auth                                   |
+
+| `Referer`           | Often sent by browsers — not mandatory, but common                                  |
+
+| `Range`             | If you want to support partial downloads (e.g., for video or big file resume)       |
+
+| `Origin`            | For handling CORS (not mandatory unless supporting JS frontend apps)                |
+
+| `X-Requested-With`  | Used by AJAX requests (often `XMLHttpRequest`)                                      |

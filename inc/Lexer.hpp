@@ -9,7 +9,7 @@
 #include <map>
 
 enum TokenType
-{
+{	// FOR CONFIG
     TOKEN_SERVER,
     TOKEN_LOCATION,
     TOKEN_OPEN_BRACE,
@@ -20,7 +20,7 @@ enum TokenType
     TOKEN_IP_PORT,
     TOKEN_DIRECTIVE,
     TOKEN_EOF,
-    TOKEN_ERROR
+    TOKEN_ERROR,
 };
 
 struct Token
