@@ -37,7 +37,7 @@ class Server
 		size_t							getClientBodyLimit() const;
 		bool							getAutoindex() const;
 		const std::vector<std::string>& getIndex() const;
-		bool						getDeja_vu() const;
+		bool							getDeja_vu() const;
 
 	private:
 		ReturnDirective				return_d;
