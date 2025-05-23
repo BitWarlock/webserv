@@ -6,6 +6,7 @@
 #include "Location.hpp"
 #include "Config.hpp"
 #include "ParseDirective.hpp"
+#include "SetupServers.hpp"
 
 #include <sys/stat.h>
 #include <fstream>

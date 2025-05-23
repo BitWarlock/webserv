@@ -23,6 +23,7 @@ class Server
 		void setAutoindex(bool autoindex);
 		void addIndex(const std::string& index);
 		void addReturnDirective(const ReturnDirective);
+		void setDeja_vu(bool flag);
 
 		// Getters
 		const std::vector<std::pair
@@ -36,6 +37,7 @@ class Server
 		size_t							getClientBodyLimit() const;
 		bool							getAutoindex() const;
 		const std::vector<std::string>& getIndex() const;
+		bool						getDeja_vu() const;
 
 	private:
 		ReturnDirective				return_d;
@@ -51,6 +53,7 @@ class Server
 		size_t						client_body_limit;
 		bool						autoindex;
 		std::vector<std::string>	index;
+		bool						deja_vu;
 };
 
 #endif
