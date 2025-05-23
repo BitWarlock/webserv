@@ -30,3 +30,93 @@
 | `Origin`            | For handling CORS (not mandatory unless supporting JS frontend apps)                |
 
 | `X-Requested-With`  | Used by AJAX requests (often `XMLHttpRequest`)                                      |
+
+
+void ParseRequest::startParse(std::string buff) {
+    incomigBytes.clear();                    // Clear error state if any
+    incomigBytes.str(incomigBytes.str() + buff);  // Append to existing data
+
+    switch (CurrntParsState) {
+        case NONE:
+            SwitchState(REQUEST_LINE);
+            // fallthrough
+
+        case REQUEST_LINE:
+            std::string line;
+            if (!std::getline(incomigBytes, line, '\n')) return; // wait for more
+
+            // Remove \r if present at the end
+            if (!line.empty() && line[line.size() - 1] == '\r')
+                line.erase(line.size() - 1);
+
+            std::istringstream linestream(line);
+            std::string method, uri, version;
+            linestream >> method >> uri >> version;
+
+            if (method.empty() || uri.empty() || version.empty()) {
+                SwitchState(ERROR);
+                return;
+            }
+
+            setMethod(method);
+            setUri(uri);
+            setVersion(version);
+            SwitchState(HEADERS);
+            // no return; continue into headers
+
+        case HEADERS:
+            while (true) {
+                std::string line;
+                if (!std::getline(incomigBytes, line, '\n')) return; // wait for more
+                if (!line.empty() && line[line.size() - 1] == '\r')
+                    line.erase(line.size() - 1);
+
+                if (line.empty()) {
+                    // empty line => end of headers
+                    if (Method == "POST" || Method == "PUT") {
+                        // TODO: handle content-length & body parsing
+                        SwitchState(BODYS);
+                        return;
+                    }
+                    SwitchState(FINISH);
+                    return;
+                }
+
+                size_t colon = line.find(":");
+                if (colon == std::string::npos) {
+                    SwitchState(ERROR);
+                    return;
+                }
+
+                std::string key = line.substr(0, colon);
+                std::string value = line.substr(colon + 1);
+                while (!value.empty() && value[0] == ' ')
+                    value.erase(0, 1);
+                Headers[key] = value;
+            }
+
+        case BODYS:
+            // TODO: Handle Content-Length and body accumulation
+            // Once body is fully read:
+            // SwitchState(FINISH);
+            break;
+
+        case FINISH:
+        case ERROR:
+            return;
+    }
+}
+
+
+✅ What to Do Next
+Implement BODYS state:
+
+Parse Content-Length from Headers
+
+Read exact body length from incomigBytes
+
+When complete → SwitchState(FINISH)
+
+Save body somewhere (e.g., std::string BodyBuffer).
+
+Use this state machine incrementally after each recv().
