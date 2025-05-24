@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/21 20:59:30 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/05/24 18:22:50 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/05/24 21:31:37 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,7 +24,7 @@ class SetupServers
         ~SetupServers();
 
         void    CheckPortIp(const std::string& host, const std::string& port, size_t pos_server);
-        void    FlagSharedPortIp(void);
+        void    FlagSharedPortIp();
         void    CreateSocket(Server& server);
         void    setAddrForBound(std::string& host, std::string& port, struct sockaddr_in &add_server);
         void    Binding(Server& server, size_t index);
@@ -34,7 +34,7 @@ class SetupServers
         
     private:
         const Config& config;
-        size_t        pos;
+        size_t        sock_number;
         int           fd_sockets[MAX_SOCKET];
 };
 

@@ -91,8 +91,8 @@ int main(int argc, char *argv[])
 		// 3. Parse configuration
 		Config* config = parser.parseConfig();
 
-		// 4. SetupServers
-		SetupServers	server(*config);
+		// 4. SetupServer
+			SetupServers	server(*config);
 
 		// 4. Print parsed configuration (for testing)
 		std::cout << GRN "Successfully parsed configuration:\n" << RESET;
