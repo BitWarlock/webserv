@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/21 20:57:28 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/05/23 20:40:12 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/05/24 18:22:59 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,27 +15,29 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-#include "SetupServers.hpp"
+#include "../inc/SetupServers.hpp"
 
-SetupServers::SetupServers(const Config& config) : config(config){
+SetupServers::SetupServers(Config& config) : config(config){
     pos = 0;
     for (size_t i(0); i < MAX_SOCKET; i++)
         fd_sockets[i] = 0;
+    this->StartSetup();
 }
 
 SetupServers::~SetupServers(){}
 
-bool    SetupServers::CheckPortIp(const std::string& host, const std::string& port, int pos_server)
+void    SetupServers::CheckPortIp(const std::string& host, const std::string& port, size_t pos_server)
 {
     std::vector<Server*>   servers = config.getServers();
     for (size_t i(0); i < pos_server; i++)
     {
-        for (size_t s(0); s < servers[i].getListen().size(); s++)
+        for (size_t s(0); s < servers[i]->getListen().size(); s++)
         {
-            if (server[i]->getListen()[s].first == host
-					&& server[i]->getListen()[s].second == port)
+            if (servers[i]->getListen()[s].first == host
+					&& servers[i]->getListen()[s].second == port)
             {
-                server[i]->getListen()[s].second += "T";
+                std::string&    _port = const_cast<std::string&> (port);
+                _port += "T";
                 return ;
             }
         }
@@ -44,14 +46,13 @@ bool    SetupServers::CheckPortIp(const std::string& host, const std::string& po
 
 void    SetupServers::FlagSharedPortIp(void)
 {
-    const std::vector<Server*>&   serv = config.getServers();
-    std::vector<Server*>&   servers = const_cast<std::vector<Server*>&> (serv);
+    std::vector<Server*>&   servers = const_cast<std::vector<Server*>&> (config.getServers());
     for (size_t i(0); i < servers.size(); i++)
     {
-        for (size_t s(0); s < servers[i].getListen().size(); s++)
+        for (size_t s(0); s < servers[i]->getListen().size(); s++)
         {
-            CheckPortIp(servers[i]->getListen()[s].first, 
-                servers[i]->getListen()[s].first, i);
+            CheckPortIp(servers[i]->getListen()[s].first,
+                servers[i]->getListen()[s].second, i);
         }
     }
 }
@@ -75,52 +76,67 @@ void    SetupServers::CreateSocket(Server& server)
     }
 }
 
-void    SetupServers::setAddrForBound(std::string host, std::string port)
+void    SetupServers::setAddrForBound(std::string& host, std::string& port, struct sockaddr_in& add_server)
 {
 
-    uint16_t    port_number = atoi(port_str.c_str());
-    struct sockaddr_in  add_server;
+    uint16_t            port_number = atoi(port.c_str());
+    
+    bzero(&add_server, sizeof(add_server));
     add_server.sin_family = AF_INET;
     add_server.sin_port = htons(port_number);
-    if (inet_pton(AF_INET, host, &add_server.sin_addr) <= 0)
-    {
-        std::cerr << "Invalid Ip\n";
-        return ;
-    }
+    add_server.sin_addr.s_addr = inet_addr(host.c_str());
+    // if (inet_pton(AF_INET, host.c_str(), &add_server.sin_addr) <= 0)
+    // {
+    //     std::cerr << "Invalid Ip\n";
+    //     return ;
+    // }
 }
 
-void    SetupServers::Binding(Server& server, int index)
+void    SetupServers::Binding(Server& server, size_t index)
 {
     for (size_t i(0); i <= pos; i++)
     {
+        struct sockaddr_in  add_server;
         std::string host = server.getListen()[i].first;
         std::string port = server.getListen()[i].second;
         if (port[port.size() - 1] != 'T')
         {
-            setAddrForBound(host, port);
+            setAddrForBound(host, port, add_server);
             if (bind(fd_sockets[index],  (struct sockaddr*) &add_server, sizeof(add_server)))
+            {
+                std::cerr << "errno " << errno << " " << strerror(errno) << " fd socket " << fd_sockets[index]
+                    << " idx " << index << "\n";
                 std::cerr << "Failed bind() to bound Ip and Port\n";
+            }
+            index++;
         }
         else
-            server.getListen()[i].second.erase(port.size() - 1);
+        {
+            std::string str = server.getListen()[i].second;
+            str.erase(port.size() - 1);
+        }
     }
 }
 
 void    SetupServers::StartSetup(void)
 {
-    static size_t   index;
-    std::vector<Server*> servers = config.getServers();
-    for (int i(0); i < servers.size(); i++)
+    static size_t   index(0);
+    std::vector<Server*>& servers = const_cast<std::vector<Server*>&> (config.getServers());
+    FlagSharedPortIp();
+    for (size_t i(0); i < servers.size(); i++)
     {
-        CreateSocket(servers[i]);
-        Binding(servers[i]);
+        CreateSocket(*(servers[i]));
+        Binding(*(servers[i]), index);
         while (index <= pos)
         {
-            if (listen(fd_sockets, SOMAXCONN))
+            if (listen(fd_sockets[index], SOMAXCONN))
                 std::cerr << "Failed listen() to listen for connections on a socket\n";
             index++;
         }
     }
 }
 
-void    advance(void) {this->pos++;}
+void    SetupServers::Run()
+{}
+
+void    SetupServers::advance(void) {this->pos++;}

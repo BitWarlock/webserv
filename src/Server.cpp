@@ -33,8 +33,6 @@ void Server::setAutoindex(bool autoindex) {this->autoindex = autoindex;}
 
 void Server::addIndex(const std::string& index) {this->index.push_back(index);}
 
-void Server::setDeja_vu(bool flag) {this->deja_vu = flag;}
-
 // Getters
 const std::vector<std::string>& Server::getAllowedMethods() const {return allowed_methods;}
 
@@ -60,5 +58,3 @@ const std::string& Server::getErrorPage(int code) const
 	std::map<int, std::string>::const_iterator it = error_pages.find(code);
 	return it != error_pages.end() ? it->second : empty;
 }
-
-bool	Server::getDeja_vu(void) const {return deja_vu;}

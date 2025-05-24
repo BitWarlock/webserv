@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/21 20:59:30 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/05/23 20:33:40 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/05/24 18:22:50 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,24 +15,26 @@
 
 #include "WebServ.hpp"
 #include "Config.hpp"
+#define MAX_SOCKET 1024
 
 class SetupServers
 {
     public:
-        SetupServers(const Config& config);
+        SetupServers(Config& config);
         ~SetupServers();
 
-        bool    CheckPortIp(const std::string& host, const std::string& port, int pos_server);
+        void    CheckPortIp(const std::string& host, const std::string& port, size_t pos_server);
         void    FlagSharedPortIp(void);
-        int     CreateSocket(Server& server);
-        void    setAddrForBound(const std::string& host, const std::string& port);
-        void    Binding(Server& server);
+        void    CreateSocket(Server& server);
+        void    setAddrForBound(std::string& host, std::string& port, struct sockaddr_in &add_server);
+        void    Binding(Server& server, size_t index);
         void    StartSetup(void);
+        void    Run(void);
         void    advance();
         
     private:
         const Config& config;
-        int           pos;
+        size_t        pos;
         int           fd_sockets[MAX_SOCKET];
 };
 

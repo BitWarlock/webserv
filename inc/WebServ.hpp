@@ -17,6 +17,5 @@
 #define GRN "\e[0;32m"
 #define RED "\033[1;31m"
 #define RESET "\033[0m"
-#define MAX_SOCKET 1024
 
 #endif // !WEBSERV_HPP
