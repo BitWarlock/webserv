@@ -7,7 +7,9 @@
 
 
 enum RequestParseStats{
-    REQUEST_LINE,
+    METHOD,
+    URL,
+    HTTPVERSION,
     HEADERS,
     BODYS,
     FINISH,
@@ -24,14 +26,29 @@ class ParseRequest {
 
         Server *S;
         int     ServerSocketFd;
+        int     pos;
+        std::string QueryeString;
         std::istringstream incomigBytes;
 
         //parse input
         void        startParse(std::string buff);
+        void        parseMethod(std::string& str);
+        void        parseUrl(std::string& str);
+        void        parseHttpVersion(std::string& str);
+        void        parseHeaders(std::string& str);
+        void        parseBody(std::string& str);
+        void        trimBuff(std::string& str);
     
         //checkers
         bool        isFinish();
+        bool        itHasBody(std::map<std::string, std::string> Hdrs);
         bool        isSupportedMethod(std::string& RequestMethod);
+        int         isKnownMethod();
+        bool        isValidUrl();
+        bool        isHexa(char characetre);
+        bool        Unresreved(char c);
+        bool        Reserved(char c);
+        bool        PercentEncoded(int& i);
 
         //getters
         std::string getMethod();
@@ -44,16 +61,21 @@ class ParseRequest {
         void        setUri(std::string u);
         void        setVersion(std::string v);
         void        SwitchState(int Next_State);
+        void        setErrorNumber(int Number);
+        void        setQueryString(std::string qurieInUrl);
         void        Reset();
+        void        ResetBuffPos();
 
     private:
 
+        int                                 errorNumber;
         int                                 CurrntParsState;
         std::string                         Method;
         std::string                         Url;
         std::string                         HttpProtocolVersion;
-        std::map<std::string, std::string>  QuerieStrings;
+        std::pair<std::string, std::string>  QuerieStrings;
         std::map<std::string, std::string>  Headers;
+
 
 };
 
