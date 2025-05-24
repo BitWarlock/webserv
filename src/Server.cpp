@@ -3,7 +3,6 @@
 Server::Server() 
 	: client_body_limit(0), autoindex(false)
 {
-	listen.push_back(std::make_pair("0.0.0.0", "8000"));
 	return_d.enabled = false;
 }
 
