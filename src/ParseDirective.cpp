@@ -1,6 +1,7 @@
 #include "../inc/ParseDirective.hpp"
 #include <clocale>
 #include <exception>
+#include <utility>
 
 DirectiveParser::DirectiveParser(Lexer& lexer) : lexer(lexer) {}
 
@@ -20,6 +21,8 @@ Config* DirectiveParser::parseConfig()
 		if (currentToken.type == TOKEN_SERVER)
 		{
 			Server* server = parseServerBlock();
+			if (server->getListen().empty())
+				server->setListen(std::make_pair("0.0.0.0", "8000"));
 			config->addServer(server);
 			serversInProgress.push_back(server);
 		}
@@ -166,6 +169,14 @@ static bool	isValidIPv4(const std::string& host)
 	return true;
 }
 
+static bool	UniqueListen(Server *server, std::pair<std::string, std::string> pair)
+{
+	for (size_t i = 0; i < server->getListen().size(); i++)
+		if (pair == server->getListen()[i])
+			return (false);
+	return (true);
+}
+
 void DirectiveParser::parseListen(Server* server, const std::vector<std::string>& values)
 {
 	if (values.size() != 1)
@@ -193,7 +204,11 @@ void DirectiveParser::parseListen(Server* server, const std::vector<std::string>
 		throw ParseException("Invalid port number: " + port, currentToken.line);
 	if (host != "localhost" && host != "0.0.0.0" && !isValidIPv4(host))
 		throw ParseException("Listen must be a valid IPV4 address (e.g. 127.0.0.1) " + host, currentToken.line);
-	server->setListen(std::make_pair(host, port));
+	if (host == "localhost")
+		host = "127.0.0.1";
+
+	if (UniqueListen(server, std::make_pair(host, port)))
+		server->setListen(std::make_pair(host, port));
 }
 
 void DirectiveParser::parseClientBodyLimit(Server* server,
