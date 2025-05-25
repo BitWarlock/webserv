@@ -10,7 +10,8 @@ enum RequestParseStats{
     METHOD,
     URL,
     HTTPVERSION,
-    HEADERS,
+    HEADER_KEY,
+    HEADER_VALUE,
     BODYS,
     FINISH,
     ERROR,
@@ -38,6 +39,7 @@ class ParseRequest {
         void        parseHeaders(std::string& str);
         void        parseBody(std::string& str);
         void        trimBuff(std::string& str);
+        void        toLowerCase(std::string& key);
     
         //checkers
         bool        isFinish();
@@ -49,6 +51,7 @@ class ParseRequest {
         bool        Unresreved(char c);
         bool        Reserved(char c);
         bool        PercentEncoded(int& i);
+        bool        isValidVersion();
 
         //getters
         std::string getMethod();

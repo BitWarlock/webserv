@@ -47,7 +47,10 @@ int         ParseRequest::isKnownMethod(){
     return (405);
 }
 bool        ParseRequest::isHexa(char characetre){ return (isxdigit(characetre));}
-bool        ParseRequest::Unresreved(char c){return (std::isalnum(c));}
+bool        ParseRequest::Unresreved(char c){
+    std::string s = "-._~";
+    return (std::isalnum(c) || (s.find(c) != std::string::npos));
+}
 bool        ParseRequest::Reserved(char c){
     std::string ResevedCharacters = ":/?#[]@!$&'()*+,;=";
     return (ResevedCharacters.find(c) != std::string::npos);
@@ -63,13 +66,18 @@ bool        ParseRequest::isValidUrl(){
     if (Url.empty() || Url[0] != '/')
         return (SwitchState(ERROR), setErrorNumber(400), false);
     for (int i(0);i < Url.size();i++){
-        if ((Url[i] == '%' && !PercentEncoded(i)) || !Unresreved(Url[i]) && !Reserved(Url[i]))
+        if ((Url[i] == '%' && !PercentEncoded(i)) || (!Unresreved(Url[i]) && !Reserved(Url[i])))
             return (SwitchState(ERROR), setErrorNumber(400), false);
     }
     return (true);
 }
 
-//parser
+//parsers
+void        toLowerCase(std::string& key){
+    for (int i(0); i < key.size()-1;i++){
+        std::tolower((unsigned char)key[i]);
+    }
+}
 void        ParseRequest::trimBuff(std::string& str){
     int pos = str.find_first_not_of(" ");
     if (pos)
@@ -80,6 +88,8 @@ void ParseRequest::parseMethod(std::string& str){
     trimBuff(str);
     pos = str.find(' ');
     if (pos == std::string::npos){
+        if ((str.find('\r') != std::string::npos) || str.find('\n') != std::string::npos)
+            return (SwitchState(ERROR), setErrorNumber(400));
         Method += str;
         str.clear();
         return (ResetBuffPos());
@@ -96,6 +106,8 @@ void ParseRequest::parseUrl(std::string& str){
     trimBuff(str);
     pos = str.find(' ');
     if (pos == std::string::npos){
+        if ((str.find('\r') != std::string::npos) || str.find('\n') != std::string::npos)
+            return (SwitchState(ERROR), setErrorNumber(400));
         Url.append(str);
         str.erase(0);
         return (ResetBuffPos());
@@ -109,12 +121,38 @@ void ParseRequest::parseUrl(std::string& str){
         Url.erase(pos);
     }
     ResetBuffPos();
+    SwitchState(HTTPVERSION);
+}
+bool        ParseRequest::isValidVersion(){
+    if (HttpProtocolVersion == "HTTP/1.1")
+        return (true);
+    if (HttpProtocolVersion == "HTTP/1.0" || HttpProtocolVersion == "HTTP/0.9" ||
+    HttpProtocolVersion == "HTTP/2" || HttpProtocolVersion == "HTTP/3")
+        return (SwitchState(ERROR), setErrorNumber(505), false);
+    return (SwitchState(ERROR), setErrorNumber(400), false);
 }
 
 void ParseRequest::parseHttpVersion(std::string& str){
-    
+    trimBuff(str);
+    pos = str.find("\r\n");
+    if (pos == std::string::npos){
+        HttpProtocolVersion.append(str);
+        str.erase(0);
+        return (ResetBuffPos());
+    }
+    if (isspace(str[pos-1]))
+        return (SwitchState(ERROR), setErrorNumber(400));
+    HttpProtocolVersion.append(str.substr(0, pos));
+    str.erase(0, pos+2);
+    if (!isValidVersion())
+        return;
+    ResetBuffPos();
+    SwitchState(HEADER_KEY);
 }
+
 void ParseRequest::parseHeaders(std::string& str){
+    trimBuff(str);
+
 
 }
 void ParseRequest::parseBody(std::string& str){
@@ -130,4 +168,9 @@ void    ParseRequest::startParse(std::string buff){
         parseMethod(buff);
     if (CurrntParsState == URL && !buff.empty())
         parseUrl(buff);
+    if (CurrntParsState == HTTPVERSION && !buff.empty())
+        parseHttpVersion(buff);
+    if (CurrntParsState == HEADER_KEY || CurrntParsState == HEADER_VALUE && !buff.empty())
+        parseHeaders(buff);
+        
 }

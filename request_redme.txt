@@ -120,3 +120,17 @@ When complete → SwitchState(FINISH)
 Save body somewhere (e.g., std::string BodyBuffer).
 
 Use this state machine incrementally after each recv().
+
+things need to know about headerrs befvor strat parse them 
+
+| Header              | Purpose                                          | Mandatory                                         | Errors to Check                                                                    |
+| ------------------- | ------------------------------------------------ | ------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `Host`              | Identifies the requested host (domain/IP + port) | **Yes in HTTP/1.1**                               | If missing → `400 Bad Request`                                                     |
+| `Content-Length`    | Size of the body in bytes                        | Required for POST (unless using chunked encoding) | If missing in POST → `411 Length Required`<br>If value invalid → `400 Bad Request` |
+| `Transfer-Encoding` | Usually `chunked` – affects how body is read     | No (but mutually exclusive with `Content-Length`) | If both exist → `400 Bad Request`                                                  |
+| `Connection`        | `keep-alive` or `close`                          | No                                                | Optional                                                                           |
+| `Content-Type`      | Type of body content (form data, JSON, etc.)     | No                                                | Optional                                                                           |
+| `Expect`            | Usually `100-continue` for large POST requests   | No                                                | If unsupported → `417 Expectation Failed`                                          |
+| `User-Agent`        | Client software info                             | No                                                | Just informational                                                                 |
+| `Accept`            | What MIME types the client supports              | No                                                | Optional                                                                           |
+| `Cookie`            | Cookies sent by the client                       | No                                                | Optional                                                                           |
