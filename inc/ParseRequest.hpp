@@ -4,14 +4,14 @@
 #include <iostream>
 #include <sstream>
 #include "Lexer.hpp"
+#include <utility>
 
 
 enum RequestParseStats{
     METHOD,
     URL,
     HTTPVERSION,
-    HEADER_KEY,
-    HEADER_VALUE,
+    HEADERS,
     BODYS,
     FINISH,
     ERROR,
@@ -40,6 +40,7 @@ class ParseRequest {
         void        parseBody(std::string& str);
         void        trimBuff(std::string& str);
         void        toLowerCase(std::string& key);
+        bool        isAllSpaces(std::string& str);
     
         //checkers
         bool        isFinish();
@@ -77,7 +78,7 @@ class ParseRequest {
         std::string                         Url;
         std::string                         HttpProtocolVersion;
         std::pair<std::string, std::string>  QuerieStrings;
-        std::map<std::string, std::string>  Headers;
+        std::vector<std::pair<std::string, std::string>>  Headers;
 
 
 };

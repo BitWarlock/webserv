@@ -1,5 +1,5 @@
-#include "ParseRequest.hpp"
-#include "Server.hpp"
+#include "../inc/ParseRequest.hpp"
+#include "../inc/Server.hpp"
 
 // construct
 ParseRequest::ParseRequest(): pos(0), CurrntParsState(NONE), Method(""), Url(""),
@@ -73,11 +73,12 @@ bool        ParseRequest::isValidUrl(){
 }
 
 //parsers
-void        toLowerCase(std::string& key){
+void        ParseRequest::toLowerCase(std::string& key){
     for (int i(0); i < key.size()-1;i++){
         std::tolower((unsigned char)key[i]);
     }
 }
+
 void        ParseRequest::trimBuff(std::string& str){
     int pos = str.find_first_not_of(" ");
     if (pos)
@@ -147,13 +148,35 @@ void ParseRequest::parseHttpVersion(std::string& str){
     if (!isValidVersion())
         return;
     ResetBuffPos();
-    SwitchState(HEADER_KEY);
+    SwitchState(HEADERS);
+}
+bool        ParseRequest::isAllSpaces(std::string& str){
+    for (int i(0); i < str.size()-1;i++){
+        if (!isspace(str[i]))
+            return (false);
+    }
+    return (true);
 }
 
 void ParseRequest::parseHeaders(std::string& str){
     trimBuff(str);
-
-
+    pos = str.find("\r\n\r\n");
+    pos = str.find("\r\n");
+    if (pos == std::string::npos)
+        return ;
+    str.erase(pos+2);
+    pos = str.find(':');
+    if (pos == std::string::npos || isspace(str[pos-1]))
+        return (SwitchState(ERROR), setErrorNumber(400));
+    std::string key = str.substr(0,pos);
+    std::string value = str.substr(pos+1, str.size());
+    trimBuff(str);
+    if (key.empty() || isAllSpaces(key) || value.empty())
+        return (SwitchState(ERROR), setErrorNumber(400));
+    toLowerCase(key);
+    Headers.push_back(std::make_pair(key,value));
+    ResetBuffPos();
+    parseHeaders(str);
 }
 void ParseRequest::parseBody(std::string& str){
 
@@ -161,16 +184,15 @@ void ParseRequest::parseBody(std::string& str){
 
 void    ParseRequest::startParse(std::string buff){
     buff.substr(buff.find_first_not_of(" "));
-    if (CurrntParsState == NONE && !buff.empty()){
+    if (CurrntParsState == NONE && !buff.empty())
         SwitchState(METHOD);
-    }
     if(CurrntParsState == METHOD && !buff.empty())
         parseMethod(buff);
     if (CurrntParsState == URL && !buff.empty())
         parseUrl(buff);
     if (CurrntParsState == HTTPVERSION && !buff.empty())
         parseHttpVersion(buff);
-    if (CurrntParsState == HEADER_KEY || CurrntParsState == HEADER_VALUE && !buff.empty())
+    if (CurrntParsState == HEADERS && !buff.empty())
         parseHeaders(buff);
-        
+         
 }
