@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/21 20:57:28 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/05/26 18:15:15 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/05/26 18:18:55 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -103,7 +103,7 @@ void    SetupServers::Binding(Server& server, size_t index)
         struct sockaddr_in  add_server;
         std::string         host = server.getListen()[i].first;
         std::string         port = server.getListen()[i].second;
-        
+
         if (port[port.size() - 1] != 'T')
         {
             setAddrForBound(host, port, add_server);
