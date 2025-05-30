@@ -12,6 +12,7 @@ enum RequestParseStats{
     URL,
     HTTPVERSION,
     HEADERS,
+    VLIDATEHEADRES,
     BODYS,
     FINISH,
     ERROR,
@@ -25,9 +26,15 @@ class ParseRequest {
         ParseRequest(Server *server, int fd);
         ~ParseRequest();
 
-        Server *S;
         int     ServerSocketFd;
         int     pos;
+        bool    hasValidHost;
+        int    contentLenght;
+        bool    chunkedEncoding;
+        std::map<std::string, int> NonRepeatablesHeaders;
+        std::string Host;
+        std::string Port;
+        Server *S;
         std::string QueryeString;
         std::istringstream incomigBytes;
 
@@ -41,7 +48,12 @@ class ParseRequest {
         void        trimBuff(std::string& str);
         void        toLowerCase(std::string& key);
         bool        isAllSpaces(std::string& str);
-    
+        bool        validKey(std::string& key);
+        bool        validateHeadres();
+        bool        checkIsThereaHost();
+        bool        checkForMandatoryHeaders();
+        bool        checkDuplicat();
+
         //checkers
         bool        isFinish();
         bool        itHasBody(std::map<std::string, std::string> Hdrs);
@@ -70,7 +82,7 @@ class ParseRequest {
         void        Reset();
         void        ResetBuffPos();
 
-    private:
+
 
         int                                 errorNumber;
         int                                 CurrntParsState;

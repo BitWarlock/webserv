@@ -1,12 +1,39 @@
 #include "../inc/ParseRequest.hpp"
 #include "../inc/Server.hpp"
 
+
 // construct
-ParseRequest::ParseRequest(): pos(0), CurrntParsState(NONE), Method(""), Url(""),
-                HttpProtocolVersion(""), QuerieStrings("",""){}
+ParseRequest::ParseRequest(): errorNumber(0), pos(0), CurrntParsState(NONE), Method(""), Url(""),
+                HttpProtocolVersion(""), QuerieStrings("",""), chunkedEncoding(false), contentLenght(0){
+    NonRepeatablesHeaders["host"] = 0;
+    NonRepeatablesHeaders["content-lenght"] = 0;
+    NonRepeatablesHeaders["content-type"] = 0;
+    NonRepeatablesHeaders["content-encoding"] = 0;
+    NonRepeatablesHeaders["transfer-encoding"] = 0;
+    NonRepeatablesHeaders["authorization"] = 0;
+    NonRepeatablesHeaders["user-agent	"] = 0;
+    NonRepeatablesHeaders["connection"] = 0;
+    NonRepeatablesHeaders["date"] = 0;
+    NonRepeatablesHeaders["upgrade"] = 0;
+    NonRepeatablesHeaders["expect"] = 0;
+    NonRepeatablesHeaders["range"] = 0;
+}
 // construct with params 
-ParseRequest::ParseRequest(Server *server, int fd): pos(0), CurrntParsState(NONE), Method(""), Url(""),
-                HttpProtocolVersion(""), QuerieStrings("",""), S(server), ServerSocketFd(fd){}
+ParseRequest::ParseRequest(Server *server, int fd): errorNumber(0), pos(0), CurrntParsState(NONE), Method(""), Url(""),
+                HttpProtocolVersion(""), QuerieStrings("",""), S(server), ServerSocketFd(fd), chunkedEncoding(false), contentLenght(0){
+    NonRepeatablesHeaders["host"] = 0;
+    NonRepeatablesHeaders["content-lenght"] = 0;
+    NonRepeatablesHeaders["content-type"] = 0;
+    NonRepeatablesHeaders["content-encoding"] = 0;
+    NonRepeatablesHeaders["transfer-encoding"] = 0;
+    NonRepeatablesHeaders["authorization"] = 0;
+    NonRepeatablesHeaders["user-agent	"] = 0;
+    NonRepeatablesHeaders["connection"] = 0;
+    NonRepeatablesHeaders["date"] = 0;
+    NonRepeatablesHeaders["upgrade"] = 0;
+    NonRepeatablesHeaders["expect"] = 0;
+    NonRepeatablesHeaders["range"] = 0;
+}
 //distructor 
 ParseRequest::~ParseRequest(){}
 
@@ -86,7 +113,8 @@ void        ParseRequest::trimBuff(std::string& str){
 }
 
 void ParseRequest::parseMethod(std::string& str){
-    trimBuff(str);
+    if (isspace(str[0]))
+        return (SwitchState(ERROR), setErrorNumber(400));
     pos = str.find(' ');
     if (pos == std::string::npos){
         if ((str.find('\r') != std::string::npos) || str.find('\n') != std::string::npos)
@@ -157,33 +185,83 @@ bool        ParseRequest::isAllSpaces(std::string& str){
     }
     return (true);
 }
+bool        ParseRequest::validKey(std::string& key){
+    std::string visbleChar = "!#$%&'*+-.^_|~`"; 
+    for (int i(0); i < key.size()-1; i++){
+        if (!isalnum(key[i]) && !visbleChar.find(key[i]))
+            return false;
+    }
+    return true;
+}
 
 void ParseRequest::parseHeaders(std::string& str){
-    trimBuff(str);
-    pos = str.find("\r\n\r\n");
     pos = str.find("\r\n");
     if (pos == std::string::npos)
         return ;
-    str.erase(pos+2);
-    pos = str.find(':');
-    if (pos == std::string::npos || isspace(str[pos-1]))
+    std::string line = str.substr(0, pos);
+    str.erase(0, pos+2);
+    if (line.size() >= 8192)
+        return (SwitchState(ERROR), setErrorNumber(431));
+    pos = line.find(':');
+    if (pos == std::string::npos || isspace(line[pos-1]))
         return (SwitchState(ERROR), setErrorNumber(400));
-    std::string key = str.substr(0,pos);
-    std::string value = str.substr(pos+1, str.size());
-    trimBuff(str);
-    if (key.empty() || isAllSpaces(key) || value.empty())
+    std::string key = line.substr(0,pos);
+    std::string value = line.substr(pos+1);
+    trimBuff(value);
+    if (!validKey(key) || key.empty() || isAllSpaces(key) || value.empty())
         return (SwitchState(ERROR), setErrorNumber(400));
     toLowerCase(key);
+    std::map<std::string, int>::iterator it = NonRepeatablesHeaders.find(key);
+    if (it != NonRepeatablesHeaders.end()){
+        if (it->second)
+            return (SwitchState(ERROR), setErrorNumber(400));
+        it->second++;
+    }
     Headers.push_back(std::make_pair(key,value));
     ResetBuffPos();
-    parseHeaders(str);
+    if (str[0] == '\r' && str[1] =='\n'){
+        str.erase(0,2);
+        if (!checkIsThereaHost)
+            return( SwitchState(ERROR), setErrorNumber(400));
+        SwitchState(BODYS);
+        return ;
+    }
+    if (getParseState() == HEADERS)
+        parseHeaders(str);
 }
-void ParseRequest::parseBody(std::string& str){
 
+bool    ParseRequest::checkIsThereaHost(){
+    std::string hoststring(NULL);
+    for (int i(0); i < Headers.size();i++){
+        if (Headers[i].first == "host" && !Headers[i].second.empty()){
+            int p = Headers[i].second.find(':');
+            if (p != std::string::npos){
+                Host = Headers[i].second.substr(0, p);
+                Port = Headers[i].second.substr(p+1);
+            }
+            else
+                Host = Headers[i].second;
+            hasValidHost = true;
+            return (true);
+        }
+    }
+    return (SwitchState(ERROR), setErrorNumber(400), false);
+}
+
+void ParseRequest::parseBody(std::string& str){
+    if (Method == "GET")
+        return ; 
+    std::vector<std::pair<std::string, std::string>>::iterator  Headersit;
+    for (Headersit = Headers.begin(); Headersit != Headers.end(); Headersit++){
+        if (Headersit->first == "transfer-encoding")
+            chunkedEncoding = true;
+        if (Headersit->first == "content-lenght")
+            contentLenght = std::stoi(Headersit->second);
+    }
+    if ()
 }
 
 void    ParseRequest::startParse(std::string buff){
-    buff.substr(buff.find_first_not_of(" "));
     if (CurrntParsState == NONE && !buff.empty())
         SwitchState(METHOD);
     if(CurrntParsState == METHOD && !buff.empty())
@@ -194,5 +272,10 @@ void    ParseRequest::startParse(std::string buff){
         parseHttpVersion(buff);
     if (CurrntParsState == HEADERS && !buff.empty())
         parseHeaders(buff);
-         
+    if (CurrntParsState == BODYS && !buff.empty() && Method != "GET")
+        parseBody(buff);
+    else
+        SwitchState(FINISH);
 }
+
+
