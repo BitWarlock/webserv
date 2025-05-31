@@ -29,8 +29,9 @@ class ParseRequest {
         int     ServerSocketFd;
         int     pos;
         bool    hasValidHost;
-        int    contentLenght;
+        size_t  contentLenght;
         bool    chunkedEncoding;
+        std::string BufferBody;
         std::map<std::string, int> NonRepeatablesHeaders;
         std::string Host;
         std::string Port;
@@ -44,15 +45,14 @@ class ParseRequest {
         void        parseUrl(std::string& str);
         void        parseHttpVersion(std::string& str);
         void        parseHeaders(std::string& str);
+        void        CheckingForBody();
         void        parseBody(std::string& str);
         void        trimBuff(std::string& str);
         void        toLowerCase(std::string& key);
         bool        isAllSpaces(std::string& str);
         bool        validKey(std::string& key);
-        bool        validateHeadres();
         bool        checkIsThereaHost();
-        bool        checkForMandatoryHeaders();
-        bool        checkDuplicat();
+        bool        isNumber(std::string toCheck);
 
         //checkers
         bool        isFinish();

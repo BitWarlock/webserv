@@ -1,14 +1,17 @@
 
+
 #include <iostream>
 #include <sstream>
+#include "inc/Lexer.hpp"
 #include <utility>
 #include "inc/Server.hpp"
-#include "inc/Location.hpp"
+
 enum RequestParseStats{
     METHOD,
     URL,
     HTTPVERSION,
     HEADERS,
+    VLIDATEHEADRES,
     BODYS,
     FINISH,
     ERROR,
@@ -24,11 +27,15 @@ class ParseRequest {
 
         int     ServerSocketFd;
         int     pos;
-        bool    contentLenght;
+        bool    hasValidHost;
+        size_t  contentLenght;
         bool    chunkedEncoding;
+        std::string BufferBody;
+        std::map<std::string, int> NonRepeatablesHeaders;
+        std::string Host;
+        std::string Port;
         Server *S;
         std::string QueryeString;
-
         std::istringstream incomigBytes;
 
         //parse input
@@ -37,11 +44,15 @@ class ParseRequest {
         void        parseUrl(std::string& str);
         void        parseHttpVersion(std::string& str);
         void        parseHeaders(std::string& str);
+        void        CheckingForBody();
         void        parseBody(std::string& str);
         void        trimBuff(std::string& str);
         void        toLowerCase(std::string& key);
         bool        isAllSpaces(std::string& str);
         bool        validKey(std::string& key);
+        bool        checkIsThereaHost();
+        bool        isNumber(std::string toCheck);
+
         //checkers
         bool        isFinish();
         bool        itHasBody(std::map<std::string, std::string> Hdrs);
@@ -116,22 +127,39 @@ class ParseRequest {
 
 
 
-
-
-
-
-
-
-
-
-
-
-// construct
-ParseRequest::ParseRequest(): pos(0), CurrntParsState(NONE), Method(""), Url(""),
-                HttpProtocolVersion(""), QuerieStrings("",""){}
+ParseRequest::ParseRequest(): errorNumber(0), pos(0), CurrntParsState(NONE), Method(""), Url(""),
+                HttpProtocolVersion(""), QuerieStrings("",""), chunkedEncoding(false), contentLenght(0){
+    BufferBody.clear();
+    NonRepeatablesHeaders["host"] = 0;
+    NonRepeatablesHeaders["content-lenght"] = 0;
+    NonRepeatablesHeaders["content-type"] = 0;
+    NonRepeatablesHeaders["content-encoding"] = 0;
+    NonRepeatablesHeaders["transfer-encoding"] = 0;
+    NonRepeatablesHeaders["authorization"] = 0;
+    NonRepeatablesHeaders["user-agent	"] = 0;
+    NonRepeatablesHeaders["connection"] = 0;
+    NonRepeatablesHeaders["date"] = 0;
+    NonRepeatablesHeaders["upgrade"] = 0;
+    NonRepeatablesHeaders["expect"] = 0;
+    NonRepeatablesHeaders["range"] = 0;
+}
 // construct with params 
-ParseRequest::ParseRequest(Server *server, int fd): pos(0), CurrntParsState(NONE), Method(""), Url(""),
-                HttpProtocolVersion(""), QuerieStrings("",""), S(server), ServerSocketFd(fd){}
+ParseRequest::ParseRequest(Server *server, int fd): errorNumber(0), pos(0), CurrntParsState(NONE), Method(""), Url(""),
+                HttpProtocolVersion(""), QuerieStrings("",""), S(server), ServerSocketFd(fd), chunkedEncoding(false), contentLenght(0){
+    BufferBody.clear();
+    NonRepeatablesHeaders["host"] = 0;
+    NonRepeatablesHeaders["content-lenght"] = 0;
+    NonRepeatablesHeaders["content-type"] = 0;
+    NonRepeatablesHeaders["content-encoding"] = 0;
+    NonRepeatablesHeaders["transfer-encoding"] = 0;
+    NonRepeatablesHeaders["authorization"] = 0;
+    NonRepeatablesHeaders["user-agent	"] = 0;
+    NonRepeatablesHeaders["connection"] = 0;
+    NonRepeatablesHeaders["date"] = 0;
+    NonRepeatablesHeaders["upgrade"] = 0;
+    NonRepeatablesHeaders["expect"] = 0;
+    NonRepeatablesHeaders["range"] = 0;
+}
 //distructor 
 ParseRequest::~ParseRequest(){}
 
@@ -291,39 +319,114 @@ bool        ParseRequest::validKey(std::string& key){
     }
     return true;
 }
-
+bool    ParseRequest::checkIsThereaHost(){
+    std::string hoststring(NULL);
+    for (int i(0); i < Headers.size();i++){
+        if (Headers[i].first == "host" && !Headers[i].second.empty()){
+            int p = Headers[i].second.find(':');
+            if (p != std::string::npos){
+                Host = Headers[i].second.substr(0, p);
+                Port = Headers[i].second.substr(p+1);
+            }
+            else
+                Host = Headers[i].second;
+            hasValidHost = true;
+            return (true);
+        }
+    }
+    return (SwitchState(ERROR), setErrorNumber(400), false);
+}
 void ParseRequest::parseHeaders(std::string& str){
-    trimBuff(str);
     pos = str.find("\r\n");
     if (pos == std::string::npos)
         return ;
     std::string line = str.substr(0, pos);
     str.erase(0, pos+2);
     if (line.size() >= 8192)
-    return (SwitchState(ERROR), setErrorNumber(431));
+        return (SwitchState(ERROR), setErrorNumber(431));
     pos = line.find(':');
     if (pos == std::string::npos || isspace(line[pos-1]))
-    return (SwitchState(ERROR), setErrorNumber(400));
+        return (SwitchState(ERROR), setErrorNumber(400));
     std::string key = line.substr(0,pos);
     std::string value = line.substr(pos+1);
     trimBuff(value);
-    if (key.empty() || isAllSpaces(key) || value.empty())
-    return (SwitchState(ERROR), setErrorNumber(400));
+    if (!validKey(key) || key.empty() || isAllSpaces(key) || value.empty())
+        return (SwitchState(ERROR), setErrorNumber(400));
     toLowerCase(key);
-    if (!validKey(key))
-    return (SwitchState(ERROR), setErrorNumber(400));
+    std::map<std::string, int>::iterator it = NonRepeatablesHeaders.find(key);
+    if (it != NonRepeatablesHeaders.end()){
+        if (it->second)
+            return (SwitchState(ERROR), setErrorNumber(400));
+        it->second++;
+    }
     Headers.push_back(std::make_pair(key,value));
     ResetBuffPos();
     if (str[0] == '\r' && str[1] =='\n'){
         str.erase(0,2);
-        SwitchState(BODYS);
+        if (!(checkIsThereaHost()))
+            return( SwitchState(ERROR), setErrorNumber(400));
+        CheckingForBody(); 
         return ;
     }
     if (getParseState() == HEADERS)
         parseHeaders(str);
 }
-void ParseRequest::parseBody(std::string& str){
 
+
+bool        ParseRequest::isNumber(std::string toCheck){
+    for (int i(0); i < toCheck.size();i++){
+        if (!isdigit(toCheck[i]))
+            return (false);
+    }
+    return (true);
+}
+void ParseRequest::CheckingForBody(){
+    bool TransferEncodingPresent = false;
+    bool ContentlenghtPresent = false;
+    if (Method == "GET"|| Method == "DELETE")
+        return (SwitchState(FINISH)); 
+    std::vector<std::pair<std::string, std::string>>::iterator  Headersit;
+    for (Headersit = Headers.begin(); Headersit != Headers.end(); Headersit++){
+        if (Headersit->first == "transfer-encoding"){
+            TransferEncodingPresent = true;
+            std::string tmp = Headersit->second;
+            toLowerCase(tmp);
+            if (tmp == "chunked")
+                chunkedEncoding = true;
+            else
+                return (SwitchState(ERROR), setErrorNumber(501));
+        }
+        if (Headersit->first == "content-length"){
+            ContentlenghtPresent = true;
+            if (!isNumber(Headersit->second))
+                return (SwitchState(ERROR), setErrorNumber(400));
+            contentLenght = std::stoi(Headersit->second);
+            if (contentLenght < 0)
+                return (SwitchState(ERROR), setErrorNumber(400));
+            if ((size_t)contentLenght > S->getClientBodyLimit())
+                return (SwitchState(ERROR), setErrorNumber(413));
+        }
+        SwitchState(BODYS);
+    }
+    if (TransferEncodingPresent && ContentlenghtPresent)
+    return (SwitchState(ERROR), setErrorNumber(400));
+    if (!chunkedEncoding && !ContentlenghtPresent)
+        return (SwitchState(FINISH));
+}
+void       ParseRequest::parseBody(std::string& str){
+    if (contentLenght ){
+        size_t CurrentNumBytes = 0;
+        while (CurrentNumBytes < contentLenght){
+            CurrentNumBytes += str.size();
+            BufferBody.append(str);
+            str.erase(0, CurrentNumBytes);
+            if (CurrentNumBytes > contentLenght)
+                return (SwitchState(ERROR), setErrorNumber(400));
+        }
+    }
+    else if (chunkedEncoding){
+
+    }
 }
 
 void    ParseRequest::startParse(std::string buff){
@@ -339,6 +442,9 @@ void    ParseRequest::startParse(std::string buff){
         parseHeaders(buff);
     if (CurrntParsState == BODYS && !buff.empty())
         parseBody(buff);
+    if (CurrntParsState == ERROR)
+        return ;
+
 }
 
 
@@ -499,7 +605,7 @@ int main() {
         "Host: example.com\r\n"
         "User-Agent: curl/7.68.0\r\n"
         "Accept: */*\r\n"
-        "Acceddpt: */ddddd*\r\n"
+        "ddpt: */ddddd*\r\n"
         "Acc: hola\r\n"
         "ept: nqeodcl*/*\r\n"
         "\r\n";
@@ -517,7 +623,8 @@ int main() {
         std::cout << parser.errorNumber << "\n";
     } else {
         std::cerr << "Failed to parse. Error state: " << parser.getParseState() << std::endl;
-    }
+        std::cerr << "error number is : " << parser.errorNumber << "\n";
+    }   
     return 0;
 }
 

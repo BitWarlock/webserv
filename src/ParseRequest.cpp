@@ -5,6 +5,7 @@
 // construct
 ParseRequest::ParseRequest(): errorNumber(0), pos(0), CurrntParsState(NONE), Method(""), Url(""),
                 HttpProtocolVersion(""), QuerieStrings("",""), chunkedEncoding(false), contentLenght(0){
+    BufferBody.clear();
     NonRepeatablesHeaders["host"] = 0;
     NonRepeatablesHeaders["content-lenght"] = 0;
     NonRepeatablesHeaders["content-type"] = 0;
@@ -21,6 +22,7 @@ ParseRequest::ParseRequest(): errorNumber(0), pos(0), CurrntParsState(NONE), Met
 // construct with params 
 ParseRequest::ParseRequest(Server *server, int fd): errorNumber(0), pos(0), CurrntParsState(NONE), Method(""), Url(""),
                 HttpProtocolVersion(""), QuerieStrings("",""), S(server), ServerSocketFd(fd), chunkedEncoding(false), contentLenght(0){
+    BufferBody.clear();
     NonRepeatablesHeaders["host"] = 0;
     NonRepeatablesHeaders["content-lenght"] = 0;
     NonRepeatablesHeaders["content-type"] = 0;
@@ -223,7 +225,7 @@ void ParseRequest::parseHeaders(std::string& str){
         str.erase(0,2);
         if (!checkIsThereaHost)
             return( SwitchState(ERROR), setErrorNumber(400));
-        SwitchState(BODYS);
+        CheckingForBody(); 
         return ;
     }
     if (getParseState() == HEADERS)
@@ -247,13 +249,22 @@ bool    ParseRequest::checkIsThereaHost(){
     }
     return (SwitchState(ERROR), setErrorNumber(400), false);
 }
-
-void ParseRequest::parseBody(std::string& str){
-    if (Method == "GET")
-        return ; 
+bool        ParseRequest::isNumber(std::string toCheck){
+    for (int i(0); i < toCheck.size();i++){
+        if (!isdigit(toCheck[i]))
+            return (false);
+    }
+    return (true);
+}
+void ParseRequest::CheckingForBody(){
+    bool TransferEncodingPresent = false;
+    bool ContentlenghtPresent = false;
+    if (Method == "GET"|| Method == "DELETE")
+        return (SwitchState(FINISH)); 
     std::vector<std::pair<std::string, std::string>>::iterator  Headersit;
     for (Headersit = Headers.begin(); Headersit != Headers.end(); Headersit++){
         if (Headersit->first == "transfer-encoding"){
+            TransferEncodingPresent = true;
             std::string tmp = Headersit->second;
             toLowerCase(tmp);
             if (tmp == "chunked")
@@ -261,15 +272,37 @@ void ParseRequest::parseBody(std::string& str){
             else
                 return (SwitchState(ERROR), setErrorNumber(501));
         }
-        if (Headersit->first == "content-lenght"){
+        if (Headersit->first == "content-length"){
+            ContentlenghtPresent = true;
+            if (!isNumber(Headersit->second))
+                return (SwitchState(ERROR), setErrorNumber(400));
             contentLenght = std::stoi(Headersit->second);
+            if (contentLenght < 0)
+                return (SwitchState(ERROR), setErrorNumber(400));
             if ((size_t)contentLenght > S->getClientBodyLimit())
-                
+                return (SwitchState(ERROR), setErrorNumber(413));
+        }
+        SwitchState(BODYS);
+    }
+    if (TransferEncodingPresent && ContentlenghtPresent)
+    return (SwitchState(ERROR), setErrorNumber(400));
+    if (!chunkedEncoding && !ContentlenghtPresent)
+        return (SwitchState(FINISH));
+}
+void       ParseRequest::parseBody(std::string& str){
+    if (contentLenght ){
+        size_t CurrentNumBytes = 0;
+        while (CurrentNumBytes < contentLenght){
+            CurrentNumBytes += str.size();
+            BufferBody.append(str);
+            str.erase(0, CurrentNumBytes);
+            if (CurrentNumBytes > contentLenght)
+                return (SwitchState(ERROR), setErrorNumber(400));
         }
     }
-    if (!chunkedEncoding && contentLenght <= 0)
-        return (SwitchState(FINISH));
-    else if (chunkedEncoding)
+    else if (chunkedEncoding){
+
+    }
 }
 
 void    ParseRequest::startParse(std::string buff){
@@ -283,10 +316,11 @@ void    ParseRequest::startParse(std::string buff){
         parseHttpVersion(buff);
     if (CurrntParsState == HEADERS && !buff.empty())
         parseHeaders(buff);
-    if (CurrntParsState == BODYS && !buff.empty() && Method != "GET")
+    if (CurrntParsState == BODYS && !buff.empty())
         parseBody(buff);
-    else
-        SwitchState(FINISH);
+    if (CurrntParsState == ERROR)
+        return ;
+
 }
 
 
