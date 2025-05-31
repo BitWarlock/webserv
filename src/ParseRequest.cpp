@@ -253,12 +253,23 @@ void ParseRequest::parseBody(std::string& str){
         return ; 
     std::vector<std::pair<std::string, std::string>>::iterator  Headersit;
     for (Headersit = Headers.begin(); Headersit != Headers.end(); Headersit++){
-        if (Headersit->first == "transfer-encoding")
-            chunkedEncoding = true;
-        if (Headersit->first == "content-lenght")
+        if (Headersit->first == "transfer-encoding"){
+            std::string tmp = Headersit->second;
+            toLowerCase(tmp);
+            if (tmp == "chunked")
+                chunkedEncoding = true;
+            else
+                return (SwitchState(ERROR), setErrorNumber(501));
+        }
+        if (Headersit->first == "content-lenght"){
             contentLenght = std::stoi(Headersit->second);
+            if ((size_t)contentLenght > S->getClientBodyLimit())
+                
+        }
     }
-    if ()
+    if (!chunkedEncoding && contentLenght <= 0)
+        return (SwitchState(FINISH));
+    else if (chunkedEncoding)
 }
 
 void    ParseRequest::startParse(std::string buff){
