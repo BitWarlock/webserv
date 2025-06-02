@@ -15,6 +15,8 @@ enum RequestParseStats{
     VLIDATEHEADRES,
     CONTENTLENGTHBODY,
     CHUNKEDBODY,
+    READCHUNKSIZE,
+    READCHUNK,
     FINISH,
     ERROR,
     NONE
@@ -30,7 +32,7 @@ class ParseRequest {
         int     ServerSocketFd;
         int     pos;
         bool    hasValidHost;
-        size_t  contentLenght;
+        size_t  contentLength;
         size_t  ChunkSize;
         bool    chunkedEncoding;
         std::string BufferBody;
@@ -38,7 +40,7 @@ class ParseRequest {
         std::string Host;
         std::string Port;
         Server *S;
-        std::string QueryeString;
+        std::string QueryString;
         std::istringstream incomigBytes;
 
         //parse input
