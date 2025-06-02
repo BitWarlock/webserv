@@ -6,6 +6,7 @@
 ParseRequest::ParseRequest(): errorNumber(0), pos(0), CurrntParsState(NONE), Method(""), Url(""),
                 HttpProtocolVersion(""), QuerieStrings("",""), chunkedEncoding(false), contentLenght(0){
     BufferBody.clear();
+    ChunkSize = 0;
     NonRepeatablesHeaders["host"] = 0;
     NonRepeatablesHeaders["content-lenght"] = 0;
     NonRepeatablesHeaders["content-type"] = 0;
@@ -23,6 +24,7 @@ ParseRequest::ParseRequest(): errorNumber(0), pos(0), CurrntParsState(NONE), Met
 ParseRequest::ParseRequest(Server *server, int fd): errorNumber(0), pos(0), CurrntParsState(NONE), Method(""), Url(""),
                 HttpProtocolVersion(""), QuerieStrings("",""), S(server), ServerSocketFd(fd), chunkedEncoding(false), contentLenght(0){
     BufferBody.clear();
+    ChunkSize = 0;
     NonRepeatablesHeaders["host"] = 0;
     NonRepeatablesHeaders["content-lenght"] = 0;
     NonRepeatablesHeaders["content-type"] = 0;
@@ -282,26 +284,46 @@ void ParseRequest::CheckingForBody(){
             if ((size_t)contentLenght > S->getClientBodyLimit())
                 return (SwitchState(ERROR), setErrorNumber(413));
         }
-        SwitchState(BODYS);
     }
     if (TransferEncodingPresent && ContentlenghtPresent)
-    return (SwitchState(ERROR), setErrorNumber(400));
+        return (SwitchState(ERROR), setErrorNumber(400));
     if (!chunkedEncoding && !ContentlenghtPresent)
         return (SwitchState(FINISH));
+    if (chunkedEncoding)
+        return SwitchState(CHUNKEDBODY);
+    SwitchState(CONTENTLENGTHBODY);
 }
-void       ParseRequest::parseBody(std::string& str){
-    if (contentLenght ){
-        size_t CurrentNumBytes = 0;
-        while (CurrentNumBytes < contentLenght){
-            CurrentNumBytes += str.size();
-            BufferBody.append(str);
-            str.erase(0, CurrentNumBytes);
-            if (CurrentNumBytes > contentLenght)
+void       ParseRequest::parseContentlengthBody(std::string& str){
+    BufferBody.append(str);
+    contentLenght -= str.size();
+    str.clear();
+    if (contentLenght == 0)
+        return (SwitchState(FINISH));
+    else if (contentLenght < 0)
+        return (SwitchState(ERROR), setErrorNumber(400));
+}
+
+int ParseRequest::HexaStringToDecimalNum(std::string s){
+    std::istringstream stremstr(s);
+    int ret = 0;
+    stremstr >> std::hex >> ret;
+    return ret;
+}
+
+void    ParseRequest::parseChunkedBody(std::string& str){
+    pos = str.find("\r\n");
+    if (pos != std::string::npos){
+        std::string StringChunkSize  = str.substr(0, pos - 1);
+        for (int i(0); i < StringChunkSize.size();i++){
+            if (!isHexa(StringChunkSize[i]))
                 return (SwitchState(ERROR), setErrorNumber(400));
         }
-    }
-    else if (chunkedEncoding){
-
+        ChunkSize = HexaStringToDecimalNum(StringChunkSize);
+        if (!ChunkSize)
+            return (SwitchState(FINISH));
+        if (ChunkSize > S->getClientBodyLimit())
+            return (SwitchState(ERROR), setErrorNumber(413));
+        str.erase(0, pos + 2);
     }
 }
 
@@ -316,11 +338,12 @@ void    ParseRequest::startParse(std::string buff){
         parseHttpVersion(buff);
     if (CurrntParsState == HEADERS && !buff.empty())
         parseHeaders(buff);
-    if (CurrntParsState == BODYS && !buff.empty())
-        parseBody(buff);
-    if (CurrntParsState == ERROR)
+    if (CurrntParsState == CONTENTLENGTHBODY && !buff.empty())
+        parseContentlengthBody(buff);
+    if (CurrntParsState == CHUNKEDBODY && !buff.empty())
+        parseChunkedBody(buff);
+    if (CurrntParsState == ERROR || CurrntParsState == FINISH)
         return ;
-
 }
 
 

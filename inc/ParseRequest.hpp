@@ -13,7 +13,8 @@ enum RequestParseStats{
     HTTPVERSION,
     HEADERS,
     VLIDATEHEADRES,
-    BODYS,
+    CONTENTLENGTHBODY,
+    CHUNKEDBODY,
     FINISH,
     ERROR,
     NONE
@@ -30,6 +31,7 @@ class ParseRequest {
         int     pos;
         bool    hasValidHost;
         size_t  contentLenght;
+        size_t  ChunkSize;
         bool    chunkedEncoding;
         std::string BufferBody;
         std::map<std::string, int> NonRepeatablesHeaders;
@@ -46,7 +48,9 @@ class ParseRequest {
         void        parseHttpVersion(std::string& str);
         void        parseHeaders(std::string& str);
         void        CheckingForBody();
-        void        parseBody(std::string& str);
+        void        parseContentlengthBody(std::string& str);
+        int         HexaStringToDecimalNum(std::string s);
+        void        parseChunkedBody(std::string& str);
         void        trimBuff(std::string& str);
         void        toLowerCase(std::string& key);
         bool        isAllSpaces(std::string& str);
