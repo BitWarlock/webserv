@@ -395,28 +395,27 @@ void ParseRequest::parseChunkedBody(std::string &str)
 
 void ParseRequest::startParse(std::string buff)
 {
-    while (true){
-        if (CurrntParsState == NONE && !buff.empty())
+    while (true)
+    {
+        if (buff.empty())
+            continue ;
+            
+        if (CurrntParsState == NONE)
             SwitchState(METHOD);
-        if (CurrntParsState == METHOD && !buff.empty())
+        if (CurrntParsState == METHOD)
             parseMethod(buff);
-        if (CurrntParsState == URL && !buff.empty())
+        if (CurrntParsState == URL)
             parseUrl(buff);
-        if (CurrntParsState == HTTPVERSION && !buff.empty())
+        if (CurrntParsState == HTTPVERSION)
             parseHttpVersion(buff);
-        if (CurrntParsState == HEADERS && !buff.empty())
+        if (CurrntParsState == HEADERS)
             parseHeaders(buff);
-        if (CurrntParsState == CONTENTLENGTHBODY && !buff.empty())
+        if (CurrntParsState == CONTENTLENGTHBODY)
             parseContentlengthBody(buff);
-        if (CurrntParsState == READCHUNKSIZE || CurrntParsState == READCHUNK && !buff.empty())
+        if (CurrntParsState == READCHUNKSIZE || CurrntParsState == READCHUNK)
             parseChunkedBody(buff);
+
         if (CurrntParsState == ERROR || CurrntParsState == FINISH)
-        return;
+            return;
     }
 }
-
-
-
-
-
-
