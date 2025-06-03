@@ -1,0 +1,850 @@
+🔌 Networking & OS Concepts
+
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<Socket>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+A “doorway” through which data flows between computers.
+_________________________________________________________________________________________
+
+🧠 What is a Socket?
+
+A socket is like a phone jack on your computer. It lets your program send or receive data over the internet (or a local network). You use it when you want your program to “talk” to another computer.
+
+Imagine:
+
+You (the server) have a phone line (socket) and wait for someone to call.
+
+Another person (the client) dials your number (IP + port), and now you're connected.
+
+You can talk to each other by sending messages.
+
+👨‍💻 In Programming Terms:
+
+A socket is created with code.
+
+It needs:
+
+An IP address (like your home address)
+
+A port number (like an apartment number)
+
+Then it can listen for connections or connect to another machine.
+
+🧱 Socket Example in C (works in C++98 too):
+
+This code just creates a socket:
+
+                ________________________________________________________
+            #include <iostream>                                         |   
+            #include <sys/socket.h>                                     |
+            #include <netinet/in.h>                                     |
+            #include <unistd.h>                                         |
+                                                                        |
+            int main() {                                                |
+            // 1. Create the socket                                     |
+            int server_socket = socket(AF_INET, SOCK_STREAM, 0);        |
+            if (server_socket < 0) {                                    |      
+                std::cerr << "Error creating socket!" << std::endl;     |
+                return 1;                                               |
+            }                                                           |
+                                                                        |
+            std::cout << "Socket created successfully!" << std::endl;   |
+                                                                        |
+            close(server_socket); // Always close it when done          |
+            return 0;                                                   |
+            }                                                           |
+                ________________________________________________________|
+
+📖 Explanation of the important line:
+- int server_socket = socket(AF_INET, SOCK_STREAM, 0);
+
+- AF_INET = IPv4 (you are using normal internet addresses like 127.0.0.1)
+
+- SOCK_STREAM = TCP (reliable connection like a phone call)
+
+- 0 = Use default protocol for TCP
+
+🚦 What happens when this code runs?
+
+✅ It tells the operating system:
+“Hey! I want a socket I can use to talk over TCP.”
+
+If it works, you get a number (like 3, 4, 5...); this is your socket file descriptor (just a number used to refer to the socket).
+
+If it fails, it returns -1.
+
+_________________________________________________________________________________________
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<bind()>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+Assigns a port number to your socket.
+_________________________________________________________________________________________
+
+🎓 Lesson 2: bind()
+
+🧠 What is bind()?
+
+bind() tells the operating system:
+👉 "I want this socket to listen for connections on this IP address and port number."
+
+You can think of it like telling the post office:
+"Please send all mail (connections) for port 8080 to this socket."
+
+🧱 Real Life Example:
+
+Imagine:
+
+You open a shop (socket)
+
+But you haven't told anyone your address (IP + port)
+
+With bind(), you say: “My shop is open at Street 127.0.0.1, Apartment 8080”
+
+Now customers can find you!
+
+🔧 bind() Syntax in C++ (same as C):
+
+int bind(int sockfd, const struct sockaddr* addr, socklen_t addrlen);
+
+But don't worry — let’s see a full example!
+
+✅ Full bind() Example (after socket()):
+
+
+            #include <iostream>
+            #include <sys/socket.h>
+            #include <netinet/in.h>
+            #include <unistd.h>
+            #include <string.h>
+
+            int main() {
+            // 1. Create a socket (IPv4 + TCP)
+            int server_socket = socket(AF_INET, SOCK_STREAM, 0);
+            if (server_socket < 0) {
+            std::cerr << "Socket creation failed!" << std::endl;
+            return 1;
+            }
+
+            // 2. Create a sockaddr_in structure to specify IP and port
+            struct sockaddr_in server_addr;
+            std::memset(&server_addr, 0, sizeof(server_addr)); // Zero out the structure
+
+            server_addr.sin_family = AF_INET;          // IPv4
+            server_addr.sin_port = htons(8080);        // Port 8080 (htons = host to network byte order)
+            server_addr.sin_addr.s_addr = INADDR_ANY;  // Listen on any local IP address
+
+            // 3. Bind the socket to the IP and port
+            if (bind(server_socket, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+            std::cerr << "Binding failed!" << std::endl;
+            return 1;
+            }
+
+            std::cout << "Socket successfully bound to port 8080!" << std::endl;
+
+            close(server_socket); // Clean up
+            return 0;
+            }
+
+✅ Summary (Plain English):
+
+bind() says: “I want to use this socket on this IP and port.”
+
+It connects your socket to a specific place on your machine.
+
+🧪 Now your server is almost ready to listen for incoming connections.
+
+_________________________________________________________________________________________
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<listen()>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+Tells the system you want to accept incoming connections.
+_________________________________________________________________________________________
+
+🎓 Lesson 3: listen()
+
+🧠 What is listen()?
+
+Once your socket is created and bound to an IP and port using bind(), you must tell it:
+
+👉 “I’m ready to accept incoming calls (connections). Please queue them up!”
+
+This is exactly what listen() does.
+
+🧱 Real-life analogy:
+
+You opened a shop (socket ✅), picked a location (bind ✅), and now you hang a sign on the door that says:
+
+🔔 “We’re Open! Ring the bell if you want service.”
+
+That bell is what listen() turns on — it allows people (clients) to knock.
+
+🧰 Syntax:
+
+int listen(int sockfd, int backlog);
+
+sockfd — your socket file descriptor
+
+backlog — how many incoming connections can wait in line (like a queue)
+
+If there are already that many people waiting, new clients will get "connection refused."
+
+💡 Small note:
+backlog is just a number. For small servers, 5 is enough. For big systems, it might be 100 or more.
+
+🧪 Full Example (combined with socket + bind):
+
+                ______________________________________________________________________
+                #include <iostream>
+                #include <sys/socket.h>
+                #include <netinet/in.h>
+                #include <unistd.h>
+                #include <string.h>
+
+                int main() {
+                // 1. Create socket
+                int server_socket = socket(AF_INET, SOCK_STREAM, 0);
+                if (server_socket < 0) {
+                std::cerr << "Socket creation failed!" << std::endl;
+                return 1;
+                }
+
+                // 2. Setup address
+                struct sockaddr_in server_addr;
+                std::memset(&server_addr, 0, sizeof(server_addr));
+
+                server_addr.sin_family = AF_INET;
+                server_addr.sin_port = htons(8080);
+                server_addr.sin_addr.s_addr = INADDR_ANY;
+
+                // 3. Bind
+                if (bind(server_socket, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+                    std::cerr << "Binding failed!" << std::endl;
+                    return 1;
+                    }
+
+                // 4. Listen
+                if (listen(server_socket, 5) < 0) {
+                    std::cerr << "Listening failed!" << std::endl;
+                    return 1;
+                    }
+                }
+                std::cout << "Server is listening on port 8080..." << std::endl;
+
+                close(server_socket);
+                
+                return 0;
+                ______________________________________________________________________
+
+🧠 Explanation of listen():
+
+Tells the OS: “Start listening for clients.”
+
+The socket becomes a "listening socket".
+
+It doesn’t accept the connection yet — it just waits.
+
+✅ After listen(), your next step will be accept(), which handles each client as they arrive.
+_________________________________________________________________________________________
+
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<accept()>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+Waits for an incoming client and opens a new connection.
+_________________________________________________________________________________________
+
+
+🎓 Lesson 4: accept()
+
+🧠 What is accept()?
+The accept() function is used to accept an incoming connection request from a client after the server has started listening for connections.
+
+Once you've called listen(), the server is ready and waiting for clients to try to connect. The accept() function allows the server to actually accept the connection and establish a communication link with the client.
+
+🧱 Real-life analogy:
+Imagine your shop (server) has a bell on the door (enabled by listen()), and clients (customers) ring the bell when they want to enter. The accept() function is like opening the door to let the customer in and give them service.
+
+So, in essence:
+
+listen() makes your server aware that clients want to connect.
+
+accept() allows a client to enter and communicate with the server.
+
+🧰 Syntax:  
+
+int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
+
+sockfd: The socket descriptor of the listening socket (the one you created with socket() and used with listen()).
+
+addr: A pointer to a sockaddr structure that will hold the client’s address information (like the client's IP address).
+
+addrlen: The size of the addr structure (you’ll typically use sizeof() here).
+
+Return Value:
+
+On success: accept() returns a new socket descriptor for the accepted connection. You’ll use this descriptor to communicate with the client.
+
+On failure: Returns -1, and you can use errno to get more information about the error.
+
+How does accept() work?
+
+1 - Blocking call: The accept() function blocks, meaning the program will wait here until a client tries to connect.
+
+2 - New socket: After accepting a client connection, the function returns a new socket descriptor that’s dedicated to communicating with that particular client.
+
+3 - Client address info: The addr structure will be filled with the client’s address information, such as their IP address.
+
+🧪 Example: Server Accepting a Connection
+
+Here’s an example where the server listens for incoming connections, and once a client connects, it accepts the connection and can communicate with that client.
+
+                ______________________________________________________________________________________
+                #include <iostream>
+                #include <sys/socket.h>
+                #include <netinet/in.h>
+                #include <unistd.h>
+                #include <string.h>
+
+                int main() {
+                    // 1. Create socket
+                    int server_socket = socket(AF_INET, SOCK_STREAM, 0);
+                    if (server_socket < 0) {
+                        std::cerr << "Socket creation failed!" << std::endl;
+                        return 1;
+                    }
+
+                    // 2. Setup address
+                    struct sockaddr_in server_addr;
+                    std::memset(&server_addr, 0, sizeof(server_addr));
+
+                    server_addr.sin_family = AF_INET;
+                    server_addr.sin_port = htons(8080);  // Port 8080
+                    server_addr.sin_addr.s_addr = INADDR_ANY;
+
+                    // 3. Bind
+                    if (bind(server_socket, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+                        std::cerr << "Binding failed!" << std::endl;
+                        return 1;
+                    }
+
+                    // 4. Listen
+                    if (listen(server_socket, 5) < 0) {
+                        std::cerr << "Listening failed!" << std::endl;
+                        return 1;
+                    }
+
+                    std::cout << "Server is listening on port 8080..." << std::endl;
+
+                    // 5. Accept a connection
+                    struct sockaddr_in client_addr;
+                    socklen_t client_len = sizeof(client_addr);
+                    int client_socket = accept(server_socket, (struct sockaddr*)&client_addr, &client_len);
+
+                    if (client_socket < 0) {
+                        std::cerr << "Accepting connection failed!" << std::endl;
+                        return 1;
+                    }
+
+                    std::cout << "Client connected!" << std::endl;
+
+                    // Send a welcome message to the client we will talk about it later 
+                    const char* welcome_message = "Hello, Client! You are connected to the server!";
+                    send(client_socket, welcome_message, strlen(welcome_message), 0);
+
+                    // Close the client socket after communication
+                    close(client_socket);
+
+                    // Close the server socket
+                    close(server_socket);
+
+                    return 0;
+                }
+                ______________________________________________________________________________________
+
+🧠 Explanation of the Code:
+
+1- Create a socket: socket() is used to create a socket for communication.
+
+2- Bind the socket: The server binds the socket to an IP address and a port (8080 in this case).
+
+3- Listen: listen() enables the server to start accepting incoming connections.
+
+4- Accept the connection: The accept() function blocks and waits for a client to connect. Once a client connects, it returns a new socket descriptor (client_socket) that the server can use to communicate with the client.
+
+5- Send a message: After the connection is accepted, the server sends a welcome message to the client using send().
+
+6- Close the sockets: After communication, both the client and server sockets are closed.
+
+
+🧠 Key Points:
+Blocking call: accept() blocks until a client connects.
+
+New socket for communication: Once accept() returns, you have a new socket (client-specific) to handle communication with that client.
+
+Client info: The accept() function also gives you information about the client's address (e.g., IP address).
+
+
+
+✅ listen() puts the server in a state where it’s waiting for incoming connections.
+
+✅ accept() handles those connections, creating a new socket for each client to allow communication.
+
+_________________________________________________________________________________________
+
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<recv() / send()>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+Receive/send data on a connected socket.
+_________________________________________________________________________________________
+
+🎓 Lesson 5: recv() / send()
+
+🧠 What are recv() and send()?
+
+After your server accepts a connection using accept(), it needs a way to communicate with the client — like reading what the client says and responding back. That’s where:
+
+✅ recv() — receive data from the client
+
+✅ send() — send data to the client
+
+These are the basic input/output functions for socket communication.
+
+🧱 Real-Life Analogy
+You’ve let a client into your shop (via accept()). Now you start talking:
+
+🗣 Client: “Can I get the homepage?”
+→ You use recv() to hear that request.
+
+📦 You: “Sure! Here's index.html.”
+→ You use send() to give your response.
+
+🧰 Syntax:
+
+🟢 recv():
+
+ssize_t recv(int sockfd, void *buffer, size_t length, int flags);
+
+sockfd: The client socket returned by accept()
+
+buffer: Where the incoming data will be stored
+
+length: Maximum number of bytes to read
+
+flags: Usually set to 0
+
+Returns: Number of bytes received, or -1 on error, 0 if the client closed the connection.
+
+🟢 send():
+
+ssize_t send(int sockfd, const void *buffer, size_t length, int flags);
+
+buffer: Data you want to send
+
+length: How many bytes to send
+
+flags: Usually set to 0
+
+Returns: Number of bytes sent, or -1 on error.
+
+🧪 Minimal Example (recv + send after accept)
+
+                _______________________________________________________________________________
+                #include <iostream>
+                #include <sys/socket.h>
+                #include <netinet/in.h>
+                #include <unistd.h>
+                #include <cstring>
+
+                int main() {
+                    int server_sock = socket(AF_INET, SOCK_STREAM, 0);
+
+                    sockaddr_in server_addr;
+                    std::memset(&server_addr, 0, sizeof(server_addr));
+                    server_addr.sin_family = AF_INET;
+                    server_addr.sin_port = htons(8080);
+                    server_addr.sin_addr.s_addr = INADDR_ANY;
+
+                    bind(server_sock, (sockaddr*)&server_addr, sizeof(server_addr));
+                    listen(server_sock, 5);
+
+                    std::cout << "Server is listening on port 8080...\n";
+
+                    sockaddr_in client_addr;
+                    socklen_t client_len = sizeof(client_addr);
+                    int client_sock = accept(server_sock, (sockaddr*)&client_addr, &client_len);
+                    std::cout << "Client connected!\n";
+
+                    char buffer[1024];
+                    std::memset(buffer, 0, sizeof(buffer));
+
+                    int bytes_received = recv(client_sock, buffer, sizeof(buffer) - 1, 0);
+                    if (bytes_received < 0) {
+                        std::cerr << "recv() failed\n";
+                    } else if (bytes_received == 0) {
+                        std::cout << "Client disconnected\n";
+                    } else {
+                        std::cout << "Client said: " << buffer << "\n";
+
+                        const char* reply = "HTTP/1.1 200 OK\r\nContent-Length: 13\r\n\r\nHello, Client";
+                        send(client_sock, reply, strlen(reply), 0);
+                    }
+
+                    close(client_sock);
+                    close(server_sock);
+
+                    return 0;
+                }
+                _______________________________________________________________________________
+
+🧠 Explanation
+The server waits for a client.
+
+Once connected, it receives a message using recv().
+
+It prints the message and sends a reply using send().
+
+After communication, both sockets are closed.
+
+🧠 Tip for Web Servers
+If you want to handle basic HTTP requests (like browsers send), you'll often:
+
+✅ Use recv() to read the full HTTP request (starting with "GET / HTTP/1.1")
+
+✅ Use send() to return a valid HTTP response (with headers + HTML content)
+_________________________________________________________________________________________
+
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<fork()>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+Creates a new process (copy of the current program). Used for handling multiple clients.
+_________________________________________________________________________________________
+
+🎓 Lesson 6: fork()
+
+🧠 What is fork()?
+
+fork() is a system call in Unix/Linux that creates a new process by duplicating the current (parent) process. The new process is called the child process.
+
+Both the parent and the child continue running from the point where fork() was called — but fork() returns a different value in each process, so you can tell them apart.
+
+🧱 Real-life analogy:
+
+Imagine your server is a chef (the parent process). When a new customer (client) comes in, the chef makes a clone of himself (child process) to handle that customer, so the original chef can keep waiting for the next one.
+
+This way, the parent server is free to accept more connections, and each client gets a dedicated server handler (child).
+
+🧰 Syntax:
+
+pid_t pid = fork();
+
+Returns:
+
+if pid = 0 → you are in the child process
+
+else pid > 0 → you are in the parent (value is the child’s PID)
+
+-1 → error occurred
+
+🔧 When do we use fork() in a server?
+
+When you want to handle multiple clients at the same time — you can:
+
+accept() a client
+
+call fork()
+
+in the child: handle the client with recv()/send()
+
+in the parent: go back and accept more clients
+
+🧪 Example: Forking Server to Handle Clients
+
+                __________________________________________________________________________
+                #include <iostream>
+                #include <unistd.h>
+                #include <cstring>
+                #include <sys/socket.h>
+                #include <netinet/in.h>
+                #include <sys/types.h>
+                #include <signal.h>
+
+                int main() {
+                    int server_fd = socket(AF_INET, SOCK_STREAM, 0);
+
+                    sockaddr_in server_addr;
+                    std::memset(&server_addr, 0, sizeof(server_addr));
+                    server_addr.sin_family = AF_INET;
+                    server_addr.sin_port = htons(8080);
+                    server_addr.sin_addr.s_addr = INADDR_ANY;
+
+                    bind(server_fd, (sockaddr*)&server_addr, sizeof(server_addr));
+                    listen(server_fd, 5);
+
+                    std::cout << "👨‍🍳 Server is running on port 8080...\n";
+
+                    while (true) {
+                        sockaddr_in client_addr;
+                        socklen_t client_len = sizeof(client_addr);
+                        int client_fd = accept(server_fd, (sockaddr*)&client_addr, &client_len);
+
+                        if (client_fd < 0) {
+                            std::cerr << "❌ Accept failed\n";
+                            continue;
+                        }
+
+                        pid_t pid = fork();
+
+                        if (pid == 0) {
+                            // 👶 Child process
+                            close(server_fd); // child doesn't need the listening socket
+
+                            char buffer[1024];
+                            std::memset(buffer, 0, sizeof(buffer));
+                            recv(client_fd, buffer, sizeof(buffer) - 1, 0);
+
+                            std::cout << "📨 Client says: " << buffer << "\n";
+
+                            const char* reply =
+                                "HTTP/1.1 200 OK\r\n"
+                                "Content-Type: text/plain\r\n"
+                                "Content-Length: 15\r\n"
+                                "\r\n"
+                                "Hello from fork()";
+
+                            send(client_fd, reply, strlen(reply), 0);
+                            close(client_fd);
+                            return 0; // end child process
+                        } else if (pid > 0) {
+                            // 👨 Parent process
+                            close(client_fd); // parent doesn’t talk to the client
+                        } else {
+                            std::cerr << "❌ fork() failed\n";
+                        }
+                    }
+
+                    close(server_fd);
+                    return 0;
+                }
+                __________________________________________________________________________
+
+🧠 Explanation:
+
+1- The server keeps listening for clients.
+
+2- Each time a client connects, it forks a child to handle them.
+
+3- The child receives a message and replies with a "Hello from fork()".
+
+4- The parent closes the client socket and keeps listening.
+
+🧼 Tip: Add this at the top if you want to auto-clean zombie child processes:
+    signal(SIGCHLD, SIG_IGN); // auto-reap child processes
+
+
+_________________________________________________________________________________________
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<select()>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+Monitors multiple sockets and waits until one is ready to read/write. Helps manage multiple clients.
+_________________________________________________________________________________________
+
+🎓 Lesson 7: select()
+
+🧠 What is select()?
+
+select() is a system call that lets your server monitor multiple sockets at once — without using fork() or threads.
+
+It asks the OS:
+
+👀 “Hey, let me know when any of these sockets are ready to read or write.”
+
+With select(), your server can:
+
+Handle many clients in a single process
+
+Wait for activity (like data from a client)
+
+Work well for lightweight, scalable servers
+
+🧱 Real-life analogy:
+
+Imagine you’re a librarian (your server). Many people (clients) might raise their hand (send data) to ask you something.
+
+You don’t want to check each person constantly (wasteful). Instead, you use select():
+
+🧠 “Let me know when someone raises their hand.”
+
+Then, you go to them and respond.
+
+🧰 Syntax:
+
+int select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout);
+
+nfds: max fd + 1 (we’ll explain)
+
+readfds: set of file descriptors to watch for reading
+
+writefds: (optional) for writing
+
+exceptfds: (optional) for errors
+
+timeout: how long to wait (NULL = wait forever)
+
+Returns: Number of sockets ready, or 0 (timeout), or -1 (error)
+
+💡 Uses fd_set and macros:
+
+FD_ZERO(&set): clear the set
+
+FD_SET(fd, &set): add fd to the set
+
+FD_ISSET(fd, &set): check if fd is ready
+
+
+🧪 Example: Multi-client server using select()
+
+Let’s make a simple chat-like server that listens for multiple clients and echoes back messages.
+
+                    ___________________________________________________________________________________________
+                    #include <iostream>
+                    #include <cstring>
+                    #include <unistd.h>
+                    #include <sys/socket.h>
+                    #include <netinet/in.h>
+                    #include <sys/select.h>
+                    #include <vector>
+
+                    int main() {
+                        int server_fd = socket(AF_INET, SOCK_STREAM, 0);
+
+                        sockaddr_in server_addr;
+                        std::memset(&server_addr, 0, sizeof(server_addr));
+                        server_addr.sin_family = AF_INET;
+                        server_addr.sin_port = htons(8080);
+                        server_addr.sin_addr.s_addr = INADDR_ANY;
+
+                        bind(server_fd, (sockaddr*)&server_addr, sizeof(server_addr));
+                        listen(server_fd, 5);
+
+                        std::cout << "📡 Server running on port 8080...\n";
+
+                        fd_set master_set, read_set;
+                        FD_ZERO(&master_set);
+                        FD_SET(server_fd, &master_set);
+                        int max_fd = server_fd;
+
+                        std::vector<int> clients;
+
+                        while (true) {
+                            read_set = master_set; // copy the master set
+
+                            int activity = select(max_fd + 1, &read_set, NULL, NULL, NULL);
+                            if (activity < 0) {
+                                std::cerr << "❌ select() error\n";
+                                break;
+                            }
+
+                            for (int fd = 0; fd <= max_fd; ++fd) {
+                                if (FD_ISSET(fd, &read_set)) {
+                                    if (fd == server_fd) {
+                                        // New connection
+                                        sockaddr_in client_addr;
+                                        socklen_t client_len = sizeof(client_addr);
+                                        int client_fd = accept(server_fd, (sockaddr*)&client_addr, &client_len);
+
+                                        if (client_fd >= 0) {
+                                            FD_SET(client_fd, &master_set);
+                                            if (client_fd > max_fd) max_fd = client_fd;
+                                            clients.push_back(client_fd);
+                                            std::cout << "👤 New client connected: fd = " << client_fd << "\n";
+                                        }
+                                    } else {
+                                        // Client sent data
+                                        char buffer[1024];
+                                        std::memset(buffer, 0, sizeof(buffer));
+                                        int bytes = recv(fd, buffer, sizeof(buffer) - 1, 0);
+
+                                        if (bytes <= 0) {
+                                            std::cout << "👋 Client disconnected: fd = " << fd << "\n";
+                                            close(fd);
+                                            FD_CLR(fd, &master_set);
+                                        } else {
+                                            std::cout << "📨 From client " << fd << ": " << buffer;
+
+                                            // Echo back
+                                            send(fd, buffer, strlen(buffer), 0);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        close(server_fd);
+                        return 0;
+                    }
+                    ___________________________________________________________________________________________
+
+🧠 What This Server Does:
+
+Listens on port 8080
+
+Uses select() to watch the server socket + all connected clients
+
+When a new client connects: adds them to the master set
+
+When a client sends data: reads it and sends it back
+
+If a client disconnects: cleans them up
+
+✅ Why use select()?
+
+No fork() needed — only one process
+
+No threads — simple and portable
+
+Scales to many clients (hundreds)
+
+❗ But: select() has some limits:
+
+Can only handle file descriptors < 1024
+
+Performance drops with many clients (for 1000+, use epoll/kqueue)
+
+| Concept     | Description                          |
+| ----------- | ------------------------------------ |
+| FD\_SET     | Add a socket to be monitored         |
+| FD\_ZERO    | Clear all sockets from a set         |
+| FD\_ISSET   | Check if socket is ready             |
+| select()    | Waits for any socket to become ready |
+| master\_set | All current sockets being tracked    |
+| read\_set   | Copy of master used for select()     |
+
+
+
+
+_________________________________________________________________________________________
+HTTP
+The protocol (rules) used by web browsers and servers to talk to each other.
+
+HTTP Request
+A message sent by the client (browser) to the server asking for a resource.
+
+Example:
+GET /index.html HTTP/1.1
+Host: example.com
+
+HTTP Response
+The server’s reply, including status, headers, and content.
+
+Example:
+HTTP/1.1 200 OK
+Content-Type: text/html
+
+<html>...</html>
+CGI (Common Gateway Interface)
+A way for a web server to run a program (like a Python or C++ script) and send its output to the browser.
+
+execve()
+A system call to run another program from inside your server.
+
+setenv()
+Sets environment variables needed before launching CGI programs.
+
+🧪 Practical Terms
+
+Blocking vs Non-Blocking
+
+Blocking: the program waits (e.g., accept() waits for a client).
+
+Non-blocking: the program continues running and checks periodically (used with select()).
+
+Port
+A number that identifies a specific service on a machine (e.g., 80 for HTTP).
+
+Daemon
+A background server process that runs without a user interface.

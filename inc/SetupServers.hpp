@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/21 20:59:30 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/05/26 18:19:19 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/06/02 21:44:58 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,6 +16,7 @@
 #include "WebServ.hpp"
 #include "Config.hpp"
 #define MAX_SOCKET 1024
+#define INFINITE   -1
 
 class SetupServers
 {
@@ -33,9 +34,10 @@ class SetupServers
         void    advance();
         
     private:
-        const Config& config;
-        size_t        sock_number;
-        size_t        fd_sockets[MAX_SOCKET];
+        const Config&       config;
+        int                 sock_number;
+        std::vector<int>    fd_sockets;
+        std::vector<int>    fd_clients;
 };
 
 #endif
