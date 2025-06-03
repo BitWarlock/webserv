@@ -367,8 +367,6 @@ bool ParseRequest::checkIsThereaHost()
 }
 void ParseRequest::parseHeaders(std::string &str)
 {
-    while (CurrntParsState == HEADERS)
-    {
         pos = str.find("\r\n");
         if (pos == std::string::npos)
             return;
@@ -402,7 +400,6 @@ void ParseRequest::parseHeaders(std::string &str)
             CheckingForBody();
             return;
         }
-    }
 }
 
 bool ParseRequest::isNumber(std::string toCheck)
@@ -488,11 +485,9 @@ void ParseRequest::parseChunkedBody(std::string &str)
                     return (SwitchState(ERROR), setErrorNumber(400));
             }
             ChunkSize = HexaStringToDecimalNum(StringChunkSize);
-            std::cout << "\""<<str <<"\""<< " " << StringChunkSize<< "  " << ChunkSize << "\n";
             // if (ChunkSize > S->getClientBodyLimit())
             //     return (SwitchState(ERROR), setErrorNumber(413));
             str.erase(0, pos + 2);
-            std::cout << "this is str : " << str << "\n";
             ResetBuffPos();
             if (ChunkSize == 0)
                 return (SwitchState(FINISH));
@@ -501,12 +496,10 @@ void ParseRequest::parseChunkedBody(std::string &str)
     }
     if (CurrntParsState == READCHUNK)
     {
-        std::cout << "str size "<< str.size() << "\n";
             if (str.size() >= ChunkSize + 2)
             {
                 BufferBody.append(str.substr(0, ChunkSize));
                 str.erase(0, ChunkSize + 2);
-                std::cout << " here  \""<< str << "\""<< "\n";
                 ChunkSize = 0;
                 ResetBuffPos();
                 SwitchState(READCHUNKSIZE);
@@ -516,22 +509,24 @@ void ParseRequest::parseChunkedBody(std::string &str)
 
 void ParseRequest::startParse(std::string buff)
 {
-    if (CurrntParsState == NONE && !buff.empty())
-        SwitchState(METHOD);
-    if (CurrntParsState == METHOD && !buff.empty())
-        parseMethod(buff);
-    if (CurrntParsState == URL && !buff.empty())
-        parseUrl(buff);
-    if (CurrntParsState == HTTPVERSION && !buff.empty())
-        parseHttpVersion(buff);
-    if (CurrntParsState == HEADERS && !buff.empty())
-        parseHeaders(buff);
-    if (CurrntParsState == CONTENTLENGTHBODY && !buff.empty())
-        parseContentlengthBody(buff);
-    if (CurrntParsState == READCHUNKSIZE || CurrntParsState == READCHUNK && !buff.empty())
-        parseChunkedBody(buff);
-    if (CurrntParsState == ERROR || CurrntParsState == FINISH)
+    while (true){
+        if (CurrntParsState == NONE && !buff.empty())
+            SwitchState(METHOD);
+        if (CurrntParsState == METHOD && !buff.empty())
+            parseMethod(buff);
+        if (CurrntParsState == URL && !buff.empty())
+            parseUrl(buff);
+        if (CurrntParsState == HTTPVERSION && !buff.empty())
+            parseHttpVersion(buff);
+        if (CurrntParsState == HEADERS && !buff.empty())
+            parseHeaders(buff);
+        if (CurrntParsState == CONTENTLENGTHBODY && !buff.empty())
+            parseContentlengthBody(buff);
+        if (CurrntParsState == READCHUNKSIZE || CurrntParsState == READCHUNK && !buff.empty())
+            parseChunkedBody(buff);
+        if (CurrntParsState == ERROR || CurrntParsState == FINISH)
         return;
+    }
 }
 
 
@@ -675,15 +670,17 @@ int main()
     ParseRequest parser(&dummyServer, 1);
 
     std::string request =
-    "POST /submit HTTP/1.1\r\n"
-    "Host: localhost\r\n"
+    "POST /api/data HTTP/1.1\r\n"
+    "Host: localhost:8080\r\n"
     "Transfer-Encoding: chunked\r\n"
+    "Content-Type: application/json\r\n"
     "\r\n"
-    "B\r\n"
-    "Hello world\r\n"
+    "31\r\n"
+    "{\"name\": \"John Doe\", "
+    "\"email\": \"john@example.com\"}\r\n"
     "0\r\n"
     "\r\n";
-
+    
     parser.startParse(request);
     if (parser.getParseState() == FINISH)
     {

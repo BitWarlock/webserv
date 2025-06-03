@@ -152,8 +152,8 @@ void ParseRequest::parseMethod(std::string &str)
     Method += str.substr(0, pos);
     str.erase(0, pos + 1);
     ResetBuffPos();
-    // if (!isSupportedMethod(Method))
-    //     return (setErrorNumber(isKnownMethod()));
+    if (!isSupportedMethod(Method))
+        return (setErrorNumber(isKnownMethod()));
     SwitchState(URL);
 }
 void ParseRequest::setQueryString(std::string queryInUrl) { QueryString = queryInUrl; }
@@ -253,8 +253,6 @@ bool ParseRequest::checkIsThereaHost()
 }
 void ParseRequest::parseHeaders(std::string &str)
 {
-    while (CurrntParsState == HEADERS)
-    {
         pos = str.find("\r\n");
         if (pos == std::string::npos)
             return;
@@ -288,7 +286,6 @@ void ParseRequest::parseHeaders(std::string &str)
             CheckingForBody();
             return;
         }
-    }
 }
 
 bool ParseRequest::isNumber(std::string toCheck)
@@ -327,8 +324,8 @@ void ParseRequest::CheckingForBody()
             contentLength = std::stoi(Headersit->second);
             if (contentLength < 0)
                 return (SwitchState(ERROR), setErrorNumber(400));
-            // if ((size_t)contentLength > S->getClientBodyLimit())
-            //     return (SwitchState(ERROR), setErrorNumber(413));
+            if ((size_t)contentLength > S->getClientBodyLimit())
+                return (SwitchState(ERROR), setErrorNumber(413));
         }
     }
     if (TransferEncodingPresent && contentLengthPresent)
@@ -336,7 +333,7 @@ void ParseRequest::CheckingForBody()
     if (!chunkedEncoding && !contentLengthPresent)
         return (SwitchState(FINISH));
     if (chunkedEncoding)
-        return SwitchState(CHUNKEDBODY);
+        return SwitchState(READCHUNKSIZE);
     SwitchState(CONTENTLENGTHBODY);
 }
 void ParseRequest::parseContentlengthBody(std::string &str)
@@ -374,52 +371,49 @@ void ParseRequest::parseChunkedBody(std::string &str)
                     return (SwitchState(ERROR), setErrorNumber(400));
             }
             ChunkSize = HexaStringToDecimalNum(StringChunkSize);
-            if (!ChunkSize)
-                return (SwitchState(FINISH));
-            // if (ChunkSize > S->getClientBodyLimit())
-            //     return (SwitchState(ERROR), setErrorNumber(413));
+            if (ChunkSize > S->getClientBodyLimit())
+                return (SwitchState(ERROR), setErrorNumber(413));
             str.erase(0, pos + 2);
             ResetBuffPos();
+            if (ChunkSize == 0)
+                return (SwitchState(FINISH));
             SwitchState(READCHUNK);
         }
     }
     if (CurrntParsState == READCHUNK)
     {
-        pos = str.find("\r\n");
-        if (pos != std::string::npos)
-        {
-            if (pos == ChunkSize + 1)
+            if (str.size() >= ChunkSize + 2)
             {
                 BufferBody.append(str.substr(0, ChunkSize));
+                str.erase(0, ChunkSize + 2);
                 ChunkSize = 0;
-                str.erase(0, pos + 2);
                 ResetBuffPos();
                 SwitchState(READCHUNKSIZE);
             }
-        }
     }
 }
 
 void ParseRequest::startParse(std::string buff)
 {
-    if (CurrntParsState == NONE && !buff.empty())
-        SwitchState(METHOD);
-    if (CurrntParsState == METHOD && !buff.empty())
-        parseMethod(buff);
-    if (CurrntParsState == URL && !buff.empty())
-        parseUrl(buff);
-    if (CurrntParsState == HTTPVERSION && !buff.empty())
-        parseHttpVersion(buff);
-    if (CurrntParsState == HEADERS && !buff.empty())
-        parseHeaders(buff);
-    if (CurrntParsState == CONTENTLENGTHBODY && !buff.empty())
-        parseContentlengthBody(buff);
-    if (CurrntParsState == READCHUNKSIZE || CurrntParsState == READCHUNK && !buff.empty())
-        parseChunkedBody(buff);
-    if (CurrntParsState == ERROR || CurrntParsState == FINISH)
+    while (true){
+        if (CurrntParsState == NONE && !buff.empty())
+            SwitchState(METHOD);
+        if (CurrntParsState == METHOD && !buff.empty())
+            parseMethod(buff);
+        if (CurrntParsState == URL && !buff.empty())
+            parseUrl(buff);
+        if (CurrntParsState == HTTPVERSION && !buff.empty())
+            parseHttpVersion(buff);
+        if (CurrntParsState == HEADERS && !buff.empty())
+            parseHeaders(buff);
+        if (CurrntParsState == CONTENTLENGTHBODY && !buff.empty())
+            parseContentlengthBody(buff);
+        if (CurrntParsState == READCHUNKSIZE || CurrntParsState == READCHUNK && !buff.empty())
+            parseChunkedBody(buff);
+        if (CurrntParsState == ERROR || CurrntParsState == FINISH)
         return;
+    }
 }
-
 
 
 
