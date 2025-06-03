@@ -3,7 +3,6 @@
 Server::Server() 
 	: client_body_limit(0), autoindex(false)
 {
-	listen.push_back(std::make_pair("0.0.0.0", "8000"));
 	return_d.enabled = false;
 }
 
@@ -39,7 +38,7 @@ const std::vector<std::string>& Server::getAllowedMethods() const {return allowe
 
 const ReturnDirective	Server::getReturnDirective() const {return return_d;}
 
-const std::vector<std::pair<std::string, std::string> > Server::getListen() const {return listen;}
+const std::vector<std::pair<std::string, std::string> >& Server::getListen() const {return listen;}
 
 const std::vector<std::string>& Server::getServerNames() const {return server_names;}
 

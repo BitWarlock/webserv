@@ -91,6 +91,9 @@ int main(int argc, char *argv[])
 		// 3. Parse configuration
 		Config* config = parser.parseConfig();
 
+		// 4. SetupServer
+		SetupServers	server(*config);
+
 		// 4. Print parsed configuration (for testing)
 		std::cout << GRN "Successfully parsed configuration:\n" << RESET;
 		std::cout << "Found " << config->getServers().size() << " server blocks\n\n";
@@ -142,7 +145,9 @@ int main(int argc, char *argv[])
 			}
 			std::cout << "\n";
 		}
-
+		while (1)
+			;
+		
 		// 6. Cleanup
 		delete config;
 
