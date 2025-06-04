@@ -73,8 +73,8 @@ bool ParseRequest::isFinish() { return (getParseState() == FINISH); }
 bool ParseRequest::isSupportedMethod(std::string &RequestMethod)
 {
     const std::vector<std::string> &sMethods = S->getAllowedMethods();
-    std::string m = getMethod();
-    for (int i = 0; i < sMethods.size(); i++)
+    std::string m = RequestMethod;
+    for (size_t i = 0; i < sMethods.size(); i++)
     {
         if (sMethods[i] == m)
             return (true);
@@ -100,7 +100,7 @@ bool ParseRequest::Reserved(char c)
     std::string ResevedCharacters = ":/?#[]@!$&'()*+,;=";
     return (ResevedCharacters.find(c) != std::string::npos);
 }
-bool ParseRequest::PercentEncoded(int &i)
+bool ParseRequest::PercentEncoded(size_t &i)
 {
     if (i + 2 <= Url.size() && isHexa(Url[i + 1]) && isHexa(Url[i + 2]))
         return (i += 2, true);
@@ -112,7 +112,7 @@ bool ParseRequest::isValidUrl()
         return (SwitchState(ERROR), setErrorNumber(414), false);
     if (Url.empty() || Url[0] != '/')
         return (SwitchState(ERROR), setErrorNumber(400), false);
-    for (int i(0); i < Url.size(); i++)
+    for (size_t i(0); i < Url.size(); i++)
     {
         if ((Url[i] == '%' && !PercentEncoded(i)) || (!Unresreved(Url[i]) && !Reserved(Url[i])))
             return (SwitchState(ERROR), setErrorNumber(400), false);
@@ -123,7 +123,7 @@ bool ParseRequest::isValidUrl()
 // parsers
 void ParseRequest::toLowerCase(std::string &key)
 {
-    for (int i(0); i < key.size(); i++)
+    for (size_t i(0); i < key.size(); i++)
     {
         key[i] = std::tolower((unsigned char)key[i]);
     }
@@ -131,9 +131,10 @@ void ParseRequest::toLowerCase(std::string &key)
 
 void ParseRequest::trimBuff(std::string &str)
 {
-    int pos = str.find_first_not_of(" ");
+    pos = str.find_first_not_of(" ");
     if (pos != std::string::npos)
         str.erase(0, pos);
+    ResetBuffPos();
 }
 
 void ParseRequest::parseMethod(std::string &str)
@@ -212,7 +213,7 @@ void ParseRequest::parseHttpVersion(std::string &str)
 }
 bool ParseRequest::isAllSpaces(std::string &str)
 {
-    for (int i(0); i < str.size(); i++)
+    for (size_t i(0); i < str.size(); i++)
     {
         if (!isspace(str[i]))
             return (false);
@@ -222,7 +223,7 @@ bool ParseRequest::isAllSpaces(std::string &str)
 bool ParseRequest::validKey(std::string &key)
 {
     std::string visbleChar = "!#$%&'*+-.^_|~`";
-    for (int i(0); i < key.size(); i++)
+    for (size_t i(0); i < key.size(); i++)
     {
         if (!isalnum(key[i]) && visbleChar.find(key[i]) == std::string::npos)
             return false;
@@ -233,11 +234,11 @@ bool ParseRequest::validKey(std::string &key)
 bool ParseRequest::checkIsThereaHost()
 {
     std::string hoststring;
-    for (int i(0); i < Headers.size(); i++)
+    for (size_t i(0); i < Headers.size(); i++)
     {
         if (Headers[i].first == "host" && !Headers[i].second.empty())
         {
-            int p = Headers[i].second.find(':');
+            size_t p = Headers[i].second.find(':');
             if (p != std::string::npos)
             {
                 Host = Headers[i].second.substr(0, p);
@@ -260,7 +261,7 @@ void ParseRequest::parseHeaders(std::string &str)
         str.erase(0, pos + 2);
         if (line.size() >= 8192)
             return (SwitchState(ERROR), setErrorNumber(431));
-            pos = line.find(':');
+        pos = line.find(':');
         if (pos == std::string::npos || isspace(line[pos - 1]))
             return (SwitchState(ERROR), setErrorNumber(400));    
         std::string key = line.substr(0, pos);
@@ -290,7 +291,7 @@ void ParseRequest::parseHeaders(std::string &str)
 
 bool ParseRequest::isNumber(std::string toCheck)
 {
-    for (int i(0); i < toCheck.size(); i++)
+    for (size_t i(0); i < toCheck.size(); i++)
     {
         if (!isdigit(toCheck[i]))
             return (false);
@@ -303,7 +304,7 @@ void ParseRequest::CheckingForBody()
     bool contentLengthPresent = false;
     if (Method == "GET" || Method == "DELETE")
         return (SwitchState(FINISH));
-    std::vector<std::pair<std::string, std::string>>::iterator Headersit;
+    std::vector<std::pair<std::string, std::string> >::iterator Headersit;
     for (Headersit = Headers.begin(); Headersit != Headers.end(); Headersit++)
     {
         if (Headersit->first == "transfer-encoding")
@@ -321,11 +322,10 @@ void ParseRequest::CheckingForBody()
             contentLengthPresent = true;
             if (!isNumber(Headersit->second))
                 return (SwitchState(ERROR), setErrorNumber(400));
-            contentLength = std::stoi(Headersit->second);
-            if (contentLength < 0)
-                return (SwitchState(ERROR), setErrorNumber(400));
-            if ((size_t)contentLength > S->getClientBodyLimit())
-                return (SwitchState(ERROR), setErrorNumber(413));
+            contentLength = std::atoi(Headersit->second.c_str());
+            // if (contentLength < 0)
+            //     return (SwitchState(ERROR), setErrorNumber(400));
+            // \llj
         }
     }
     if (TransferEncodingPresent && contentLengthPresent)
@@ -338,6 +338,8 @@ void ParseRequest::CheckingForBody()
 }
 void ParseRequest::parseContentlengthBody(std::string &str)
 {
+    if (contentLength == 0)
+        return (SwitchState(FINISH));
     pos = str.find("\r\n");
     if (pos != std::string::npos){
         BufferBody =  str.substr(0,pos);
@@ -365,7 +367,7 @@ void ParseRequest::parseChunkedBody(std::string &str)
         if (pos != std::string::npos)
         {
             std::string StringChunkSize = str.substr(0, pos);
-            for (int i(0); i < StringChunkSize.size(); i++)
+            for (size_t i(0); i < StringChunkSize.size(); i++)
             {
                 if (!isHexa(StringChunkSize[i]))
                     return (SwitchState(ERROR), setErrorNumber(400));
@@ -416,6 +418,25 @@ void ParseRequest::startParse(std::string buff)
             parseChunkedBody(buff);
 
         if (CurrntParsState == ERROR || CurrntParsState == FINISH)
-            return;
+            break;
+    }
+    if (getParseState() == FINISH)
+    {
+        std::cout << "Method: " << getMethod() << std::endl;
+        std::cout << "URL: " << getUri() << std::endl;
+        std::cout << "Version: " << getVersion() << std::endl;
+
+        for (size_t i = 0; i < Headers.size(); ++i)
+        {
+            std::cout << "Header[" << i << "]: " << Headers[i].first
+                      << " => " << Headers[i].second << std::endl;
+        }
+        std::cout << "Body :   "  << BufferBody << "\n";
+        std::cout << errorNumber << "\n";
+    }
+    else
+    {
+        std::cerr << "Failed to parse. Error state: " << getParseState() << std::endl;
+        std::cerr << "error number is : " << errorNumber << "\n";
     }
 }

@@ -5,6 +5,7 @@
 #include <sstream>
 #include "Lexer.hpp"
 #include <utility>
+#include "Server.hpp"
 
 enum RequestParseStats
 {
@@ -21,27 +22,34 @@ enum RequestParseStats
     NONE
 };
 
-class ParseRequest
-{
+class ParseRequest{
 public:
     ParseRequest();
     ParseRequest(Server *server, int fd);
     ~ParseRequest();
 
+    int errorNumber;
+    size_t pos;
+    int CurrntParsState;
+    std::string Method;
+    std::string Url;
+    std::string HttpProtocolVersion;
+    std::pair<std::string, std::string> QuerieStrings;
+    Server *S;
     int ServerSocketFd;
-    int pos;
-    bool hasValidHost;
-    size_t contentLength;
-    size_t ChunkSize;
     bool chunkedEncoding;
+    size_t contentLength;
+    std::vector<std::pair<std::string, std::string> > Headers;
+    bool hasValidHost;
+    size_t ChunkSize;
     std::string BufferBody;
     std::map<std::string, int> NonRepeatablesHeaders;
     std::string Host;
     std::string Port;
-    Server *S;
     std::string QueryString;
     std::istringstream incomigBytes;
-
+    
+    
     // parse input
     void startParse(std::string buff);
     void parseMethod(std::string &str);
@@ -61,14 +69,13 @@ public:
 
     // checkers
     bool isFinish();
-    bool itHasBody(std::map<std::string, std::string> Hdrs);
     bool isSupportedMethod(std::string &RequestMethod);
     int isKnownMethod();
     bool isValidUrl();
     bool isHexa(char characetre);
     bool Unresreved(char c);
     bool Reserved(char c);
-    bool PercentEncoded(int &i);
+    bool PercentEncoded(size_t &i);
     bool isValidVersion();
 
     // getters
@@ -86,14 +93,6 @@ public:
     void setQueryString(std::string qurieInUrl);
     void Reset();
     void ResetBuffPos();
-
-    int errorNumber;
-    int CurrntParsState;
-    std::string Method;
-    std::string Url;
-    std::string HttpProtocolVersion;
-    std::pair<std::string, std::string> QuerieStrings;
-    std::vector<std::pair<std::string, std::string>> Headers;
 };
 
 
