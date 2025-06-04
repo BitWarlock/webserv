@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/21 20:59:30 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/06/02 21:44:58 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/06/03 18:07:30 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -35,7 +35,7 @@ class SetupServers
         
     private:
         const Config&       config;
-        int                 sock_number;
+        size_t              sock_number;
         std::vector<int>    fd_sockets;
         std::vector<int>    fd_clients;
 };

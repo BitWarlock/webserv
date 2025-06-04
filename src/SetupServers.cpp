@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/21 20:57:28 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/06/02 21:52:05 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/06/04 18:30:48 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -123,6 +123,86 @@ void    SetupServers::Binding(Server& server, size_t index)
     }
 }
 
+
+void    SetupServers::Run(void)
+{
+    int                 fd_epoll;
+    struct epoll_event  events[MAX_SOCKET];
+    struct epoll_event  event;
+    
+    
+    fd_epoll = epoll_create(MAX_SOCKET);
+    if (fd_epoll < 0)
+    {
+        std::cerr << YLW"Warning: epoll_create() failed to create epoll instance"
+        << ".\n" << RESET;
+        throw -1;
+    }
+    for (size_t i(0); i < sock_number; i++)
+    {
+        memset(&event, 0, sizeof(event));
+        event.events = EPOLLIN;
+        event.data.fd = fd_sockets[i];
+        if (epoll_ctl(fd_epoll, EPOLL_CTL_ADD, fd_sockets[i], &event))
+        {
+            std::cerr << YLW"Warning: epoll_ctl() failed to monitor a socket"
+            << ".\n" << RESET;
+        }
+    }
+    while (1)
+    {
+        int num_event = epoll_wait(fd_epoll, events, MAX_SOCKET, INFINITE);
+        if (num_event < 0)
+        {
+            std::cerr << YLW"Warning: epoll_wait() failed to waits for events"
+            << ".\n" << RESET;
+        }
+        else if (num_event == 0)
+            continue ;
+        else
+        {
+            for (int i(0); i < num_event; i++)
+            {
+                uint32_t    flag = events[i].events;
+                if (flag == EPOLLIN)
+                {
+                    if (fd_sockets.end() != find(fd_sockets.begin(), fd_sockets.end(), events[i].data.fd))
+                    {
+                        int fd = accept(events[i].data.fd, NULL, 0);
+                        fcntl(fd, F_SETFL, O_NONBLOCK);
+                        fd_clients.push_back(fd);
+                        event.data.fd = fd;
+                        event.events = EPOLLIN;
+                        if (epoll_ctl(fd_epoll, EPOLL_CTL_ADD, fd_clients.back(), &event))
+                        {
+                            std::cerr << YLW"Warning: epoll_ctl() failed to monitor a socket"
+                            << ".\n" << RESET;
+                        }
+                    }
+                    else
+                    {
+                        char    buff[400];
+                        if (recv(fd_clients.back(), buff, sizeof(buff), 0) <= 0)
+                        {
+                            close(fd_clients.back());
+                            epoll_ctl(fd_epoll, EPOLL_CTL_DEL, fd_clients.back(), NULL);
+                            fd_clients.erase(fd_clients.begin() + i);
+                        }
+                        else
+                            std::cout << buff << "\n";
+                    }
+                }
+                // else if (flag == EPOLLOUT)
+                // {
+                    
+                // }
+            }
+        }
+    }
+}
+
+void    SetupServers::advance(void) {this->sock_number++;}
+
 void    SetupServers::StartSetup(void)
 {
     static size_t         index(0);
@@ -143,70 +223,5 @@ void    SetupServers::StartSetup(void)
         }
         catch (...){}
     }
+    Run();
 }
-
-void    SetupServers::Run()
-{
-    int                 fd_epoll;
-    struct epoll_event  events[MAX_SOCKET];
-    
-
-    fd_epoll = epoll_create(MAX_SOCKET);
-    if (fd_epoll < -1)
-    {
-        std::cerr << YLW"Warning: epoll_create() failed to create epoll instance"
-        << ".\n" << RESET;
-        throw -1;
-    }
-    for (size_t i(0); i <= sock_number; i++)
-    {
-        if (!epoll_ctl(fd_epoll, EPOLL_CTL_ADD, fd_sockets[i], NULL))
-        {
-            std::cerr << YLW"Warning: epoll_ctl() failed to monitor a socket"
-            << ".\n" << RESET;
-            throw -1;
-        }
-    }
-    while (1)
-    {
-        int event = epoll_wait(fd_epoll, events, MAX_SOCKET, INFINITE);
-        if (event < 0)
-        {
-            std::cerr << YLW"Warning: epoll_wait() failed to waits for events"
-            << ".\n" << RESET;
-            throw -1;
-        }
-        else if (event == 0)
-            continue ;
-        else
-        {
-            for (size_t i(0); i < event; i++)
-            {
-                uint32_t    flag = events[i].events;
-                if (flag == EPOLLIN)
-                {
-                    if (fd_sockets.end() != find(fd_sockets.begin(), fd_sockets.end(), events[i].data.fd))
-                    {
-                        int fd = accept(events[i].data.fd, NULL, 0);
-                        fcntl(fd, F_SETFL, O_NONBLOCK);
-                        fd_clients.push_back(fd);
-                        if (!epoll_ctl(fd_epoll, EPOLL_CTL_ADD, fd_clients.back(), NULL))
-                        {
-                            std::cerr << YLW"Warning: epoll_ctl() failed to monitor a socket"
-                            << ".\n" << RESET;
-                            throw -1;
-                        }
-                    }
-                    else
-                        recv(events[i].data.fd);
-                }
-                else if (flag == EPOLLOUT)
-                {
-                    
-                }
-            }
-        }
-    }
-}
-
-void    SetupServers::advance(void) {this->sock_number++;}
