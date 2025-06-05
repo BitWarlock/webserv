@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/21 20:57:28 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/06/05 20:50:23 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/06/05 21:53:36 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -153,16 +153,16 @@ void    SetupServers::Run(void)
     while (1337)
     {
         int num_event = epoll_wait(fd_epoll, events, MAX_SOCKET, INFINITE);
-        // std::cout << "here\n";
         if (num_event < 0)
         {
             std::cerr << YLW"Warning: epoll_wait() failed to waits for events"
             << ".\n" << RESET;
         }
         else if (num_event == 0)
-            continue ;
+        continue ;
         else
         {
+            std::vector<std::string>    buff;
             for (int i(0); i < num_event; i++)
             {
                 uint32_t    flag = events[i].events;
@@ -183,30 +183,34 @@ void    SetupServers::Run(void)
                     }
                     else
                     {
-                        char    buff[401];
-                        int     bytes = recv(events[i].data.fd, buff, sizeof(buff), 0);
+                        char    str[401];
+                        int     bytes = recv(fd_clients.back(), str, 401, 0);
                         if (bytes == 0)
                         {
-                            close(fd_clients.back());
-                            epoll_ctl(fd_epoll, EPOLL_CTL_DEL, fd_clients.back(), NULL);
-                            fd_clients.erase(fd_clients.begin() + i);
+                            event.events = EPOLLOUT;
+                            event.data.fd = fd_clients.back();
+                            epoll_ctl(fd_epoll, EPOLL_CTL_MOD, event.data.fd, &event);
                         }
                         else
-                        {
-                            buff[bytes] = 0;
-                            std::cout << buff << "\n";
-                            // event.events = EPOLLIN | EPOLLOUT;
-                            // event.data.fd = events[i].data.fd;
-                            // epoll_ctl(fd_epoll, EPOLL_CTL_MOD, events[i].data.fd, &event);
-                        }
+                            buff[i] += str;
                     }
                 }
                 else
                 {
                     std::cout << "write\n";
-                    // event.events = EPOLLIN;
-                    // event.data.fd = events[i].data.fd;
-                    // epoll_ctl(fd_epoll, EPOLL_CTL_MOD, events[i].data.fd, &event);
+                    Request.startParse(buff[i], 0);
+                    if (Request.GetConnection() == "close")
+                    {
+                        close(fd_clients.back());
+                        epoll_ctl(fd_epoll, EPOLL_CTL_DEL, fd_clients.back(), NULL);
+                        fd_clients.erase(fd_clients.begin() + i);
+                    }
+                    else
+                    {
+                        event.events = EPOLLIN;
+                        event.data.fd = fd_clients.back();
+                        epoll_ctl(fd_epoll, EPOLL_CTL_MOD, event.data.fd, &event);
+                    }
                 }
             }
         }
