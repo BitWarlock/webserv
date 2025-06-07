@@ -51,7 +51,7 @@ public:
     
     
     // parse input
-    void startParse(std::string buff);
+    void startParse(std::string& buff);
     void parseMethod(std::string &str);
     void parseUrl(std::string &str);
     void parseHttpVersion(std::string &str);

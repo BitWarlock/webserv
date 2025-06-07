@@ -153,8 +153,8 @@ void ParseRequest::parseMethod(std::string &str)
     Method += str.substr(0, pos);
     str.erase(0, pos + 1);
     ResetBuffPos();
-    if (!isSupportedMethod(Method))
-        return (setErrorNumber(isKnownMethod()));
+    // if (!isSupportedMethod(Method))
+    //     return (setErrorNumber(isKnownMethod()));
     SwitchState(URL);
 }
 void ParseRequest::setQueryString(std::string queryInUrl) { QueryString = queryInUrl; }
@@ -302,8 +302,10 @@ void ParseRequest::CheckingForBody()
 {
     bool TransferEncodingPresent = false;
     bool contentLengthPresent = false;
-    if (Method == "GET" || Method == "DELETE")
+    if (Method == "GET" || Method == "DELETE"){
+
         return (SwitchState(FINISH));
+    }
     std::vector<std::pair<std::string, std::string> >::iterator Headersit;
     for (Headersit = Headers.begin(); Headersit != Headers.end(); Headersit++)
     {
@@ -395,13 +397,11 @@ void ParseRequest::parseChunkedBody(std::string &str)
     }
 }
 
-void ParseRequest::startParse(std::string buff)
+void ParseRequest::startParse(std::string& buff)
 {
-    while (true)
+    while (!buff.empty())
     {
-        if (buff.empty())
-            continue ;
-            
+        // std::cout << "\n\n -- " << buff << " -- \n\n";
         if (CurrntParsState == NONE)
             SwitchState(METHOD);
         if (CurrntParsState == METHOD)
@@ -416,27 +416,27 @@ void ParseRequest::startParse(std::string buff)
             parseContentlengthBody(buff);
         if (CurrntParsState == READCHUNKSIZE || CurrntParsState == READCHUNK)
             parseChunkedBody(buff);
+    }
 
-        if (CurrntParsState == ERROR || CurrntParsState == FINISH)
-            break;
-    }
-    if (getParseState() == FINISH)
-    {
-        std::cout << "Method: " << getMethod() << std::endl;
-        std::cout << "URL: " << getUri() << std::endl;
-        std::cout << "Version: " << getVersion() << std::endl;
+    //     if (CurrntParsState == ERROR || CurrntParsState == FINISH)
+    //         break;
+    // if (getParseState() == FINISH)
+    // {
+    //     std::cout << "Method: " << getMethod() << std::endl;
+    //     std::cout << "URL: " << getUri() << std::endl;
+    //     std::cout << "Version: " << getVersion() << std::endl;
 
-        for (size_t i = 0; i < Headers.size(); ++i)
-        {
-            std::cout << "Header[" << i << "]: " << Headers[i].first
-                      << " => " << Headers[i].second << std::endl;
-        }
-        std::cout << "Body :   "  << BufferBody << "\n";
-        std::cout << errorNumber << "\n";
-    }
-    else
-    {
-        std::cerr << "Failed to parse. Error state: " << getParseState() << std::endl;
-        std::cerr << "error number is : " << errorNumber << "\n";
-    }
+    //     for (size_t i = 0; i < Headers.size(); ++i)
+    //     {
+    //         std::cout << "Header[" << i << "]: " << Headers[i].first
+    //                   << " => " << Headers[i].second << std::endl;
+    //     }
+    //     std::cout << "Body :   "  << BufferBody << "\n";
+    //     std::cout << errorNumber << "\n";
+    // }
+    // else
+    // {
+    //     std::cerr << "Failed to parse. Error state: " << getParseState() << std::endl;
+    //     std::cerr << "error number is : " << errorNumber << "\n";
+    // }
 }

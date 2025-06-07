@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/21 20:57:28 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/06/05 21:53:36 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/06/07 19:03:15 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -129,7 +129,7 @@ void    SetupServers::Run(void)
     int                 fd_epoll;
     struct epoll_event  events[MAX_SOCKET];
     struct epoll_event  event;
-    
+    ParseRequest        Request[MAX_SOCKET];
     
     fd_epoll = epoll_create(MAX_SOCKET);
     if (fd_epoll < 0)
@@ -150,6 +150,7 @@ void    SetupServers::Run(void)
             << ".\n" << RESET;
         }
     }
+    std::string buff;
     while (1337)
     {
         int num_event = epoll_wait(fd_epoll, events, MAX_SOCKET, INFINITE);
@@ -157,12 +158,10 @@ void    SetupServers::Run(void)
         {
             std::cerr << YLW"Warning: epoll_wait() failed to waits for events"
             << ".\n" << RESET;
+            continue;
         }
-        else if (num_event == 0)
-        continue ;
-        else
+        else if (num_event > 0)
         {
-            std::vector<std::string>    buff;
             for (int i(0); i < num_event; i++)
             {
                 uint32_t    flag = events[i].events;
@@ -171,11 +170,11 @@ void    SetupServers::Run(void)
                     if (fd_sockets.end() != find(fd_sockets.begin(), fd_sockets.end(), events[i].data.fd))
                     {
                         memset(&event, 0, sizeof(event));
-                        fd_clients.push_back(accept(events[i].data.fd, NULL, 0));
-                        fcntl(fd_clients.back(), F_SETFL, O_NONBLOCK);
-                        event.data.fd = fd_clients.back();
+                        int fd = accept(events[i].data.fd, NULL, 0);
+                        fcntl(fd, F_SETFL, O_NONBLOCK);
+                        event.data.fd = fd;
                         event.events = EPOLLIN;
-                        if (epoll_ctl(fd_epoll, EPOLL_CTL_ADD, fd_clients.back(), &event))
+                        if (epoll_ctl(fd_epoll, EPOLL_CTL_ADD, fd, &event))
                         {
                             std::cerr << YLW"Warning: epoll_ctl() failed to monitor a socket"
                             << ".\n" << RESET;
@@ -183,34 +182,49 @@ void    SetupServers::Run(void)
                     }
                     else
                     {
-                        char    str[401];
-                        int     bytes = recv(fd_clients.back(), str, 401, 0);
-                        if (bytes == 0)
+                        char    str[501];
+                        int     bytes = recv(events[i].data.fd, str, 500, 0);
+                        if (bytes <= 0)
                         {
-                            event.events = EPOLLOUT;
-                            event.data.fd = fd_clients.back();
-                            epoll_ctl(fd_epoll, EPOLL_CTL_MOD, event.data.fd, &event);
+                            close(events[i].data.fd);
+                            epoll_ctl(fd_epoll, EPOLL_CTL_DEL, events[i].data.fd, NULL);
+                            continue;
                         }
                         else
-                            buff[i] += str;
+                        {
+                            buff.append(str);
+                            Request[i].startParse(buff);
+                            std::cout << "\n\n"<<  Request[i].getParseState() << "\n\n";
+                        }
+                        if (Request[i].getParseState() == FINISH || Request[i].getParseState() == ERROR)
+                        {
+                            event.events = EPOLLOUT;
+                            event.data.fd = events[i].data.fd;
+                            epoll_ctl(fd_epoll, EPOLL_CTL_MOD, event.data.fd, &event);                            
+                        }
                     }
+                }
+                else if (flag == EPOLLOUT)
+                {
+                    // response();
+                    // if (Request[i].GetConnection() == "close")
+                    // {
+                    //     close(events[i].data.fd);
+                    //     epoll_ctl(fd_epoll, EPOLL_CTL_DEL, events[i].data.fd, NULL);
+                    // }
+                    // else
+                    // {
+                    //     event.events = EPOLLIN;
+                    //     event.data.fd = events[i].data.fd;
+                    //     epoll_ctl(fd_epoll, EPOLL_CTL_MOD, event.data.fd, &event);
+                    // }
+                    // std::cout << "here -- here\n";
+                    // exit (0);
                 }
                 else
                 {
-                    std::cout << "write\n";
-                    Request.startParse(buff[i], 0);
-                    if (Request.GetConnection() == "close")
-                    {
-                        close(fd_clients.back());
-                        epoll_ctl(fd_epoll, EPOLL_CTL_DEL, fd_clients.back(), NULL);
-                        fd_clients.erase(fd_clients.begin() + i);
-                    }
-                    else
-                    {
-                        event.events = EPOLLIN;
-                        event.data.fd = fd_clients.back();
-                        epoll_ctl(fd_epoll, EPOLL_CTL_MOD, event.data.fd, &event);
-                    }
+                    close(events[i].data.fd);
+                    epoll_ctl(fd_epoll, EPOLL_CTL_DEL, events[i].data.fd, NULL);  
                 }
             }
         }
