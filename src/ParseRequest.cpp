@@ -30,7 +30,7 @@ ParseRequest::ParseRequest() : errorNumber(0), pos(0), CurrntParsState(NONE), Me
 
 // construct with params
 ParseRequest::ParseRequest(Server *server) : errorNumber(0), pos(0), CurrntParsState(NONE), Method(""), Url(""),
-                                                     HttpProtocolVersion(""), QuerieStrings("", ""), S(server), ServerSocketFd(fd), chunkedEncoding(false), contentLength(0)
+                                                     HttpProtocolVersion(""), QuerieStrings("", ""), S(server), chunkedEncoding(false), contentLength(0)
 {
     BufferBody.clear();
     ChunkSize = 0;
@@ -422,6 +422,9 @@ std::string ParseRequest::getHeaderValue(std::string key){
 void ParseRequest::startParse(std::string& buff)
 {
     while (true)
+    {
+        if (buff.empty())
+            continue;
         if (CurrntParsState == NONE)
             SwitchState(METHOD);
         if (CurrntParsState == METHOD)
@@ -436,4 +439,7 @@ void ParseRequest::startParse(std::string& buff)
             parseContentlengthBody(buff);
         if (CurrntParsState == READCHUNKSIZE || CurrntParsState == READCHUNK)
             parseChunkedBody(buff);
+        if (CurrntParsState ==  FINISH || CurrntParsState == ERROR)
+            break;
+    }
 }

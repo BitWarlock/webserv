@@ -40,7 +40,6 @@ public:
     std::string                                         HttpProtocolVersion;
     std::pair<std::string, std::string>                 QuerieStrings;
     Server                                              *S;
-    int                                                 ServerSocketFd;
     bool                                                chunkedEncoding;
     size_t                                              contentLength;
     std::vector<std::pair<std::string, std::string> >   Headers;
