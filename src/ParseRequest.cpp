@@ -27,8 +27,9 @@ ParseRequest::ParseRequest() : errorNumber(0), pos(0), CurrntParsState(NONE), Me
     NonRepeatablesHeaders["expect"] = 0;
     NonRepeatablesHeaders["range"] = 0;
 }
+
 // construct with params
-ParseRequest::ParseRequest(Server *server, int fd) : errorNumber(0), pos(0), CurrntParsState(NONE), Method(""), Url(""),
+ParseRequest::ParseRequest(Server *server) : errorNumber(0), pos(0), CurrntParsState(NONE), Method(""), Url(""),
                                                      HttpProtocolVersion(""), QuerieStrings("", ""), S(server), ServerSocketFd(fd), chunkedEncoding(false), contentLength(0)
 {
     BufferBody.clear();
@@ -209,7 +210,7 @@ void ParseRequest::parseHttpVersion(std::string &str)
     if (!isValidVersion())
         return;
     ResetBuffPos();
-    SwitchState(HEADERS);
+    SwitchState(HEADERS_KEY);
 }
 bool ParseRequest::isAllSpaces(std::string &str)
 {
@@ -257,27 +258,38 @@ void ParseRequest::parseHeaders(std::string &str)
         pos = str.find("\r\n");
         if (pos == std::string::npos)
             return;
-        std::string line = str.substr(0, pos);
-        str.erase(0, pos + 2);
-        if (line.size() >= 8192)
-            return (SwitchState(ERROR), setErrorNumber(431));
-        pos = line.find(':');
-        if (pos == std::string::npos || isspace(line[pos - 1]))
-            return (SwitchState(ERROR), setErrorNumber(400));    
-        std::string key = line.substr(0, pos);
-        std::string value = line.substr(pos + 1);
-        trimBuff(value);
-        if (!validKey(key) || key.empty() || isAllSpaces(key) || value.empty())
-            return (SwitchState(ERROR), setErrorNumber(400));
-        toLowerCase(key);
-        std::map<std::string, int>::iterator it = NonRepeatablesHeaders.find(key);
-        if (it != NonRepeatablesHeaders.end())
-        {
-            if (it->second)
-                return (SwitchState(ERROR), setErrorNumber(400));
-            it->second++;
+        if (CurrntParsState == HEADERS_KEY){
+            Current_header_line = str.substr(0, pos);
+            str.erase(0, pos + 2);
+            if (Current_header_line.size() >= 8192)
+                return (SwitchState(ERROR), setErrorNumber(431));
+            pos = Current_header_line.find(':');
+            if (pos == std::string::npos || isspace(Current_header_line[pos - 1]))
+                return (SwitchState(ERROR), setErrorNumber(400));    
+            Current_key = Current_header_line.substr(0, pos);
+            toLowerCase(Current_key);
+            SwitchState(HEADER_VALUE);
         }
-        Headers.push_back(std::make_pair(key, value));
+        if (CurrntParsState ==  HEADER_VALUE){
+            Current_value += Current_header_line.substr(pos + 1);
+            trimBuff(Current_value);
+            if (!validKey(Current_key) || Current_key.empty() || isAllSpaces(Current_key) || Current_value.empty())
+                return (SwitchState(ERROR), setErrorNumber(400));
+            SwitchState(ADD_HEADER);
+        }
+        if (CurrntParsState == ADD_HEADER){
+            std::map<std::string, int>::iterator it = NonRepeatablesHeaders.find(Current_key);
+            if (it != NonRepeatablesHeaders.end())
+            {
+                if (it->second)
+                return (SwitchState(ERROR), setErrorNumber(400));
+                it->second++;
+            }
+            Headers.push_back(std::make_pair(Current_key, Current_value));
+            Current_key = "";
+            Current_value = "";
+            SwitchState(HEADERS_KEY);
+        }
         ResetBuffPos();
         if (str[0] == '\r' && str[1] == '\n')
         {
@@ -298,6 +310,7 @@ bool ParseRequest::isNumber(std::string toCheck)
     }
     return (true);
 }
+
 void ParseRequest::CheckingForBody()
 {
     bool TransferEncodingPresent = false;
@@ -395,13 +408,18 @@ void ParseRequest::parseChunkedBody(std::string &str)
     }
 }
 
-void ParseRequest::startParse(std::string buff)
+std::string ParseRequest::getHeaderValue(std::string key){
+    std::vector<std::pair<std::string , std::string> >::iterator i;
+    for (i = Headers.begin(); i != Headers.end();i++){
+        if (i->first == key)
+            return (i->second);
+    }
+    return ("");
+}
+
+void ParseRequest::startParse(std::string& buff)
 {
     while (true)
-    {
-        if (buff.empty())
-            continue ;
-            
         if (CurrntParsState == NONE)
             SwitchState(METHOD);
         if (CurrntParsState == METHOD)
@@ -410,33 +428,10 @@ void ParseRequest::startParse(std::string buff)
             parseUrl(buff);
         if (CurrntParsState == HTTPVERSION)
             parseHttpVersion(buff);
-        if (CurrntParsState == HEADERS)
+        if (CurrntParsState == HEADERS_KEY || CurrntParsState == HEADER_VALUE)
             parseHeaders(buff);
         if (CurrntParsState == CONTENTLENGTHBODY)
             parseContentlengthBody(buff);
         if (CurrntParsState == READCHUNKSIZE || CurrntParsState == READCHUNK)
             parseChunkedBody(buff);
-
-        if (CurrntParsState == ERROR || CurrntParsState == FINISH)
-            break;
-    }
-    if (getParseState() == FINISH)
-    {
-        std::cout << "Method: " << getMethod() << std::endl;
-        std::cout << "URL: " << getUri() << std::endl;
-        std::cout << "Version: " << getVersion() << std::endl;
-
-        for (size_t i = 0; i < Headers.size(); ++i)
-        {
-            std::cout << "Header[" << i << "]: " << Headers[i].first
-                      << " => " << Headers[i].second << std::endl;
-        }
-        std::cout << "Body :   "  << BufferBody << "\n";
-        std::cout << errorNumber << "\n";
-    }
-    else
-    {
-        std::cerr << "Failed to parse. Error state: " << getParseState() << std::endl;
-        std::cerr << "error number is : " << errorNumber << "\n";
-    }
 }
