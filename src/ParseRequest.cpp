@@ -442,4 +442,23 @@ void ParseRequest::startParse(std::string& buff)
         if (CurrntParsState ==  FINISH || CurrntParsState == ERROR)
             break;
     }
+    if (getParseState() == FINISH)
+    {
+        std::cout << "Method: " << getMethod() << std::endl;
+        std::cout << "URL: " << getUri() << std::endl;
+        std::cout << "Version: " << getVersion() << std::endl;
+
+        for (size_t i = 0; i < Headers.size(); ++i)
+        {
+            std::cout << "Header[" << i << "]: " << Headers[i].first
+                      << " => " << Headers[i].second << std::endl;
+        }
+        std::cout << "Body :   "  << BufferBody << "\n";
+        std::cout << errorNumber << "\n";
+    }
+    else
+    {
+        std::cerr << "Failed to parse. Error state: " << getParseState() << std::endl;
+        std::cerr << "error number is : " << errorNumber << "\n";
+    }
 }
