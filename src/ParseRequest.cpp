@@ -154,8 +154,8 @@ void ParseRequest::parseMethod(std::string &str)
     Method += str.substr(0, pos);
     str.erase(0, pos + 1);
     ResetBuffPos();
-    if (!isSupportedMethod(Method))
-        return (setErrorNumber(isKnownMethod()));
+    // if (!isSupportedMethod(Method))
+    //     return (setErrorNumber(isKnownMethod()));
     SwitchState(URL);
 }
 void ParseRequest::setQueryString(std::string queryInUrl) { QueryString = queryInUrl; }
@@ -315,8 +315,10 @@ void ParseRequest::CheckingForBody()
 {
     bool TransferEncodingPresent = false;
     bool contentLengthPresent = false;
-    if (Method == "GET" || Method == "DELETE")
+    if (Method == "GET" || Method == "DELETE"){
+
         return (SwitchState(FINISH));
+    }
     std::vector<std::pair<std::string, std::string> >::iterator Headersit;
     for (Headersit = Headers.begin(); Headersit != Headers.end(); Headersit++)
     {

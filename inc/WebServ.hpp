@@ -7,6 +7,7 @@
 #include "Config.hpp"
 #include "ParseDirective.hpp"
 #include "SetupServers.hpp"
+#include "ParseRequest.hpp"
 
 #include <sys/stat.h>
 #include <fstream>

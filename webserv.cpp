@@ -145,8 +145,8 @@ int main(int argc, char *argv[])
 			}
 			std::cout << "\n";
 		}
-		while (1)
-			;
+		// while (1)
+		// 	;
 		
 		// 6. Cleanup
 		delete config;
