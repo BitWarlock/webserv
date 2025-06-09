@@ -447,12 +447,14 @@ void ParseRequest::startParse(int fd)
     
     while (true)
     {
-        char        str[500];
+        char        str[1000];
 
         memset(str, 0, sizeof(str));
         int bytes = recv(fd, str, sizeof(str) - 1, 0);
-        if (!bytes)
+        if (bytes == 0)
             return (SwitchState(CLOSE));
+        else if (bytes < 0)
+            return (SwitchState(NONE));
         buff.append(str);
         if (CurrntParsState == NONE)
             SwitchState(METHOD);

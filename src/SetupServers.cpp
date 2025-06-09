@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/21 20:57:28 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/06/09 19:50:49 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/06/09 21:50:18 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -208,7 +208,9 @@ void    SetupServers::Run(void)
         WaitEpoll();
         for (int i(0); i < number_events; i++)
         {
-            if (events[i].events & EPOLLIN)
+            if (events[i].events & (EPOLLERR | EPOLLHUP))
+                EraseFd(events[i].data.fd);
+            else if (events[i].events & EPOLLIN)
             {
                 if (fd_sockets.begin() + endpoints != find(fd_sockets.begin(), fd_sockets.begin() + endpoints, events[i].data.fd))
                 {
@@ -218,18 +220,15 @@ void    SetupServers::Run(void)
                 else
                 {
                     Request[events[i].data.fd].startParse(events[i].data.fd);
-                    int StatRequest = Request[events[i].data.fd].getParseState();
-                    if (StatRequest == CLOSE)
-                    { 
-                        Request[events[i].data.fd].ResetParserf();
-                        AddSocketToEpoll(events[i].data.fd, EPOLLOUT, EPOLL_CTL_DEL);
-                        EraseFd(events[i].data.fd);
-                    }
-                    else if (StatRequest == FINISH || StatRequest == ERROR)
+                    // int StatRequest = Request[events[i].data.fd].getParseState();
+                    // if (StatRequest == CLOSE)
+                    // { 
+                        // }
+                        // else if (StatRequest == FINISH || StatRequest == ERROR)
                         AddSocketToEpoll(events[i].data.fd, EPOLLOUT, EPOLL_CTL_MOD);                            
+                    }
                 }
-            }
-            else if (events[i].events & EPOLLOUT)
+                else if (events[i].events & EPOLLOUT)
             {
                 std::string response =
                     "HTTP/1.1 200 OK\r\n"
@@ -245,9 +244,18 @@ void    SetupServers::Run(void)
                     "    <p>This is a simple HTML response.</p>\n"
                     "</body>\n"
                     "</html>\n";
-                send(events[i].data.fd, response.c_str(), response.size(), 0);
-                Request[events[i].data.fd].ResetParserf();
-                AddSocketToEpoll(events[i].data.fd, EPOLLIN, EPOLL_CTL_MOD);
+                if (send(events[i].data.fd, response.c_str(), response.size(), 0) < -1)
+                {
+                    std::cout << "Connection is closed by the client\n";
+                    Request[events[i].data.fd].ResetParserf();
+                    AddSocketToEpoll(events[i].data.fd, EPOLLOUT, EPOLL_CTL_DEL);
+                    EraseFd(events[i].data.fd);
+                }
+                else
+                {
+                    Request[events[i].data.fd].ResetParserf();
+                    AddSocketToEpoll(events[i].data.fd, EPOLLIN, EPOLL_CTL_MOD);
+                }
             }
         }
     }
