@@ -104,7 +104,4 @@ public:
     void        ResetBuffPos();
 };
 
-
-
-
 #endif

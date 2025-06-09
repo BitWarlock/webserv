@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/21 20:57:28 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/06/07 21:39:22 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/06/09 19:50:49 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,13 +19,14 @@
 #include <fcntl.h>
 #include "../inc/SetupServers.hpp"
 
-SetupServers::SetupServers(Config& config) : config(config), sock_number(0){
+SetupServers::SetupServers(Config& config) : config(config), sock_number(0), fd_epoll(0), endpoints(0){
     this->StartSetup();
 }
 
 SetupServers::~SetupServers(){
     for (size_t i(0); i < sock_number; i++)
         close(fd_sockets[i]);
+    delete &config;
 }
 
 void    SetupServers::CheckPortIp(const std::string& host, const std::string& port, size_t pos_server)
@@ -75,10 +76,10 @@ void    SetupServers::CreateSocket(Server& server)
             {
                 std::cerr << YLW"Warning:make socket() function failed to create endpoint "
                 << "for " << server.getListen()[i].first << ":"<< port << ".\n" << RESET;
-                throw -1;
+                throw std::runtime_error("");
             }
             this->fd_sockets.push_back(fd_server);
-            advance();
+            Advance();
         }
     }
 }
@@ -111,7 +112,7 @@ void    SetupServers::Binding(Server& server, size_t index)
             {
                 std::cerr << YLW"Warning: bind() function failed to bound "
                 << host << ":"<< port << ".\n" << RESET;
-                throw -1;
+                throw std::runtime_error("");
             }
             s++;
         }
@@ -123,108 +124,140 @@ void    SetupServers::Binding(Server& server, size_t index)
     }
 }
 
+void    SetupServers::CreateEpoll(void)
+{
+    fd_epoll = epoll_create(MAX_EVENTS);
+
+    if (fd_epoll < 0)
+    {
+        throw std::runtime_error("Warning: epoll_create() function failed to create epoll instance.\n");
+    }
+}
+
+struct epoll_event    SetupServers::InitEvents(int fd, int event)
+{
+    struct epoll_event          ev;
+
+    ev.data.fd = fd;
+    ev.events = event;
+    return (ev);
+}
+
+void    SetupServers::AddSocketToEpoll(int fd, int event, int job)
+{    
+    int return_value = fcntl(fd, F_SETFL, O_NONBLOCK);
+
+    if (return_value == -1)
+    {
+        throw std::runtime_error("Warning: fcntl() function failed to set non-blocking mode\n");
+    }
+    struct epoll_event          ev = InitEvents(fd, event);
+    return_value = epoll_ctl(fd_epoll, job, fd, &ev);
+
+    if (return_value == -1)
+    {
+        throw std::runtime_error("Warning: epoll_ctl() function failed to monitor a socket.\n");
+    }
+}
+
+void    SetupServers::WaitEpoll(void)
+{
+    number_events = epoll_wait(fd_epoll, events, MAX_EVENTS, INFINITE);
+
+    if (number_events < 0)
+    {
+        throw std::runtime_error("Warning: epoll_wait() function failed to waits for events.\n");
+    }
+}
+
+void    SetupServers::AcceptConnection(int fd)
+{
+    int fd_accept = accept(fd, NULL, 0);
+
+    if (fd_accept == -1)
+    {
+        throw std::runtime_error("Warning: accept() function failed to accept new connection.\n");
+    }
+    fd_sockets.push_back(fd_accept);
+    Advance();
+}
+
+void    SetupServers::EraseFd(int fd)
+{
+    std::vector<int>::iterator    target;
+
+    target = find(fd_sockets.begin(), fd_sockets.end(), fd);
+    if (target == fd_sockets.end())
+        return ;
+    close (fd);
+    fd_sockets.erase(target);
+    Retreat();
+}
 
 void    SetupServers::Run(void)
 {
-    int                 fd_epoll;
-    struct epoll_event  events[MAX_SOCKET];
-    struct epoll_event  event;
-    ParseRequest        Request[MAX_SOCKET];
-    
-    fd_epoll = epoll_create(MAX_SOCKET);
-    if (fd_epoll < 0)
-    {
-        std::cerr << YLW"Warning: epoll_create() failed to create epoll instance"
-        << ".\n" << RESET;
-        throw -1;
-    }
-    for (size_t i(0); i < sock_number; i++)
-    {
-        memset(&event, 0, sizeof(event));
-        event.data.fd = fd_sockets[i];
-        event.events = EPOLLIN;
-        fcntl(fd_sockets[i], F_SETFL, O_NONBLOCK);
-        if (epoll_ctl(fd_epoll, EPOLL_CTL_ADD, fd_sockets[i], &event))
-        {
-            std::cerr << YLW"Warning: epoll_ctl() failed to monitor a socket"
-            << ".\n" << RESET;
-        }
-    }
+    ParseRequest    Request[MAX_REQUEST];
+
+    CreateEpoll();
+
+    for (size_t i(0); i < endpoints; i++)
+        AddSocketToEpoll(fd_sockets[i], EPOLLIN, EPOLL_CTL_ADD);
+
     while (1337)
     {
-        int num_event = epoll_wait(fd_epoll, events, MAX_SOCKET, INFINITE);
-        if (num_event < 0)
+        WaitEpoll();
+        for (int i(0); i < number_events; i++)
         {
-            std::cerr << YLW"Warning: epoll_wait() failed to waits for events"
-            << ".\n" << RESET;
-            continue;
-        }
-        else if (num_event > 0)
-        {
-            for (int i(0); i < num_event; i++)
+            if (events[i].events & EPOLLIN)
             {
-                int         fd = events[i].data.fd;
-                uint32_t    flag = events[i].events;
-                if (flag == EPOLLIN)
+                if (fd_sockets.begin() + endpoints != find(fd_sockets.begin(), fd_sockets.begin() + endpoints, events[i].data.fd))
                 {
-                    if (fd_sockets.end() != find(fd_sockets.begin(), fd_sockets.end(), fd))
-                    {
-                        memset(&event, 0, sizeof(event));
-                        int fd_client = accept(fd, NULL, 0);
-                        fcntl(fd, F_SETFL, O_NONBLOCK);
-                        event.data.fd = fd_client;
-                        event.events = EPOLLIN;
-                        if (epoll_ctl(fd_epoll, EPOLL_CTL_ADD, fd_client, &event))
-                        {
-                            std::cerr << YLW"Warning: epoll_ctl() failed to monitor a socket"
-                            << ".\n" << RESET;
-                        }
-                    }
-                    else
-                    {
-                        Request[fd].startParse(fd);
-                        if (Request[fd].getParseState() == CLOSE)
-                        {
-                            
-                            close(fd);
-                            epoll_ctl(fd_epoll, EPOLL_CTL_DEL, fd, NULL);
-                            continue;
-                        }
-                        else if (Request[fd].getParseState() == FINISH || Request[fd].getParseState() == ERROR)
-                        {
-                            event.events = EPOLLOUT;
-                            event.data.fd = fd;
-                            epoll_ctl(fd_epoll, EPOLL_CTL_MOD, fd, &event);                            
-                        }
-                    }
-                }
-                else if (flag == EPOLLOUT)
-                {
-                    Request[fd].ResetParserf();
-                    std::string buff("HTTP/1.1 200 OK\r\n"
-                        "Content-Type: text/html\r\n"
-                        "Content-Length: 70\r\n"
-                                        "Connection: close\r\n"
-                                        "\r\n"
-                                        "<!DOCTYPE html>"
-                                        "<html><head><title>Test</title></head>"
-                                        "<body><h4>Hello from Webserv!</h4></body></html>");
-                    send(fd, buff.c_str(), buff.size(), 0);
-                    event.events = EPOLLIN;
-                    event.data.fd = fd;
-                    epoll_ctl(fd_epoll, EPOLL_CTL_MOD, fd, &event);
+                    AcceptConnection(events[i].data.fd);
+                    AddSocketToEpoll(fd_sockets.back(), EPOLLIN, EPOLL_CTL_ADD);
                 }
                 else
                 {
-                    close(fd);
-                    epoll_ctl(fd_epoll, EPOLL_CTL_DEL, fd, NULL);  
+                    Request[events[i].data.fd].startParse(events[i].data.fd);
+                    int StatRequest = Request[events[i].data.fd].getParseState();
+                    if (StatRequest == CLOSE)
+                    { 
+                        Request[events[i].data.fd].ResetParserf();
+                        AddSocketToEpoll(events[i].data.fd, EPOLLOUT, EPOLL_CTL_DEL);
+                        EraseFd(events[i].data.fd);
+                    }
+                    else if (StatRequest == FINISH || StatRequest == ERROR)
+                        AddSocketToEpoll(events[i].data.fd, EPOLLOUT, EPOLL_CTL_MOD);                            
                 }
+            }
+            else if (events[i].events & EPOLLOUT)
+            {
+                std::string response =
+                    "HTTP/1.1 200 OK\r\n"
+                    "Content-Type: text/html\r\n"
+                    "Content-Length: 137\r\n"
+                    "Connection: keep-alive\r\n"
+                    "\r\n"
+                    "<!DOCTYPE html>\n"
+                    "<html>\n"
+                    "<head><title>Test Page</title></head>\n"
+                    "<body>\n"
+                    "    <h1>Hello from Webserv!</h1>\n"
+                    "    <p>This is a simple HTML response.</p>\n"
+                    "</body>\n"
+                    "</html>\n";
+                send(events[i].data.fd, response.c_str(), response.size(), 0);
+                Request[events[i].data.fd].ResetParserf();
+                AddSocketToEpoll(events[i].data.fd, EPOLLIN, EPOLL_CTL_MOD);
+                std::cout << "  --  here  --  ";
             }
         }
     }
 }
 
-void    SetupServers::advance(void) {this->sock_number++;}
+
+void    SetupServers::Advance(void) {this->sock_number++;}
+
+void    SetupServers::Retreat(void) {this->sock_number--;}
 
 void    SetupServers::StartSetup(void)
 {
@@ -240,11 +273,15 @@ void    SetupServers::StartSetup(void)
             while (index < sock_number)
             {
                 if (listen(fd_sockets[index], SOMAXCONN) < 0)
+                {
                     std::cerr << YLW"Warning: listen() function failed to listen.\n"<< RESET;
+                    throw std::runtime_error("");
+                }
                 index++;
             }
         }
         catch (...){}
     }
+    endpoints = sock_number;
     Run();
 }
