@@ -5,109 +5,105 @@
 #include "inc/Lexer.hpp"
 #include <utility>
 #include "inc/Server.hpp"
+#include <utility>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <string.h>
+#include "inc/Server.hpp"
 
 enum RequestParseStats
 {
     METHOD,
     URL,
     HTTPVERSION,
-    HEADERS,
-    VLIDATEHEADRES,
+    HEADERS_KEY,
+    HEADER_VALUE,
+    ADD_HEADER,
     CONTENTLENGTHBODY,
     READCHUNKSIZE,
     READCHUNK,
     FINISH,
     ERROR,
-    NONE
+    NONE,
+    CLOSE
 };
 
-class ParseRequest
-{
+class ParseRequest{
 public:
     ParseRequest();
-    ParseRequest(Server *server, int fd);
+    ParseRequest(Server *server);
     ~ParseRequest();
 
-    int ServerSocketFd;
-    int pos;
-    bool hasValidHost;
-    size_t contentLength;
-    size_t ChunkSize;
-    bool chunkedEncoding;
-    std::string BufferBody;
-    std::map<std::string, int> NonRepeatablesHeaders;
-    std::string Host;
-    std::string Port;
-    Server *S;
-    std::string QueryString;
-    std::istringstream incomigBytes;
-
+    int                                                 errorNumber;
+    size_t                                              pos;
+    int                                                 CurrntParsState;
+    std::string                                         Current_key;
+    std::string                                         Current_value;
+    std::string                                         Current_header_line;
+    std::string                                         Method;
+    std::string                                         Url;
+    std::string                                         HttpProtocolVersion;
+    std::pair<std::string, std::string>                 QuerieStrings;
+    Server                                              *S;
+    bool                                                chunkedEncoding;
+    size_t                                              contentLength;
+    std::vector<std::pair<std::string, std::string> >   Headers;
+    bool                                                hasValidHost;
+    size_t                                              ChunkSize;
+    std::string                                         BufferBody;
+    std::map<std::string, int>                          NonRepeatablesHeaders;
+    std::string                                         Host;
+    std::string                                         Port;
+    std::string                                         QueryString;
+    std::istringstream                                  incomigBytes;
+    
+    
     // parse input
-    void startParse(std::string buff);
-    void parseMethod(std::string &str);
-    void parseUrl(std::string &str);
-    void parseHttpVersion(std::string &str);
-    void parseHeaders(std::string &str);
-    void CheckingForBody();
-    void parseContentlengthBody(std::string &str);
-    int HexaStringToDecimalNum(std::string s);
-    void parseChunkedBody(std::string &str);
-    void trimBuff(std::string &str);
-    void toLowerCase(std::string &key);
-    bool isAllSpaces(std::string &str);
-    bool validKey(std::string &key);
-    bool checkIsThereaHost();
-    bool isNumber(std::string toCheck);
+    void        startParse(int fd);
+    void        parseMethod(std::string &str);
+    void        parseUrl(std::string &str);
+    void        parseHttpVersion(std::string &str);
+    void        parseHeaders(std::string &str);
+    void        CheckingForBody();
+    void        parseContentlengthBody(std::string &str);
+    int         HexaStringToDecimalNum(std::string s);
+    void        parseChunkedBody(std::string &str);
+    void        trimBuff(std::string &str);
+    void        toLowerCase(std::string &key);
+    bool        isAllSpaces(std::string &str);
+    bool        validKey(std::string &key);
+    bool        checkIsThereaHost();
+    bool        isNumber(std::string toCheck);
+    void        ResetParserf();
 
     // checkers
-    bool isFinish();
-    bool itHasBody(std::map<std::string, std::string> Hdrs);
-    bool isSupportedMethod(std::string &RequestMethod);
-    int isKnownMethod();
-    bool isValidUrl();
-    bool isHexa(char characetre);
-    bool Unresreved(char c);
-    bool Reserved(char c);
-    bool PercentEncoded(int &i);
-    bool isValidVersion();
+    bool        isFinish();
+    bool        isSupportedMethod(std::string &RequestMethod);
+    int         isKnownMethod();
+    bool        isValidUrl();
+    bool        isHexa(char characetre);
+    bool        Unresreved(char c);
+    bool        Reserved(char c);
+    bool        PercentEncoded(size_t &i);
+    bool        isValidVersion();
 
     // getters
     std::string getMethod();
     std::string getUri();
     std::string getVersion();
-    int getParseState();
+    int         getParseState();
+    std::string getHeaderValue(std::string key);
 
     // setters
-    void setMethod(std::string m);
-    void setUri(std::string u);
-    void setVersion(std::string v);
-    void SwitchState(int Next_State);
-    void setErrorNumber(int Number);
-    void setQueryString(std::string qurieInUrl);
-    void Reset();
-    void ResetBuffPos();
-
-    int errorNumber;
-    int CurrntParsState;
-    std::string Method;
-    std::string Url;
-    std::string HttpProtocolVersion;
-    std::pair<std::string, std::string> QuerieStrings;
-    std::vector<std::pair<std::string, std::string>> Headers;
+    void        setMethod(std::string m);
+    void        setUri(std::string u);
+    void        setVersion(std::string v);
+    void        SwitchState(int Next_State);
+    void        setErrorNumber(int Number);
+    void        setQueryString(std::string qurieInUrl);
+    void        Reset();
+    void        ResetBuffPos();
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -141,9 +137,10 @@ ParseRequest::ParseRequest() : errorNumber(0), pos(0), CurrntParsState(NONE), Me
     NonRepeatablesHeaders["expect"] = 0;
     NonRepeatablesHeaders["range"] = 0;
 }
+
 // construct with params
-ParseRequest::ParseRequest(Server *server, int fd) : errorNumber(0), pos(0), CurrntParsState(NONE), Method(""), Url(""),
-                                                     HttpProtocolVersion(""), QuerieStrings("", ""), S(server), ServerSocketFd(fd), chunkedEncoding(false), contentLength(0)
+ParseRequest::ParseRequest(Server *server) : errorNumber(0), pos(0), CurrntParsState(NONE), Method(""), Url(""),
+                                                     HttpProtocolVersion(""), QuerieStrings("", ""), S(server), chunkedEncoding(false), contentLength(0)
 {
     BufferBody.clear();
     ChunkSize = 0;
@@ -187,8 +184,8 @@ bool ParseRequest::isFinish() { return (getParseState() == FINISH); }
 bool ParseRequest::isSupportedMethod(std::string &RequestMethod)
 {
     const std::vector<std::string> &sMethods = S->getAllowedMethods();
-    std::string m = getMethod();
-    for (int i = 0; i < sMethods.size(); i++)
+    std::string m = RequestMethod;
+    for (size_t i = 0; i < sMethods.size(); i++)
     {
         if (sMethods[i] == m)
             return (true);
@@ -214,7 +211,7 @@ bool ParseRequest::Reserved(char c)
     std::string ResevedCharacters = ":/?#[]@!$&'()*+,;=";
     return (ResevedCharacters.find(c) != std::string::npos);
 }
-bool ParseRequest::PercentEncoded(int &i)
+bool ParseRequest::PercentEncoded(size_t &i)
 {
     if (i + 2 <= Url.size() && isHexa(Url[i + 1]) && isHexa(Url[i + 2]))
         return (i += 2, true);
@@ -226,7 +223,7 @@ bool ParseRequest::isValidUrl()
         return (SwitchState(ERROR), setErrorNumber(414), false);
     if (Url.empty() || Url[0] != '/')
         return (SwitchState(ERROR), setErrorNumber(400), false);
-    for (int i(0); i < Url.size(); i++)
+    for (size_t i(0); i < Url.size(); i++)
     {
         if ((Url[i] == '%' && !PercentEncoded(i)) || (!Unresreved(Url[i]) && !Reserved(Url[i])))
             return (SwitchState(ERROR), setErrorNumber(400), false);
@@ -237,7 +234,7 @@ bool ParseRequest::isValidUrl()
 // parsers
 void ParseRequest::toLowerCase(std::string &key)
 {
-    for (int i(0); i < key.size(); i++)
+    for (size_t i(0); i < key.size(); i++)
     {
         key[i] = std::tolower((unsigned char)key[i]);
     }
@@ -245,9 +242,10 @@ void ParseRequest::toLowerCase(std::string &key)
 
 void ParseRequest::trimBuff(std::string &str)
 {
-    int pos = str.find_first_not_of(" ");
+    pos = str.find_first_not_of(" ");
     if (pos != std::string::npos)
         str.erase(0, pos);
+    ResetBuffPos();
 }
 
 void ParseRequest::parseMethod(std::string &str)
@@ -322,11 +320,11 @@ void ParseRequest::parseHttpVersion(std::string &str)
     if (!isValidVersion())
         return;
     ResetBuffPos();
-    SwitchState(HEADERS);
+    SwitchState(HEADERS_KEY);
 }
 bool ParseRequest::isAllSpaces(std::string &str)
 {
-    for (int i(0); i < str.size(); i++)
+    for (size_t i(0); i < str.size(); i++)
     {
         if (!isspace(str[i]))
             return (false);
@@ -336,7 +334,7 @@ bool ParseRequest::isAllSpaces(std::string &str)
 bool ParseRequest::validKey(std::string &key)
 {
     std::string visbleChar = "!#$%&'*+-.^_|~`";
-    for (int i(0); i < key.size(); i++)
+    for (size_t i(0); i < key.size(); i++)
     {
         if (!isalnum(key[i]) && visbleChar.find(key[i]) == std::string::npos)
             return false;
@@ -347,11 +345,11 @@ bool ParseRequest::validKey(std::string &key)
 bool ParseRequest::checkIsThereaHost()
 {
     std::string hoststring;
-    for (int i(0); i < Headers.size(); i++)
+    for (size_t i(0); i < Headers.size(); i++)
     {
         if (Headers[i].first == "host" && !Headers[i].second.empty())
         {
-            int p = Headers[i].second.find(':');
+            size_t p = Headers[i].second.find(':');
             if (p != std::string::npos)
             {
                 Host = Headers[i].second.substr(0, p);
@@ -370,27 +368,39 @@ void ParseRequest::parseHeaders(std::string &str)
         pos = str.find("\r\n");
         if (pos == std::string::npos)
             return;
-        std::string line = str.substr(0, pos);
-        str.erase(0, pos + 2);
-        if (line.size() >= 8192)
-            return (SwitchState(ERROR), setErrorNumber(431));
-            pos = line.find(':');
-        if (pos == std::string::npos || isspace(line[pos - 1]))
-            return (SwitchState(ERROR), setErrorNumber(400));    
-        std::string key = line.substr(0, pos);
-        std::string value = line.substr(pos + 1);
-        trimBuff(value);
-        if (!validKey(key) || key.empty() || isAllSpaces(key) || value.empty())
-            return (SwitchState(ERROR), setErrorNumber(400));
-        toLowerCase(key);
-        std::map<std::string, int>::iterator it = NonRepeatablesHeaders.find(key);
-        if (it != NonRepeatablesHeaders.end())
-        {
-            if (it->second)
-                return (SwitchState(ERROR), setErrorNumber(400));
-            it->second++;
+            if (CurrntParsState == HEADERS_KEY){
+                Current_header_line = str.substr(0, pos);
+                std::cout << "this is the str >> " << Current_header_line ;
+            str.erase(0, pos + 2);
+            if (Current_header_line.size() >= 8192)
+                return (SwitchState(ERROR), setErrorNumber(431));
+            pos = Current_header_line.find(':');
+            if (pos == std::string::npos || isspace(Current_header_line[pos - 1]))
+                return (SwitchState(ERROR), setErrorNumber(400));    
+            Current_key = Current_header_line.substr(0, pos);
+            toLowerCase(Current_key);
+            SwitchState(HEADER_VALUE);
         }
-        Headers.push_back(std::make_pair(key, value));
+        if (CurrntParsState ==  HEADER_VALUE){
+            Current_value += Current_header_line.substr(pos + 1);
+            trimBuff(Current_value);
+            if (!validKey(Current_key) || Current_key.empty() || isAllSpaces(Current_key) || Current_value.empty())
+                return (SwitchState(ERROR), setErrorNumber(400));
+            SwitchState(ADD_HEADER);
+        }
+        if (CurrntParsState == ADD_HEADER){
+            std::map<std::string, int>::iterator it = NonRepeatablesHeaders.find(Current_key);
+            if (it != NonRepeatablesHeaders.end())
+            {
+                if (it->second)
+                    return (SwitchState(ERROR), setErrorNumber(400));
+                it->second++;
+            }
+            Headers.push_back(std::make_pair(Current_key, Current_value));
+            Current_key = "";
+            Current_value = "";
+            SwitchState(HEADERS_KEY);
+        }
         ResetBuffPos();
         if (str[0] == '\r' && str[1] == '\n')
         {
@@ -404,20 +414,23 @@ void ParseRequest::parseHeaders(std::string &str)
 
 bool ParseRequest::isNumber(std::string toCheck)
 {
-    for (int i(0); i < toCheck.size(); i++)
+    for (size_t i(0); i < toCheck.size(); i++)
     {
         if (!isdigit(toCheck[i]))
             return (false);
     }
     return (true);
 }
+
 void ParseRequest::CheckingForBody()
 {
     bool TransferEncodingPresent = false;
     bool contentLengthPresent = false;
-    if (Method == "GET" || Method == "DELETE")
+    if (Method == "GET" || Method == "DELETE"){
+
         return (SwitchState(FINISH));
-    std::vector<std::pair<std::string, std::string>>::iterator Headersit;
+    }
+    std::vector<std::pair<std::string, std::string> >::iterator Headersit;
     for (Headersit = Headers.begin(); Headersit != Headers.end(); Headersit++)
     {
         if (Headersit->first == "transfer-encoding")
@@ -435,11 +448,10 @@ void ParseRequest::CheckingForBody()
             contentLengthPresent = true;
             if (!isNumber(Headersit->second))
                 return (SwitchState(ERROR), setErrorNumber(400));
-            contentLength = std::stoi(Headersit->second);
-            if (contentLength < 0)
-                return (SwitchState(ERROR), setErrorNumber(400));
-            // if ((size_t)contentLength > S->getClientBodyLimit())
-            //     return (SwitchState(ERROR), setErrorNumber(413));
+            contentLength = std::atoi(Headersit->second.c_str());
+            // if (contentLength < 0)
+            //     return (SwitchState(ERROR), setErrorNumber(400));
+            // \llj
         }
     }
     if (TransferEncodingPresent && contentLengthPresent)
@@ -452,6 +464,8 @@ void ParseRequest::CheckingForBody()
 }
 void ParseRequest::parseContentlengthBody(std::string &str)
 {
+    if (contentLength == 0)
+        return (SwitchState(FINISH));
     pos = str.find("\r\n");
     if (pos != std::string::npos){
         BufferBody =  str.substr(0,pos);
@@ -479,7 +493,7 @@ void ParseRequest::parseChunkedBody(std::string &str)
         if (pos != std::string::npos)
         {
             std::string StringChunkSize = str.substr(0, pos);
-            for (int i(0); i < StringChunkSize.size(); i++)
+            for (size_t i(0); i < StringChunkSize.size(); i++)
             {
                 if (!isHexa(StringChunkSize[i]))
                     return (SwitchState(ERROR), setErrorNumber(400));
@@ -507,25 +521,75 @@ void ParseRequest::parseChunkedBody(std::string &str)
     }
 }
 
-void ParseRequest::startParse(std::string buff)
+std::string ParseRequest::getHeaderValue(std::string key){
+    std::vector<std::pair<std::string , std::string> >::iterator i;
+    for (i = Headers.begin(); i != Headers.end();i++){
+        if (i->first == key)
+            return (i->second);
+    }
+    return ("");
+}
+
+
+void        ParseRequest::ResetParserf(){
+    errorNumber = 0;
+    ResetBuffPos();
+    CurrntParsState = NONE;
+    Current_key.clear();
+    Current_value.clear();
+    Current_header_line.clear();
+    Method.clear();
+    Url.clear();
+    HttpProtocolVersion.clear();
+    chunkedEncoding = 0;
+    contentLength = 0;
+    Headers.clear();
+    hasValidHost = 0;
+    ChunkSize = 0;
+    BufferBody.clear();
+    QueryString.clear();
+}
+
+void ParseRequest::startParse(int fd)
 {
-    while (true){
-        if (CurrntParsState == NONE && !buff.empty())
+    std::string buff;
+    
+    buff =
+    "POST /api/data HTTP/1.1\r\n"
+    "Host: localhost:8080\r\n"
+    "Transfer-Encoding: chunked\r\n"
+    "Content-Type: application/json\r\n"
+    "\r\n"
+    "31\r\n"
+    "{\"name\": \"John Doe\", "
+    "\"email\": \"john@example.com\"}\r\n"
+    "0\r\n"
+    "\r\n";
+    while (CurrntParsState != CLOSE)
+    {
+        // std::cout << CurrntParsState << "\n";
+        // char        str[500];
+        // memset(str, 0, sizeof(str));
+        // int bytes = recv(fd, str, sizeof(str) - 1, 0);
+        // if (!bytes)
+        //     return (SwitchState(CLOSE));
+        // buff.append(str);
+        if (CurrntParsState == NONE)
             SwitchState(METHOD);
-        if (CurrntParsState == METHOD && !buff.empty())
+        if (CurrntParsState == METHOD)
             parseMethod(buff);
-        if (CurrntParsState == URL && !buff.empty())
+        if (CurrntParsState == URL)
             parseUrl(buff);
-        if (CurrntParsState == HTTPVERSION && !buff.empty())
+        if (CurrntParsState == HTTPVERSION)
             parseHttpVersion(buff);
-        if (CurrntParsState == HEADERS && !buff.empty())
+        if (CurrntParsState == HEADERS_KEY || CurrntParsState == HEADER_VALUE || CurrntParsState ==  ADD_HEADER)
             parseHeaders(buff);
-        if (CurrntParsState == CONTENTLENGTHBODY && !buff.empty())
+        if (CurrntParsState == CONTENTLENGTHBODY)
             parseContentlengthBody(buff);
-        if (CurrntParsState == READCHUNKSIZE || CurrntParsState == READCHUNK && !buff.empty())
+        if (CurrntParsState == READCHUNKSIZE || CurrntParsState == READCHUNK)
             parseChunkedBody(buff);
-        if (CurrntParsState == ERROR || CurrntParsState == FINISH)
-        return;
+        if (CurrntParsState ==  FINISH || CurrntParsState == ERROR)
+            break;
     }
 }
 
@@ -643,7 +707,7 @@ const std::vector<std::string> &Server::getAllowedMethods() const { return allow
 
 const ReturnDirective Server::getReturnDirective() const { return return_d; }
 
-const std::vector<std::pair<std::string, std::string>> Server::getListen() const { return listen; }
+const std::vector<std::pair<std::string, std::string>>& Server::getListen() const { return listen; }
 
 const std::vector<std::string> &Server::getServerNames() const { return server_names; }
 
@@ -667,7 +731,7 @@ const std::string &Server::getErrorPage(int code) const
 int main()
 {
     Server dummyServer;
-    ParseRequest parser(&dummyServer, 1);
+    ParseRequest parser(&dummyServer);
 
     std::string request =
     "POST /api/data HTTP/1.1\r\n"
@@ -681,25 +745,18 @@ int main()
     "0\r\n"
     "\r\n";
     
-    parser.startParse(request);
-    if (parser.getParseState() == FINISH)
+    parser.startParse(1);
+    std::cout << "Method: " << parser.getMethod() << std::endl;
+    std::cout << "URL: " << parser.getUri() << std::endl;
+    std::cout << "Version: " << parser.getVersion() << std::endl;
+    for (size_t i = 0; i < parser.Headers.size(); ++i)
     {
-        std::cout << "Method: " << parser.getMethod() << std::endl;
-        std::cout << "URL: " << parser.getUri() << std::endl;
-        std::cout << "Version: " << parser.getVersion() << std::endl;
-
-        for (size_t i = 0; i < parser.Headers.size(); ++i)
-        {
-            std::cout << "Header[" << i << "]: " << parser.Headers[i].first
-                      << " => " << parser.Headers[i].second << std::endl;
-        }
-        std::cout << "Body :   "  << parser.BufferBody << "\n";
-        std::cout << parser.errorNumber << "\n";
+        std::cout << "Header[" << i << "]: " << parser.Headers[i].first
+                  << " => " << parser.Headers[i].second << std::endl;
     }
-    else
-    {
-        std::cerr << "Failed to parse. Error state: " << parser.getParseState() << std::endl;
-        std::cerr << "error number is : " << parser.errorNumber << "\n";
-    }
+    std::cout << "Body :   "  << parser.BufferBody << "\n";
+    std::cout << parser.errorNumber << "\n";
+    std::cerr << "Failed to parse. Error state: " << parser.getParseState() << std::endl;
+    std::cerr << "error number is : " << parser.errorNumber << "\n";
     return 0;
 }

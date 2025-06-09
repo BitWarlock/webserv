@@ -5,6 +5,9 @@
 #include <sstream>
 #include "Lexer.hpp"
 #include <utility>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <string.h>
 #include "Server.hpp"
 
 enum RequestParseStats
@@ -20,7 +23,8 @@ enum RequestParseStats
     READCHUNK,
     FINISH,
     ERROR,
-    NONE
+    NONE,
+    CLOSE
 };
 
 class ParseRequest{
@@ -54,7 +58,7 @@ public:
     
     
     // parse input
-    void        startParse(std::string& buff);
+    void        startParse(int fd);
     void        parseMethod(std::string &str);
     void        parseUrl(std::string &str);
     void        parseHttpVersion(std::string &str);
@@ -69,6 +73,7 @@ public:
     bool        validKey(std::string &key);
     bool        checkIsThereaHost();
     bool        isNumber(std::string toCheck);
+    void        ResetParserf();
 
     // checkers
     bool        isFinish();

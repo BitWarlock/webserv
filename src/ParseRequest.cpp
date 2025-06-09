@@ -419,46 +419,54 @@ std::string ParseRequest::getHeaderValue(std::string key){
     return ("");
 }
 
-void ParseRequest::startParse(std::string& buff)
+
+void        ParseRequest::ResetParserf(){
+    errorNumber = 0;
+    ResetBuffPos();
+    CurrntParsState = NONE;
+    Current_key.clear();
+    Current_value.clear();
+    Current_header_line.clear();
+    Method.clear();
+    Url.clear();
+    HttpProtocolVersion.clear();
+    chunkedEncoding = 0;
+    contentLength = 0;
+    Headers.clear();
+    hasValidHost = 0;
+    ChunkSize = 0;
+    BufferBody.clear();
+    QueryString.clear();
+}
+
+void ParseRequest::startParse(int fd)
 {
-    while (true)
+    std::string buff;
+    
+    while (CurrntParsState != CLOSE)
     {
-        if (buff.empty())
-            continue;
+        std::cout << CurrntParsState << "\n";
+        char        str[500];
+        memset(str, 0, sizeof(str));
+        int bytes = recv(fd, str, sizeof(str) - 1, 0);
+        if (!bytes)
+            return (SwitchState(CLOSE));
+        buff.append(str);
         if (CurrntParsState == NONE)
-            SwitchState(METHOD);
+        SwitchState(METHOD);
         if (CurrntParsState == METHOD)
-            parseMethod(buff);
+        parseMethod(buff);
         if (CurrntParsState == URL)
-            parseUrl(buff);
+        parseUrl(buff);
         if (CurrntParsState == HTTPVERSION)
-            parseHttpVersion(buff);
+        parseHttpVersion(buff);
         if (CurrntParsState == HEADERS_KEY || CurrntParsState == HEADER_VALUE)
-            parseHeaders(buff);
+        parseHeaders(buff);
         if (CurrntParsState == CONTENTLENGTHBODY)
-            parseContentlengthBody(buff);
+        parseContentlengthBody(buff);
         if (CurrntParsState == READCHUNKSIZE || CurrntParsState == READCHUNK)
-            parseChunkedBody(buff);
+        parseChunkedBody(buff);
         if (CurrntParsState ==  FINISH || CurrntParsState == ERROR)
             break;
-    }
-    if (getParseState() == FINISH)
-    {
-        std::cout << "Method: " << getMethod() << std::endl;
-        std::cout << "URL: " << getUri() << std::endl;
-        std::cout << "Version: " << getVersion() << std::endl;
-
-        for (size_t i = 0; i < Headers.size(); ++i)
-        {
-            std::cout << "Header[" << i << "]: " << Headers[i].first
-                      << " => " << Headers[i].second << std::endl;
-        }
-        std::cout << "Body :   "  << BufferBody << "\n";
-        std::cout << errorNumber << "\n";
-    }
-    else
-    {
-        std::cerr << "Failed to parse. Error state: " << getParseState() << std::endl;
-        std::cerr << "error number is : " << errorNumber << "\n";
     }
 }
