@@ -80,8 +80,7 @@ int main(int argc, char *argv[])
 	// 1. Read config file
 	config_content = readConfigFile(argc, argv);
 	if (config_content.empty())
-		return 1;
- 
+		return 1; 
 	try
 	{
 		// 2. Initialize lexer and parser
@@ -93,65 +92,9 @@ int main(int argc, char *argv[])
 
 		// 4. SetupServer
 		SetupServers	server(*config);
-
-		// 4. Print parsed configuration (for testing)
-		std::cout << GRN "Successfully parsed configuration:\n" << RESET;
-		std::cout << "Found " << config->getServers().size() << " server blocks\n\n";
-
-		// 5. Iterate through servers
-		for (size_t i = 0; i < config->getServers().size(); ++i) {
-			const Server* server = config->getServers()[i];
-			std::cout << "Server #" << i + 1 << ":\n";
-			for (size_t i = 0; i < server->getListen().size(); i++)
-			{
-				std::cout << "  Host: " << server->getListen()[i].first << "\n";
-				std::cout << "  Port: " << server->getListen()[i].second << "\n";
-			}
-			if (server->getReturnDirective().enabled)
-				std::cout << "  Return " << server->getReturnDirective().status_code <<
-					": Target: " << server->getReturnDirective().target << "\n";
-
-			// Print server names if they exist
-			if (!server->getServerNames().empty()) {
-				std::cout << "  Server Names:";
-				for (size_t j = 0; j < server->getServerNames().size(); ++j) {
-					std::cout << " " << server->getServerNames()[j];
-				}
-				std::cout << "\n";
-			}
-
-			// Print locations
-			std::cout << "  Locations:\n";
-			const std::vector<Location*>& locations = server->getLocations();
-			for (size_t j = 0; j < locations.size(); ++j) {
-				const Location* loc = locations[j];
-				std::cout << "    Path: " << loc->getPath() << "\n";
-				if (loc->getReturnDirective().enabled)
-					std::cout << "    Return " << loc->getReturnDirective().status_code <<
-						": Target: " << loc->getReturnDirective().target << "\n";
-				std::cout << "      Methods:";
-				for (size_t k = 0; k < loc->getAllowedMethods().size(); ++k) {
-					std::cout << " " << loc->getAllowedMethods()[k];
-				}
-				std::cout << "\n";
-
-				if (!loc->getRoot().empty()) {
-					std::cout << "      Root: " << loc->getRoot() << "\n";
-				}
-
-				if (loc->getClientBodyLimit() != 0) {
-					std::cout << "      Client Body Limit: " << loc->getClientBodyLimit() << "\n";
-				}
-			}
-			std::cout << "\n";
-		}
-		// while (1)
-		// 	;
-		
-		// 6. Cleanup
-		delete config;
-
-	} catch (const std::exception& e) {
+	}
+	
+	catch (const std::exception& e) {
 		std::cerr << RED "Configuration error: " << e.what() << RESET "\n";
 		return 1;
 	}
