@@ -119,8 +119,10 @@ public:
 
 
 // construct
-ParseRequest::ParseRequest() : errorNumber(0), pos(0), CurrntParsState(NONE), Method(""), Url(""),
-                               HttpProtocolVersion(""), QuerieStrings("", ""), chunkedEncoding(false), contentLength(0)
+ParseRequest::ParseRequest() : errorNumber(0), pos(0), 
+                            CurrntParsState(NONE), Method(""), Url(""),
+                            HttpProtocolVersion(""), QuerieStrings("", ""), 
+                            chunkedEncoding(false), contentLength(0)
 {
     BufferBody.clear();
     ChunkSize = 0;
@@ -139,8 +141,10 @@ ParseRequest::ParseRequest() : errorNumber(0), pos(0), CurrntParsState(NONE), Me
 }
 
 // construct with params
-ParseRequest::ParseRequest(Server *server) : errorNumber(0), pos(0), CurrntParsState(NONE), Method(""), Url(""),
-                                                     HttpProtocolVersion(""), QuerieStrings("", ""), S(server), chunkedEncoding(false), contentLength(0)
+ParseRequest::ParseRequest(Server *server) : errorNumber(0), pos(0), 
+                            CurrntParsState(NONE), Method(""), Url(""),
+                            HttpProtocolVersion(""), QuerieStrings("", ""), 
+                            S(server), chunkedEncoding(false), contentLength(0)
 {
     BufferBody.clear();
     ChunkSize = 0;
@@ -157,6 +161,7 @@ ParseRequest::ParseRequest(Server *server) : errorNumber(0), pos(0), CurrntParsS
     NonRepeatablesHeaders["expect"] = 0;
     NonRepeatablesHeaders["range"] = 0;
 }
+
 // distructor
 ParseRequest::~ParseRequest() {}
 
@@ -194,8 +199,10 @@ bool ParseRequest::isSupportedMethod(std::string &RequestMethod)
 }
 int ParseRequest::isKnownMethod()
 {
-    if (Method == "GET" || Method == "POST" || Method == "DELETE" || Method == "HEAD" || Method == "PUT" || Method == "OPTIONS" || Method == "TRACE" || Method == "CONNECT")
-    {
+    if (Method == "GET" || Method == "POST" || \
+        Method == "DELETE" || Method == "HEAD" || \
+        Method == "PUT" || Method == "OPTIONS" || \
+        Method == "TRACE" || Method == "CONNECT"){
         return (405);
     }
     return (501);
@@ -225,7 +232,8 @@ bool ParseRequest::isValidUrl()
         return (SwitchState(ERROR), setErrorNumber(400), false);
     for (size_t i(0); i < Url.size(); i++)
     {
-        if ((Url[i] == '%' && !PercentEncoded(i)) || (!Unresreved(Url[i]) && !Reserved(Url[i])))
+        if ((Url[i] == '%' && !PercentEncoded(i)) || \
+            (!Unresreved(Url[i]) && !Reserved(Url[i])))
             return (SwitchState(ERROR), setErrorNumber(400), false);
     }
     return (true);
@@ -384,8 +392,10 @@ void ParseRequest::parseHeaders(std::string &str)
         if (CurrntParsState ==  HEADER_VALUE){
             Current_value += Current_header_line.substr(pos + 1);
             trimBuff(Current_value);
-            if (!validKey(Current_key) || Current_key.empty() || isAllSpaces(Current_key) || Current_value.empty())
-                return (SwitchState(ERROR), setErrorNumber(400));
+            if (!validKey(Current_key) || Current_key.empty() || \
+                isAllSpaces(Current_key) || Current_value.empty()){
+                    return (SwitchState(ERROR), setErrorNumber(400));
+                }
             SwitchState(ADD_HEADER);
         }
         if (CurrntParsState == ADD_HEADER){
@@ -451,7 +461,7 @@ void ParseRequest::CheckingForBody()
             contentLength = std::atoi(Headersit->second.c_str());
             // if (contentLength < 0)
             //     return (SwitchState(ERROR), setErrorNumber(400));
-            // \llj
+            //
         }
     }
     if (TransferEncodingPresent && contentLengthPresent)
