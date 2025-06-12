@@ -1,96 +1,160 @@
-# Config file.
+### 1. Parse Configuration File
+- [x] Implement configuration file parsing (default path if none provided)
+	- [x] Parse server blocks with:
+	- [x] Port and host combinations
+- [x] Server names (optional)
+	- [x] Default server flag for host:port combinations
+	- [x] Parse route configurations for each server:
+- [x] Accepted HTTP methods (GET, POST, DELETE)
+	- [x] HTTP redirections
+	- [x] Root directories for file serving
+- [x] Directory listing settings (on/off)
+	- [x] Default index files for directories
+- [ ] CGI configurations (file extensions, executable paths)
+	- [ ] File upload locations
+	- [ ] Parse global settings:
+	- [ ] Client body size limits
+	- [ ] Default error pages
+	- [ ] Validate configuration:
+	- [ ] Check for valid ports
+	- [ ] Verify file/directory paths exist
+	- [ ] Ensure no port conflicts between servers
 
-**server directives**
+### 2. Create and Initialize Servers
+	- [x] For each server in configuration:
+- [x] Create non-blocking socket(s)
+	- [x] Bind to specified host:port combinations
+	- [x] Start listening on sockets
+	- [x] Initialize server data structures:
+	- [ ] Route configurations
+	- [ ] Error pages
+	- [ ] CGI settings
+	- [x] Client size limits
+	- [ ] Create pollfd array for all server sockets
+	- [ ] Initialize data structures for:
+	- [ ] Client connections
+	- [ ] Request buffers
+	- [ ] Response queues
+	- [ ] CGI processes
 
-    listen: Port number to listen on (e.g., listen 8002;)
-    server_name: Server's domain name (e.g., server_name localhost;)
-    host: IP address to bind to (e.g., host 127.0.0.1;)
-    root: Root directory for serving files (e.g., root docs/fusion_web/;)
-    index: Default index file (e.g., index index.html;)
-    error_page: Custom error page for HTTP codes (e.g., error_page 404  error_pages/404.html;)
-    client_max_body_size: Maximum size of client request body (e.g.,    client_max_body_size 3000000;)
+### 3. Main Event Loop with poll()
+	- [ ] Set up main loop using poll():
+		- [ ] Monitor all FDs (server + client) for read/write events
+		      - [ ] Handle timeouts for hung connections
+		      - [ ] Implement clean-up for disconnected clients
+		      - [ ] For each poll() event:
+	- [ ] Distinguish between server and client sockets
+	- [ ] Handle new connections (server sockets)
+	      - [ ] Process client I/O (client sockets)
 
-**Location Block Directives**
-##### Location blocks define settings for specific URI paths:
-    allow_methods: HTTP methods allowed for this location (e.g., allow_methods DELETE POST GET;)
-    autoindex: Enable/disable directory listing (e.g., autoindex on;)
-    index: Default index file for this location (e.g., index tours1.html;)
-    root: Root directory for this location (e.g., root ./;)
-    return: Redirect to a different path (e.g., return /tours;)
+### 4. Handle New Connections
+	      - [ ] Accept new connections (non-blocking)
+	- [ ] Add to pollfd set
+	- [ ] Initialize client state:
+	- [ ] Request buffer
+	- [ ] Response queue
+	- [ ] Timeout timer
+- [ ] Connection info (IP, port)
+	- [ ] Apply connection limits if needed
 
-**CGI Configuration**
-##### For CGI support, special directives are available within location blocks
+### 5. Parse HTTP Requests
+- [ ] Read request data (non-blocking, through poll())
+	- [ ] Parse request line:
+- [ ] Method (GET, POST, DELETE)
+	- [ ] URI
+	- [ ] HTTP version
+	- [ ] Parse headers:
+	- [ ] Content-Length
+- [ ] Transfer-Encoding (chunked)
+	- [ ] Host header
+	- [ ] Cookies
+- [ ] Content-Type (for uploads)
+	- [ ] Handle chunked encoding if present
+	- [ ] Validate request against configuration:
+	- [ ] Check allowed methods for route
+	- [ ] Verify client body size limits
+	- [ ] Match host to server configuration
+	- [ ] Prepare error responses for invalid requests
 
-    cgi_path: Path to interpreters (e.g., cgi_path /usr/bin/python3 /bin/bash;)
-    cgi_ext: File extensions to be handled by CGI (e.g., cgi_ext .py .sh;)
+### 6. Route Requests
+	- [ ] Match request URI to configured routes
+	- [ ] Handle special cases:
+- [ ] Redirections (send 30x response)
+	- [ ] Directory requests:
+	- [ ] Serve index file if exists
+	- [ ] Generate directory listing if enabled
+	- [ ] 403 if directory listing disabled
+	- [ ] File requests:
+	- [ ] Check file exists and is readable
+	- [ ] Handle range requests if needed
+	- [ ] Handle CGI requests:
+	- [ ] Determine correct CGI program based on extension
+	- [ ] Set up environment variables:
+	- [ ] PATH_INFO, SCRIPT_NAME
+	- [ ] QUERY_STRING
+	- [ ] REQUEST_METHOD
+	- [ ] CONTENT_TYPE, CONTENT_LENGTH
+	- [ ] HTTP headers as SERVER_PROTOCOL, etc.
+	- [ ] Handle file uploads:
+	- [ ] Verify upload directory exists and is writable
+	- [ ] Process multipart/form-data
+	- [ ] Save files to configured location
+	- [ ] Handle partial uploads
 
-**Configuration Processing**
+### 7. Execute CGI Scripts
+	- [ ] Fork and execute CGI process:
+	- [ ] Set up pipes for stdin/stdout/stderr
+	- [ ] Set working directory
+	- [ ] Pass request body to CGI stdin
+	- [ ] Monitor CGI process with timeout
+	- [ ] Read CGI output:
+	- [ ] Parse CGI headers
+	- [ ] Handle both Content-Length and chunked/EOF responses
+	- [ ] Stream response to client
+	- [ ] Clean up finished CGI processes
+- [ ] Handle CGI errors (502, 504 responses)
 
-##### The configurationsystem processes files through several components
+### 8. Generate and Send Responses
+	- [ ] Build response headers:
+	- [ ] Status line
+	- [ ] Content-Type, Length
+	- [ ] Connection, Server
+	- [ ] Set-Cookie if needed
+	- [ ] For static files:
+	- [ ] Use sendfile() if available
+	- [ ] Implement chunked sending for large files
+	- [ ] For errors:
+	- [ ] Use configured error pages
+	- [ ] Fallback to default error pages
+	- [ ] Queue responses for non-blocking write
+	- [ ] Handle partial writes
+	- [ ] Implement keep-alive support
 
-    1.ConfigFile: Handles file operations and reading configuration files
-    2.ConfigParser: Parses the configuration content and creates server configurations
-    3.ServerConfig: Represents a server configuration with all its settings
-    4.Location: Represents a location block within a server configuration
+### 9. Client Connection Management
+	- [ ] Track connection state:
+	- [ ] Active requests
+	- [ ] Keep-alive status
+	- [ ] Timeout timers
+	- [ ] Clean up finished connections:
+	- [ ] Close sockets
+	- [ ] Remove from poll set
+	- [ ] Free resources
+	- [ ] Handle client disconnects gracefully
 
-**Validation**
+### 10. Additional Features
+	- [ ] Implement cookie handling
+	- [ ] Basic session management
+	- [ ] Support for Range requests
+	- [ ] Connection timeouts
+	- [ ] Graceful shutdown on signals
 
-##### The configuration system performs extensive validation to ensure the configuration is valid
-
-    File validation: Checks if paths exist and are accessible
-    Syntax validation: Ensures proper syntax with server blocks and directives
-    Server validation: Checks for duplicate servers and required directives
-    Location validation: Validates location blocks and their directives
-
-### Required Elements (must be specified in each server block)
-
-##### listen: Port the server listens on (no default, must be specified)
-
-    `Example: listen 8080; or listen 127.0.0.1:80`
-
-##### host: IP address to bind to (default: 0.0.0.0 if not specified)
-    `Can be combined with port in listen directive`
-
-### Optional Elements with Defaults
-
-##### 1.server_name (default:empty-becomes default server for its listen address)
-    Multiple can be specified: `server_name example.com www.example.com;`
-    First server block for a host:port becomes default when no name matches
-
-##### 2.root (default: typically none, but often set to something like /var/www/html in practice)
-    Should be specified at server or location level
-
-##### 3.index (default: typically `index.html` or `index.htm`)
-    Example: `index index.php index.html index.htm;`
-
-##### 4.error_page (default: server-generated basic error pages)
-    Example: `error_page 404 /404.html;`
-
-##### 5.client_max_body_size (default: typically 1MB in web servers)
-    Example: `client_max_body_size 2M;`(for 2MB limit)
-
-### Location-Specific Directives
-##### For route configuration (inside location blocks), these are optional but commonly used:
-
-    - allowed_methods - default:typically GET and HEAD iif not specified
-    - return - For HTTP redirections (no default)
-    - autoindex - Directory listing (default:off)
-    - cgi_extension - For CGI processing (no default)
-    - upload_store - For file uploads (no default)
-
-Implementation Recommendations:
-##### 1.For each server block, require at least:
-    server {
-        listen 80;                  # Required
-        # host is 0.0.0.0 by default
-        server_name example.com;    # Optional (makes this server name-based)
-        root /var/www/html;         # Strongly recommended
-        index index.html;           # Optional with default
-        error_page 404 /404.html;   # Optional
-        client_max_body_size 1M;    # Optional with default
-    
-        location / {
-            # At least one location should exist
-        }
-    }
-
+### 11. Testing and Validation
+	- [ ] Create comprehensive test suite:
+	- [ ] Unit tests for parsing
+	- [ ] Integration tests for all HTTP methods
+	- [ ] Stress tests with many concurrent connections
+	- [ ] CGI test cases
+	- [ ] File upload tests
+	- [ ] Verify against browser behavior
+	- [ ] Compare with NGINX for edge cases
+	- [ ] Ensure no memory leaks
