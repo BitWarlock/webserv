@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/21 20:57:28 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/06/10 15:55:46 by mrezki           ###   ########.fr       */
+/*   Updated: 2025/06/12 19:59:26 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -162,9 +162,19 @@ void    SetupServers::AddSocketToEpoll(int fd, int event, int job)
 	}
 }
 
+void	SetupServers::RemoveSocketFromEpoll(int fd, int job)
+{
+	int	return_value = epoll_ctl(fd_epoll, job, fd, NULL);
+
+	if (return_value == -1)
+	{
+		throw std::runtime_error("Warning: epoll_ctl() function failed to monitor a socket.\n");
+	}
+}
+
 void    SetupServers::WaitEpoll(void)
 {
-	number_events = epoll_wait(fd_epoll, events, MAX_EVENTS, INFINITE);
+	number_events = epoll_wait(fd_epoll, events, MAX_EVENTS, -1);
 
 	if (number_events < 0)
 	{
@@ -198,7 +208,7 @@ void    SetupServers::EraseFd(int fd)
 
 void    SetupServers::Run(void)
 {
-	ParseRequest    Request[MAX_REQUEST];
+	std::map<int, ParseRequest> Requests;
 
 	CreateEpoll();
 
@@ -210,54 +220,48 @@ void    SetupServers::Run(void)
 		WaitEpoll();
 		for (int i(0); i < number_events; i++)
 		{
+			std::cout << "i == " << i << "\n";
+			int	fd = events[i].data.fd;
 			if (events[i].events & (EPOLLERR | EPOLLHUP))
-				EraseFd(events[i].data.fd);
+				EraseFd(fd);
 			else if (events[i].events & EPOLLIN)
 			{
-				if (fd_sockets.begin() + endpoints != find(fd_sockets.begin(), fd_sockets.begin() + endpoints, events[i].data.fd))
+				if (fd_sockets.begin() + endpoints != find(fd_sockets.begin(), fd_sockets.begin() + endpoints, fd))
 				{
-					AcceptConnection(events[i].data.fd);
+					std::cout << "khrej\n";
+					AcceptConnection(fd);
 					AddSocketToEpoll(fd_sockets.back(), EPOLLIN, EPOLL_CTL_ADD);
 				}
 				else
 				{
-					Request[events[i].data.fd].startParse(events[i].data.fd);
-					// int StatRequest = Request[events[i].data.fd].getParseState();
-					// if (StatRequest == CLOSE)
-					// { 
-					// }
-					// else if (StatRequest == FINISH || StatRequest == ERROR)
-					AddSocketToEpoll(events[i].data.fd, EPOLLOUT, EPOLL_CTL_MOD);                            
+					Requests[fd].startParse(fd);
+					if (Requests[fd].getParseState() == FINISH || Requests[fd].getParseState() == ERROR)
+					{
+						std::cout << "dkhal\n";
+						AddSocketToEpoll(fd, EPOLLOUT, EPOLL_CTL_MOD);
+					}                        
+					std::cout << Requests[fd].getParseState() << "\n";
 				}
 			}
 			else if (events[i].events & EPOLLOUT)
 			{
-				std::string response =
-					"HTTP/1.1 200 OK\r\n"
-					"Content-Type: text/html\r\n"
-					"Content-Length: 137\r\n"
-					"Connection: close\r\n"
-					"\r\n"
-					"<!DOCTYPE html>\n"
-					"<html>\n"
-					"<head><title>Test Page</title></head>\n"
-					"<body>\n"
-					"    <h1>Hello from Webserv!</h1>\n"
-					"    <p>This is a simple HTML response.</p>\n"
-					"</body>\n"
-					"</html>\n";
-				if (send(events[i].data.fd, response.c_str(), response.size(), 0) < -1)
-				{
-					std::cout << "Connection is closed by the client\n";
-					Request[events[i].data.fd].ResetParserf();
-					AddSocketToEpoll(events[i].data.fd, EPOLLOUT, EPOLL_CTL_DEL);
-					EraseFd(events[i].data.fd);
-				}
-				else
-				{
-					Request[events[i].data.fd].ResetParserf();
-					AddSocketToEpoll(events[i].data.fd, EPOLLIN, EPOLL_CTL_MOD);
-				}
+				std::cout << "here\n";
+				std::string res =     "HTTP/1.1 200 OK\r\n"
+										"Content-Type: text/html; charset=UTF-8\r\n"
+										"Content-Length: 142\r\n"
+										"Connection: keep-alive\r\n"
+										"\r\n"
+										"<!DOCTYPE html>\n"
+										"<html>\n"
+										"<head><title>Webserv Test</title></head>\n"
+										"<body>\n"
+										"    <h1>Welcome!</h1>\n"
+										"    <p>This is a test response from your Webserv.</p>\n"
+										"</body>\n"
+										"</html>\n";
+				int bytes = send(fd, res.c_str(), res.size(), 0);
+				std::cout << "-- " << bytes << " --\n";
+				AddSocketToEpoll(fd, EPOLLIN, EPOLL_CTL_MOD); 
 			}
 		}
 	}

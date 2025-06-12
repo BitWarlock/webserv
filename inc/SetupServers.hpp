@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/21 20:59:30 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/06/09 18:47:27 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/06/12 19:14:52 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,6 +37,7 @@ class SetupServers
         void                WaitEpoll(void);
         struct epoll_event  InitEvents(int fd, int event);
         void                AddSocketToEpoll(int fd, int event, int job);
+        void                RemoveSocketFromEpoll(int fd, int job);
         void                AcceptConnection(int fd);
         void                EraseFd(int fd);
         void                StartSetup(void);

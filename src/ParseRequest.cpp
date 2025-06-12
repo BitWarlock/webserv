@@ -40,6 +40,27 @@ ParseRequest::ParseRequest(Server *server) : errorNumber(0), pos(0), CurrntParsS
 	NonRepeatablesHeaders["expect"] = 0;
 	NonRepeatablesHeaders["range"] = 0;
 }
+
+ParseRequest::ParseRequest(const ParseRequest& obj) : errorNumber(0), pos(0), CurrntParsState(NONE), Method(""), Url(""),
+	HttpProtocolVersion(""), QuerieStrings("", ""), chunkedEncoding(false), contentLength(0)
+{
+	(void) obj;
+	BufferBody.clear();
+	ChunkSize = 0;
+	NonRepeatablesHeaders["host"] = 0;
+	NonRepeatablesHeaders["content-length"] = 0;
+	NonRepeatablesHeaders["content-type"] = 0;
+	NonRepeatablesHeaders["content-encoding"] = 0;
+	NonRepeatablesHeaders["transfer-encoding"] = 0;
+	NonRepeatablesHeaders["authorization"] = 0;
+	NonRepeatablesHeaders["user-agent	"] = 0;
+	NonRepeatablesHeaders["connection"] = 0;
+	NonRepeatablesHeaders["date"] = 0;
+	NonRepeatablesHeaders["upgrade"] = 0;
+	NonRepeatablesHeaders["expect"] = 0;
+	NonRepeatablesHeaders["range"] = 0;
+}
+
 // distructor
 ParseRequest::~ParseRequest() {}
 
@@ -438,32 +459,34 @@ void ParseRequest::startParse(int fd)
 {
 	std::string buff;
 
-	while (true)
+	while(true)
 	{
 		char        str[1000];
 
 		memset(str, 0, sizeof(str));
 		ssize_t bytes = recv(fd, str, sizeof(str) - 1, 0);
-		if (bytes == 0)
-			return (SwitchState(CLOSE));
-		else if (bytes < 0)
-			return (SwitchState(NONE));
+		if (bytes <= 0)
+			break ;
 		buff.append(str);
-		if (CurrntParsState == NONE)
-			SwitchState(METHOD);
-		if (CurrntParsState == METHOD)
-			parseMethod(buff);
-		if (CurrntParsState == URL)
-			parseUrl(buff);
-		if (CurrntParsState == HTTPVERSION)
-			parseHttpVersion(buff);
-		if (CurrntParsState == HEADERS_KEY || CurrntParsState == HEADER_VALUE)
-			parseHeaders(buff);
-		if (CurrntParsState == CONTENTLENGTHBODY)
-			parseContentlengthBody(buff);
-		if (CurrntParsState == READCHUNKSIZE || CurrntParsState == READCHUNK)
-			parseChunkedBody(buff);
-		if (CurrntParsState ==  FINISH || CurrntParsState == ERROR)
-			break;
+		std::cout << buff;
+		while (!buff.empty())
+		{
+			if (CurrntParsState == NONE)
+				SwitchState(METHOD);
+			if (CurrntParsState == METHOD)
+				parseMethod(buff);
+			if (CurrntParsState == URL)
+				parseUrl(buff);
+			if (CurrntParsState == HTTPVERSION)
+				parseHttpVersion(buff);
+			if (CurrntParsState == HEADERS_KEY || CurrntParsState == HEADER_VALUE)
+				parseHeaders(buff);
+			if (CurrntParsState == CONTENTLENGTHBODY)
+				parseContentlengthBody(buff);
+			if (CurrntParsState == READCHUNKSIZE || CurrntParsState == READCHUNK)
+				parseChunkedBody(buff);
+			if (CurrntParsState ==  FINISH || CurrntParsState == ERROR)
+				return ;
+		}
 	}
 }

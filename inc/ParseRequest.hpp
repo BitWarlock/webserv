@@ -31,6 +31,7 @@ class ParseRequest{
 public:
     ParseRequest();
     ParseRequest(Server *server);
+    ParseRequest(const ParseRequest& obj);
     ~ParseRequest();
 
     int                                                 errorNumber;
