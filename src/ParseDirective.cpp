@@ -354,7 +354,8 @@ void DirectiveParser::advance()
 
 std::vector<std::string> DirectiveParser::gatherDirectiveValues()
 {
-	std::vector<std::string> values;
+	std::vector<std::string>	values;
+	int							directiveLine = currentToken.line;
 
 	while (currentToken.type != TOKEN_SEMICOLON
 			&& currentToken.type != TOKEN_EOF)
@@ -366,6 +367,9 @@ std::vector<std::string> DirectiveParser::gatherDirectiveValues()
 			values.push_back(currentToken.value);
 		else
 			throw ParseException("Unexpected token in directive values", currentToken.line);
+
+		if (currentToken.line != directiveLine && currentToken.type != TOKEN_SEMICOLON)
+			throw ParseException("Expected semicolon at the end of line ", currentToken.line);
 		advance();
 	}
 
