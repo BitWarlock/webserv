@@ -158,6 +158,7 @@ void ParseRequest::parseMethod(std::string &str)
     //     return (setErrorNumber(isKnownMethod()));
     SwitchState(URL);
 }
+
 void ParseRequest::setQueryString(std::string queryInUrl) { QueryString = queryInUrl; }
 void ParseRequest::parseUrl(std::string &str)
 {
@@ -455,7 +456,6 @@ void ParseRequest::startParse(int fd)
             return (SwitchState(CLOSE));
         else if (bytes < 0)
             return (SwitchState(NONE));
-        std::cout << " -- " << str << " -- \n";
         buff.append(str);
         if (CurrntParsState == NONE)
             SwitchState(METHOD);
