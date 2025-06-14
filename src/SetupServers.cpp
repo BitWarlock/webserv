@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/21 20:57:28 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/06/12 19:59:26 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/06/14 19:10:21 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -220,7 +220,6 @@ void    SetupServers::Run(void)
 		WaitEpoll();
 		for (int i(0); i < number_events; i++)
 		{
-			std::cout << "i == " << i << "\n";
 			int	fd = events[i].data.fd;
 			if (events[i].events & (EPOLLERR | EPOLLHUP))
 				EraseFd(fd);
@@ -228,7 +227,7 @@ void    SetupServers::Run(void)
 			{
 				if (fd_sockets.begin() + endpoints != find(fd_sockets.begin(), fd_sockets.begin() + endpoints, fd))
 				{
-					std::cout << "khrej\n";
+					std::cout << "new connection\n";
 					AcceptConnection(fd);
 					AddSocketToEpoll(fd_sockets.back(), EPOLLIN, EPOLL_CTL_ADD);
 				}
@@ -237,7 +236,7 @@ void    SetupServers::Run(void)
 					Requests[fd].startParse(fd);
 					if (Requests[fd].getParseState() == FINISH || Requests[fd].getParseState() == ERROR)
 					{
-						std::cout << "dkhal\n";
+						std::cout << "receive data\n";
 						AddSocketToEpoll(fd, EPOLLOUT, EPOLL_CTL_MOD);
 					}                        
 					std::cout << Requests[fd].getParseState() << "\n";
@@ -245,11 +244,11 @@ void    SetupServers::Run(void)
 			}
 			else if (events[i].events & EPOLLOUT)
 			{
-				std::cout << "here\n";
+				std::cout << "send response\n";
 				std::string res =     "HTTP/1.1 200 OK\r\n"
 										"Content-Type: text/html; charset=UTF-8\r\n"
 										"Content-Length: 142\r\n"
-										"Connection: keep-alive\r\n"
+										"Connection: close\r\n"
 										"\r\n"
 										"<!DOCTYPE html>\n"
 										"<html>\n"
@@ -260,7 +259,7 @@ void    SetupServers::Run(void)
 										"</body>\n"
 										"</html>\n";
 				int bytes = send(fd, res.c_str(), res.size(), 0);
-				std::cout << "-- " << bytes << " --\n";
+				std::cout << bytes << "\n";
 				AddSocketToEpoll(fd, EPOLLIN, EPOLL_CTL_MOD); 
 			}
 		}
