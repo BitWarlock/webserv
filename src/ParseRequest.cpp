@@ -4,7 +4,7 @@
 // construct
 ParseRequest::ParseRequest() : errorNumber(0), pos(0), 
     CurrntParsState(NONE), Method(""), Url(""),
-	HttpProtocolVersion(""), QuerieStrings("", ""), 
+	HttpProtocolVersion(""),
     chunkedEncoding(false), contentLength(0){
 	BufferBody.clear();
 	ChunkSize = 0;
@@ -21,11 +21,16 @@ ParseRequest::ParseRequest() : errorNumber(0), pos(0),
 	NonRepeatablesHeaders["expect"] = 0;
 	NonRepeatablesHeaders["range"] = 0;
 }
+ParseRequest::ParseRequest(ParseRequest& other){
 
+}
+ParseRequest& ParseRequest::operator=(const ParseRequest& other){
+	
+}
 // construct with params
 ParseRequest::ParseRequest(Server *server) : errorNumber(0), pos(0), 
     CurrntParsState(NONE), Method(""), Url(""),
-	HttpProtocolVersion(""), QuerieStrings("", ""), 
+	HttpProtocolVersion(""),
     S(server), chunkedEncoding(false), contentLength(0){
 	BufferBody.clear();
 	ChunkSize = 0;
