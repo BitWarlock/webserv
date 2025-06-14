@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/21 20:57:28 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/06/14 19:10:21 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/06/14 21:46:08 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -81,6 +81,7 @@ void    SetupServers::CreateSocket(Server& server)
 				throw std::runtime_error("");
 			}
 			this->fd_sockets.push_back(fd_server);
+			this->servers[fd_server] = server;			
 			Advance();
 		}
 	}
@@ -191,6 +192,7 @@ void    SetupServers::AcceptConnection(int fd)
 		throw std::runtime_error("Warning: accept() function failed to accept new connection.\n");
 	}
 	fd_sockets.push_back(fd_accept);
+	servers[fd_accept] = servers[fd];
 	Advance();
 }
 
@@ -204,6 +206,13 @@ void    SetupServers::EraseFd(int fd)
 	close (fd);
 	fd_sockets.erase(target);
 	Retreat();
+}
+
+
+Server	SetupServers::GetBlockServer(int block)
+{
+	std::map<int, Server>::iterator	it = servers.find(block);
+	return (it->second);
 }
 
 void    SetupServers::Run(void)
@@ -227,28 +236,22 @@ void    SetupServers::Run(void)
 			{
 				if (fd_sockets.begin() + endpoints != find(fd_sockets.begin(), fd_sockets.begin() + endpoints, fd))
 				{
-					std::cout << "new connection\n";
 					AcceptConnection(fd);
 					AddSocketToEpoll(fd_sockets.back(), EPOLLIN, EPOLL_CTL_ADD);
 				}
 				else
 				{
-					Requests[fd].startParse(fd);
+					Requests[fd].startParse(fd, GetBlockServer(fd));
 					if (Requests[fd].getParseState() == FINISH || Requests[fd].getParseState() == ERROR)
-					{
-						std::cout << "receive data\n";
 						AddSocketToEpoll(fd, EPOLLOUT, EPOLL_CTL_MOD);
-					}                        
-					std::cout << Requests[fd].getParseState() << "\n";
 				}
 			}
 			else if (events[i].events & EPOLLOUT)
 			{
-				std::cout << "send response\n";
 				std::string res =     "HTTP/1.1 200 OK\r\n"
 										"Content-Type: text/html; charset=UTF-8\r\n"
 										"Content-Length: 142\r\n"
-										"Connection: close\r\n"
+										"Connection: keep-live\r\n"
 										"\r\n"
 										"<!DOCTYPE html>\n"
 										"<html>\n"
@@ -259,7 +262,8 @@ void    SetupServers::Run(void)
 										"</body>\n"
 										"</html>\n";
 				int bytes = send(fd, res.c_str(), res.size(), 0);
-				std::cout << bytes << "\n";
+				(void) bytes;
+				// std::cout << bytes << "\n";
 				AddSocketToEpoll(fd, EPOLLIN, EPOLL_CTL_MOD); 
 			}
 		}

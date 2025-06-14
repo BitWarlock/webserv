@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/21 20:59:30 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/06/12 19:14:52 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/06/14 21:43:59 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,15 +44,18 @@ class SetupServers
         void                Run(void);
         void                Advance(void);
         void                Retreat(void);
+
+        Server              GetBlockServer(int block);
         
     private:
-        const Config&       config;
-        size_t              sock_number;
-        std::vector<int>    fd_sockets;
-        int                 fd_epoll;
-        int                 number_events;
-        struct epoll_event  events[MAX_EVENTS];
-        size_t              endpoints;
+        const Config&           config;
+        std::map<int, Server>   servers;
+        size_t                  sock_number;
+        std::vector<int>        fd_sockets;
+        int                     fd_epoll;
+        int                     number_events;
+        struct epoll_event      events[MAX_EVENTS];
+        size_t                  endpoints;
 };
 
 #endif
