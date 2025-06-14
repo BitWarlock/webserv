@@ -1,6 +1,22 @@
 #include "../inc/ParseRequest.hpp"
 #include "../inc/Server.hpp"
 
+
+const ParseRequest::ParseFuncPtr ParseRequest::ParseTable[] = {
+	&ParseRequest::StartNewRequest,
+	&ParseRequest::parseMethod,         
+    &ParseRequest::parseUrl,               
+    &ParseRequest::parseHttpVersion, 
+	&ParseRequest::parseHeaders,
+	&ParseRequest::parseHeaders,
+	&ParseRequest::parseHeaders,
+	&ParseRequest::parseContentlengthBody,
+	&ParseRequest::parseChunkedBody,
+	&ParseRequest::parseChunkedBody,
+};
+
+
+
 // construct
 ParseRequest::ParseRequest() : errorNumber(0), pos(0), 
     CurrntParsState(NONE), Method(""), Url(""),
@@ -21,12 +37,12 @@ ParseRequest::ParseRequest() : errorNumber(0), pos(0),
 	NonRepeatablesHeaders["expect"] = 0;
 	NonRepeatablesHeaders["range"] = 0;
 }
-ParseRequest::ParseRequest(ParseRequest& other){
+// ParseRequest::ParseRequest(ParseRequest& other){
 
-}
-ParseRequest& ParseRequest::operator=(const ParseRequest& other){
+// }
+// ParseRequest& ParseRequest::operator=(const ParseRequest& other){
 	
-}
+// }
 // construct with params
 ParseRequest::ParseRequest(Server *server) : errorNumber(0), pos(0), 
     CurrntParsState(NONE), Method(""), Url(""),
@@ -168,7 +184,7 @@ void ParseRequest::trimBuff(std::string &str){
 void ParseRequest::parseMethod(std::string &str){
 	if (isspace(str[0]))
 		return (SwitchState(ERROR), setErrorNumber(400));
-	pos = str.find(' ');
+	pos = str.find(SPACE);
 	if (pos == std::string::npos)
 	{
 		if ((str.find('\r') != std::string::npos) || str.find('\n') != std::string::npos)
@@ -191,7 +207,7 @@ void ParseRequest::setQueryString(std::string queryInUrl)   { QueryString = quer
 // read and parse the url ;
 void ParseRequest::parseUrl(std::string &str){
 	trimBuff(str);
-	pos = str.find(' ');
+	pos = str.find(SPACE);
 	if (pos == std::string::npos)
 	{
 		if ((str.find('\r') != std::string::npos) || str.find('\n') != std::string::npos)
@@ -226,7 +242,7 @@ bool ParseRequest::isValidVersion(){
 // read and parse the http request  version ;
 void ParseRequest::parseHttpVersion(std::string &str){
 	trimBuff(str);
-	pos = str.find("\r\n");
+	pos = str.find(CLRF);
 	if (pos == std::string::npos)
 	{
 		HttpProtocolVersion.append(str);
@@ -288,7 +304,7 @@ bool ParseRequest::checkIsThereaHost(){
 
 // read and parse the request headers once at a time ;
 void ParseRequest::parseHeaders(std::string &str){
-	pos = str.find("\r\n");
+	pos = str.find(CLRF);
 	if (pos == std::string::npos)
 		return;
 	if (CurrntParsState == HEADERS_KEY){
@@ -326,7 +342,7 @@ void ParseRequest::parseHeaders(std::string &str){
 		SwitchState(HEADERS_KEY);
 	}
 	ResetBuffPos();
-	if ((pos = str.find("\r\n")) == 0)
+	if ((pos = str.find(CLRF)) == 0)
 	{
 		str.erase(0, 2);
 		if (!checkIsThereaHost())
@@ -391,7 +407,7 @@ void ParseRequest::CheckingForBody(){
 void ParseRequest::parseContentlengthBody(std::string &str){
 	if (contentLength == 0)
 		return (SwitchState(FINISH));
-	pos = str.find("\r\n");
+	pos = str.find(CLRF);
 	if (pos != std::string::npos){
 		BufferBody =  str.substr(0,pos);
 		str.clear();
@@ -414,7 +430,7 @@ int ParseRequest::HexaStringToDecimalNum(std::string s){
 void ParseRequest::parseChunkedBody(std::string &str){
 	if (CurrntParsState == READCHUNKSIZE)
 	{
-		pos = str.find("\r\n");
+		pos = str.find(CLRF);
 		if (pos != std::string::npos)
 		{
 			std::string StringChunkSize = str.substr(0, pos);
@@ -478,6 +494,12 @@ void        ParseRequest::ResetParserf(){
 	QueryString.clear();
 }
 
+// start newrequest;
+void ParseRequest::StartNewRequest(std::string& buff){
+	(void)buff;
+	SwitchState(METHOD);
+}
+
 // start reading and parsing ;
 void ParseRequest::startParse(int fd){
 	std::string buff;
@@ -493,21 +515,15 @@ void ParseRequest::startParse(int fd){
 		else if (bytes < 0)
 			return (SwitchState(NONE));
 		buff.append(str);
-		if (CurrntParsState == NONE)
-			SwitchState(METHOD);
-		if (CurrntParsState == METHOD)
-			parseMethod(buff);
-		if (CurrntParsState == URL)
-			parseUrl(buff);
-		if (CurrntParsState == HTTPVERSION)
-			parseHttpVersion(buff);
-		if (CurrntParsState == HEADERS_KEY || CurrntParsState == HEADER_VALUE)
-			parseHeaders(buff);
-		if (CurrntParsState == CONTENTLENGTHBODY)
-			parseContentlengthBody(buff);
-		if (CurrntParsState == READCHUNKSIZE || CurrntParsState == READCHUNK)
-			parseChunkedBody(buff);
-		if (CurrntParsState ==  FINISH || CurrntParsState == ERROR)
+		switch(CurrntParsState){
+			case FINISH:
+				return ;
+			case ERROR:
+				return ;
+			default :
+			if (CurrntParsState < PARSEARRAYSIZE)
+				(this->*ParseRequest::ParseTable[CurrntParsState])(buff);
 			break;
+		}
 	}
 }

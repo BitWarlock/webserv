@@ -9,9 +9,12 @@
 #include <sys/socket.h>
 #include <string.h>
 #include "Server.hpp"
+#define CLRF "\r\n"
+#define SPACE ' '
 
 enum RequestParseStats
 {
+    NONE,
     METHOD,
     URL,
     HTTPVERSION,
@@ -21,9 +24,9 @@ enum RequestParseStats
     CONTENTLENGTHBODY,
     READCHUNKSIZE,
     READCHUNK,
+    PARSEARRAYSIZE,
     FINISH,
     ERROR,
-    NONE,
     CLOSE
 };
 
@@ -31,8 +34,8 @@ class ParseRequest{
     public:
         ParseRequest();
         ParseRequest(Server *server);
-        ParseRequest(ParseRequest& other);
-        ParseRequest& operator=(const ParseRequest& other);
+        // ParseRequest(ParseRequest& other);
+        // ParseRequest& operator=(const ParseRequest& other);
         ~ParseRequest();
 
     private:
@@ -56,18 +59,22 @@ class ParseRequest{
         std::string                                         Host;
         std::string                                         Port;
         std::string                                         QueryString;
-    
+        typedef void                                        (ParseRequest::*ParseFuncPtr)(std::string& buffer);
+        static  const ParseFuncPtr                               ParseTable[];
+
+
     public:
         // parse input
         void        startParse(int fd);
-        void        parseMethod(std::string &str);
-        void        parseUrl(std::string &str);
-        void        parseHttpVersion(std::string &str);
-        void        parseHeaders(std::string &str);
+        void        StartNewRequest(std::string& buff);
+        void        parseMethod(std::string& str);
+        void        parseUrl(std::string& str);
+        void        parseHttpVersion(std::string& str);
+        void        parseHeaders(std::string& str);
         void        CheckingForBody();
         void        parseContentlengthBody(std::string &str);
-        int         HexaStringToDecimalNum(std::string s);
         void        parseChunkedBody(std::string &str);
+        int         HexaStringToDecimalNum(std::string s);
         void        trimBuff(std::string &str);
         void        toLowerCase(std::string &key);
         bool        isAllSpaces(std::string &str);
