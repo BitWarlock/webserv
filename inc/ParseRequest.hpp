@@ -50,7 +50,7 @@ class ParseRequest{
         std::string                                         HttpProtocolVersion;
         Server                                              *S;
         bool                                                chunkedEncoding;
-        size_t                                              contentLength;
+        int                                                 contentLength;
         std::vector<std::pair<std::string, std::string> >   Headers;
         bool                                                hasValidHost;
         size_t                                              ChunkSize;
@@ -60,7 +60,7 @@ class ParseRequest{
         std::string                                         Port;
         std::string                                         QueryString;
         typedef void                                        (ParseRequest::*ParseFuncPtr)(std::string& buffer);
-        static  const ParseFuncPtr                               ParseTable[];
+        static  const ParseFuncPtr                          ParseTable[];
 
 
     public:
@@ -95,11 +95,15 @@ class ParseRequest{
         bool        isValidVersion();
 
         // getters
-        std::string getMethod();
-        std::string getUri();
-        std::string getVersion();
-        int         getParseState();
-        std::string getHeaderValue(std::string key);
+        std::string                                         getMethod();
+        std::string                                         getUri();
+        std::string                                         getVersion();
+        int                                                 getParseState();
+        std::string                                         getHeaderValue(std::string key);
+        int                                                 getErrorNumber();
+        std::vector<std::pair<std::string, std::string> >   getHeaders();
+        std::string                                         getHost();
+        std::string                                         getPort();
 
         // setters
         void        setMethod(std::string m);

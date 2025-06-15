@@ -68,31 +68,23 @@ ParseRequest::~ParseRequest() {}
 
 // getters
 
-// get the method ;
-std::string ParseRequest::getMethod()           { return (Method); }
-// get the http version ;
-std::string ParseRequest::getVersion()          { return (HttpProtocolVersion); }
-// get the url ;
-std::string ParseRequest::getUri()              { return (Url); }
-// getting the parse stat ;
-int ParseRequest::getParseState()               { return (CurrntParsState); }
-
+std::string 										ParseRequest::getMethod()		{ return (Method); }
+std::string 										ParseRequest::getVersion()      { return (HttpProtocolVersion); }
+std::string 										ParseRequest::getUri()          { return (Url); }
+int 												ParseRequest::getParseState()   { return (CurrntParsState); }
+int         										ParseRequest::getErrorNumber()	{ return (errorNumber);}
+std::vector<std::pair<std::string, std::string> >	ParseRequest::getHeaders()		{return (Headers);}
+std::string											ParseRequest::getHost()			{return (Host);}
+std::string											ParseRequest::getPort()			{return (Port);}
 // setters
 
 
-// set the method ;
 void ParseRequest::setMethod(std::string m)     { Method = m; }
-// switch parse stat ;
 void ParseRequest::SwitchState(int Next_State)  { CurrntParsState = Next_State; }
-// set the url ; 
 void ParseRequest::setUri(std::string u)        { Url = u; }
-// set the httpverstion ;
 void ParseRequest::setVersion(std::string v)    { HttpProtocolVersion = v; }
-// reset parsstat ;
 void ParseRequest::Reset()                      { SwitchState(NONE); }
-// setting the error number ;
 void ParseRequest::setErrorNumber(int Number)   {errorNumber = Number;  SwitchState(ERROR);}
-// reset the pos of parsing ;
 void ParseRequest::ResetBuffPos()               { pos = 0; }
 
 // checkers
