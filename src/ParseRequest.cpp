@@ -96,8 +96,6 @@ bool ParseRequest::isFinish()                   { return (getParseState() == FIN
 bool ParseRequest::isSupportedMethod(std::string &RequestMethod)
 {
 	const std::vector<std::string> &sMethods = S->getAllowedMethods();
-	if (sMethods.size() == 0)
-		return (true);
 	std::string m = RequestMethod;
 	for (size_t i = 0; i < sMethods.size(); i++)
 	{
@@ -405,7 +403,7 @@ void ParseRequest::parseContentlengthBody(std::string &str){
 		BufferBody =  str.substr(0,pos);
 		str.clear();
 		std::cout << "something\n";
-		if (contentLength != BufferBody.size())
+		if (static_cast<size_t> (contentLength) != BufferBody.size())
 			return (SwitchState(ERROR), setErrorNumber(400));
 		return (SwitchState(FINISH));
 	}
