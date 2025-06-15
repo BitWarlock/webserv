@@ -1,18 +1,18 @@
 #include "../inc/ParseRequest.hpp"
 #include "../inc/Server.hpp"
 
-
+// tbale that hold apointers to parse functions;
 const ParseRequest::ParseFuncPtr ParseRequest::ParseTable[] = {
-	&ParseRequest::StartNewRequest,
-	&ParseRequest::parseMethod,         
-    &ParseRequest::parseUrl,               
-    &ParseRequest::parseHttpVersion, 
-	&ParseRequest::parseHeaders,
-	&ParseRequest::parseHeaders,
-	&ParseRequest::parseHeaders,
-	&ParseRequest::parseContentlengthBody,
-	&ParseRequest::parseChunkedBody,
-	&ParseRequest::parseChunkedBody,
+	&ParseRequest::StartNewRequest,  			//	NONE (so the parse will start)
+	&ParseRequest::parseMethod,         		//	METHOD 
+    &ParseRequest::parseUrl,            		//	URL
+    &ParseRequest::parseHttpVersion, 			//	HTTPVERSION
+	&ParseRequest::parseHeaders,				//	HEADERS_KEY
+	&ParseRequest::parseHeaders,				//	HEDERS_VALUE
+	&ParseRequest::parseHeaders,				//	ADDING THE HEADER
+	&ParseRequest::parseContentlengthBody,		//	CONTENT_LENGHT_BODY
+	&ParseRequest::parseChunkedBody,			//	CHUNED_BODY_SIZE
+	&ParseRequest::parseChunkedBody,			//	READ_THE_CHUNK
 };
 
 
@@ -104,6 +104,8 @@ bool ParseRequest::isFinish()                   { return (getParseState() == FIN
 bool ParseRequest::isSupportedMethod(std::string &RequestMethod)
 {
 	const std::vector<std::string> &sMethods = S->getAllowedMethods();
+	if (sMethods.size() == 0)
+		return (true);
 	std::string m = RequestMethod;
 	for (size_t i = 0; i < sMethods.size(); i++)
 	{
@@ -389,9 +391,8 @@ void ParseRequest::CheckingForBody(){
 			if (!isNumber(Headersit->second))
 				return (SwitchState(ERROR), setErrorNumber(400));
 			contentLength = std::atoi(Headersit->second.c_str());
-			// if (contentLength < 0)
-			//     return (SwitchState(ERROR), setErrorNumber(400));
-			//
+			if (contentLength < 0)
+			    return (SwitchState(ERROR), setErrorNumber(400));
 		}
 	}
 	if (TransferEncodingPresent && contentLengthPresent)
@@ -503,7 +504,8 @@ void ParseRequest::StartNewRequest(std::string& buff){
 // start reading and parsing ;
 void ParseRequest::startParse(int fd, Server server){
 	std::string buff;
-
+	if (CurrntParsState == NONE)
+		S = &server;
 	while(true)
 	{
 		char        str[1000];
