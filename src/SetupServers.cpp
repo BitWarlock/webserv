@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/21 20:57:28 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/06/14 21:46:08 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/06/16 18:36:17 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,7 +28,7 @@ SetupServers::~SetupServers()
 {
 	for (size_t i(0); i < sock_number; i++)
 		close(fd_sockets[i]);
-	delete &config;
+	// delete &config;
 }
 
 void    SetupServers::CheckPortIp(const std::string& host, const std::string& port, size_t pos_server)
@@ -78,11 +78,13 @@ void    SetupServers::CreateSocket(Server& server)
 			{
 				std::cerr << YLW"Warning:make socket() function failed to create endpoint "
 					<< "for " << server.getListen()[i].first << ":"<< port << ".\n" << RESET;
-				throw std::runtime_error("");
 			}
-			this->fd_sockets.push_back(fd_server);
-			this->servers[fd_server] = server;			
-			Advance();
+			else
+			{
+				this->fd_sockets.push_back(fd_server);
+				this->servers[fd_server] = server;			
+				Advance();
+			}
 		}
 	}
 }
@@ -113,9 +115,9 @@ void    SetupServers::Binding(Server& server, size_t index)
 			setAddrForBound(host, port, add_server);
 			if (bind(fd_sockets[s + index],  (struct sockaddr*) &add_server, sizeof(add_server)))
 			{
+				EraseFd(fd_sockets[s + index]);
 				std::cerr << YLW"Warning: bind() function failed to bound "
 					<< host << ":"<< port << ".\n" << RESET;
-				throw std::runtime_error("");
 			}
 			s++;
 		}
@@ -208,7 +210,6 @@ void    SetupServers::EraseFd(int fd)
 	Retreat();
 }
 
-
 Server	SetupServers::GetBlockServer(int block)
 {
 	std::map<int, Server>::iterator	it = servers.find(block);
@@ -218,6 +219,7 @@ Server	SetupServers::GetBlockServer(int block)
 void    SetupServers::Run(void)
 {
 	std::map<int, ParseRequest> Requests;
+	std::map<int, Response>		Responses;
 
 	CreateEpoll();
 
@@ -248,28 +250,13 @@ void    SetupServers::Run(void)
 			}
 			else if (events[i].events & EPOLLOUT)
 			{
-				std::string res =     "HTTP/1.1 200 OK\r\n"
-										"Content-Type: text/html; charset=UTF-8\r\n"
-										"Content-Length: 142\r\n"
-										"Connection: keep-live\r\n"
-										"\r\n"
-										"<!DOCTYPE html>\n"
-										"<html>\n"
-										"<head><title>Webserv Test</title></head>\n"
-										"<body>\n"
-										"    <h1>Welcome!</h1>\n"
-										"    <p>This is a test response from your Webserv.</p>\n"
-										"</body>\n"
-										"</html>\n";
-				int bytes = send(fd, res.c_str(), res.size(), 0);
-				(void) bytes;
-				// std::cout << bytes << "\n";
-				AddSocketToEpoll(fd, EPOLLIN, EPOLL_CTL_MOD); 
+				Responses[fd].StartForResponse(Requests[fd], GetBlockServer(fd));
+				if (Responses[fd].getState() == FINISH || Responses[fd].getState() == ERROR)
+					AddSocketToEpoll(fd, EPOLLIN, EPOLL_CTL_MOD);
 			}
 		}
 	}
 }
-
 
 void    SetupServers::Advance(void) {this->sock_number++;}
 
@@ -290,8 +277,9 @@ void    SetupServers::StartSetup(void)
 			{
 				if (listen(fd_sockets[index], SOMAXCONN) < 0)
 				{
+					EraseFd(fd_sockets[index]);
 					std::cerr << YLW"Warning: listen() function failed to listen.\n"<< RESET;
-					throw std::runtime_error("");
+					
 				}
 				index++;
 			}

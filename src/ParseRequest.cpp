@@ -514,8 +514,8 @@ void ParseRequest::startParse(int fd, Server server){
 			default :
 				if (CurrntParsState < PARSEARRAYSIZE){
 					(this->*ParseRequest::ParseTable[CurrntParsState])(buff);
-					break;
-				}
+				break;
+			}
 		}
 	}
 }
