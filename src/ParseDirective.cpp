@@ -11,26 +11,78 @@ DirectiveParser::~DirectiveParser()
 		delete serversInProgress[i];
 }
 
+void	validateMandatoryDirectives(const Config* config)
+{
+	const std::vector<Server*>& servers = config->getServers();
+	
+	for (size_t i = 0; i < servers.size(); i++)
+	{
+		const Server* server = servers[i];
+		const std::vector<Location*>& locations = server->getLocations();
+		bool hasRootLocation = false;
+		for (size_t j = 0; j < locations.size(); j++)
+		{
+			if (locations[j]->getPath() == "/")
+			{
+				hasRootLocation = true;
+				break;
+			}
+		}
+
+		if (!hasRootLocation && server->getRoot().empty())
+			throw std::runtime_error(
+					"Server block must have either a `root` directive or a `location /` block");
+
+		if (server->getAllowedMethods().empty())
+			throw std::runtime_error("Server must specify `allowed_methods`");
+
+		for (size_t j = 0; j < locations.size(); j++)
+		{
+			const Location* loc = locations[j];
+			if (loc->getAllowedMethods().empty())
+				throw std::runtime_error("Location `" +
+						loc->getPath() + "` must specify `allowed_methods`");
+		}
+	}
+}
+
 Config* DirectiveParser::parseConfig()
 {
 	Config* config = new Config();
 	currentToken = lexer.getNextToken();
 
-	while (currentToken.type != TOKEN_EOF)
+	try
 	{
-		if (currentToken.type == TOKEN_SERVER)
+		while (currentToken.type != TOKEN_EOF)
 		{
-			Server* server = parseServerBlock();
-			if (server->getListen().empty())
-				server->setListen(std::make_pair("0.0.0.0", "8000"));
-			config->addServer(server);
-			serversInProgress.push_back(server);
+			if (currentToken.type == TOKEN_SERVER)
+			{
+				Server* server = parseServerBlock();
+				if (server->getListen().empty())
+					server->setListen(std::make_pair("0.0.0.0", "8000"));
+				config->addServer(server);
+				serversInProgress.push_back(server);
+			}
+			else
+				throw ParseException("Unexpected token outside server block", currentToken.line);
 		}
-		else
-			throw ParseException("Unexpected token outside server block", currentToken.line);
+	}
+	catch (...)
+	{
+		delete config;
+		throw;
 	}
 
 	serversInProgress.clear();
+	try
+	{
+		validateMandatoryDirectives(config);
+	}
+	catch (...)
+	{
+		delete config;
+		throw;
+	}
 	return (config);
 }
 
@@ -41,17 +93,25 @@ Server* DirectiveParser::parseServerBlock()
 
 	Server* server = new Server();
 
-	while (currentToken.type != TOKEN_CLOSE_BRACE)
+	try
 	{
-		if (currentToken.type == TOKEN_LOCATION)
+		while (currentToken.type != TOKEN_CLOSE_BRACE)
 		{
-			Location* location = parseLocationBlock(server);
-			server->addLocation(location);
+			if (currentToken.type == TOKEN_LOCATION)
+			{
+				Location* location = parseLocationBlock(server);
+				server->addLocation(location);
+			}
+			else if (currentToken.type == TOKEN_DIRECTIVE)
+				parseServerDirective(server);
+			else
+				throw ParseException("Unexpected token in server block", currentToken.line);
 		}
-		else if (currentToken.type == TOKEN_DIRECTIVE)
-			parseServerDirective(server);
-		else
-			throw ParseException("Unexpected token in server block", currentToken.line);
+	}
+	catch (...)
+	{
+		delete server;
+		throw;
 	}
 
 	expect(TOKEN_CLOSE_BRACE);
@@ -72,12 +132,20 @@ Location* DirectiveParser::parseLocationBlock(Server* server)
 	Location* location = new Location(path);
 	location->inheritFrom(server);
 
-	while (currentToken.type != TOKEN_CLOSE_BRACE)
+	try
 	{
-		if (currentToken.type == TOKEN_DIRECTIVE)
-			parseLocationDirective(location);
-		else
-			throw ParseException("Unexpected token in location block", currentToken.line);
+		while (currentToken.type != TOKEN_CLOSE_BRACE)
+		{
+			if (currentToken.type == TOKEN_DIRECTIVE)
+				parseLocationDirective(location);
+			else
+				throw ParseException("Unexpected token in location block", currentToken.line);
+		}
+	}
+	catch (...)
+	{
+		delete location;
+		throw;
 	}
 
 	expect(TOKEN_CLOSE_BRACE);
@@ -87,7 +155,7 @@ Location* DirectiveParser::parseLocationBlock(Server* server)
 void DirectiveParser::parseAllowMethodsServ(Server *server, const std::vector<std::string>& values)
 {
 	if (values.empty())
-		throw ParseException("allow_methods directive requires at least one value", currentToken.line);
+		throw ParseException("allowed_methods directive requires at least one value", currentToken.line);
 
 	for (size_t i = 0; i < values.size(); ++i)
 		server->addAllowedMethod(values[i]);
@@ -99,7 +167,7 @@ void DirectiveParser::parseServerDirective(Server* server)
 	advance();
 	std::vector<std::string> values = gatherDirectiveValues();
 
-	if (directive == "allow_methods")
+	if (directive == "allowed_methods")
 		parseAllowMethodsServ(server, values);
 	else if (directive == "listen")
 		parseListen(server, values);
@@ -111,7 +179,7 @@ void DirectiveParser::parseServerDirective(Server* server)
 		parseErrorPage(server, values);
 	else if (directive == "return")
 		parseReturn(server, values);
-	else if (directive == "client_body_limit")
+	else if (directive == "client_max_body_size")
 		parseClientBodyLimit(server, NULL, values);
 	else if (directive == "autoindex")
 		parseAutoindex(server, NULL, values);
@@ -127,11 +195,11 @@ void DirectiveParser::parseLocationDirective(Location* location)
 	advance();
 	std::vector<std::string> values = gatherDirectiveValues();
 
-	if (directive == "allow_methods")
+	if (directive == "allowed_methods")
 		parseAllowMethods(location, values);
 	else if (directive == "root")
 		parseRoot(NULL, location, values);
-	else if (directive == "client_body_limit")
+	else if (directive == "client_max_body_size")
 		parseClientBodyLimit(NULL, location, values);
 	else if (directive == "autoindex")
 		parseAutoindex(NULL, location, values);
@@ -215,7 +283,7 @@ void DirectiveParser::parseClientBodyLimit(Server* server,
 		Location* location, const std::vector<std::string>& values)
 {
 	if (values.size() != 1)
-		throw ParseException("client_body_limit requires exactly one value", currentToken.line);
+		throw ParseException("client_max_body_size requires exactly one value", currentToken.line);
 
 	size_t limit = parseSize(values[0]);
 
@@ -318,7 +386,7 @@ void DirectiveParser::parseIndex(Server* server, Location* location, const std::
 void DirectiveParser::parseAllowMethods(Location* location, const std::vector<std::string>& values)
 {
 	if (values.empty())
-		throw ParseException("allow_methods directive requires at least one value", currentToken.line);
+		throw ParseException("allowed_methods directive requires at least one value", currentToken.line);
 
 	for (size_t i = 0; i < values.size(); ++i)
 		location->addAllowedMethod(values[i]);

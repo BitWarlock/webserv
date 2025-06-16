@@ -48,7 +48,7 @@ class Server
 		std::map<int, std::string>	error_pages;
 		std::vector<Location*>		locations;
 		std::string					root;
-		size_t						client_body_limit;
+		size_t						client_max_body_size;
 		bool						autoindex;
 		std::vector<std::string>	index;
 };
