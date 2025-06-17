@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/16 16:28:12 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/06/17 20:26:21 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/06/17 20:51:30 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -74,6 +74,8 @@ class Response{
         void    CheckLocations(std::string& path);
         bool    CheckRootLocation(std::string& path);
         bool    GetFullPath(std::string& path);
+        void    GetListingPage();
+        void    CHeckForIndex();
         
 };
 

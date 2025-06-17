@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/16 16:32:33 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/06/17 20:49:02 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/06/17 20:51:20 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -106,7 +106,7 @@ void    Response::GetPageResponse(void)
         if (ServerBlock.getAutoindex() == true)
             GetListingPage();
         else
-            CHeckForIndex
+            CHeckForIndex();
     }
     else
     {
