@@ -1,8 +1,10 @@
 #include "../inc/Location.hpp"
 #include "../inc/Server.hpp"
 
+Location::Location(){}
+
 Location::Location(const std::string& path) 
-	: path(path), autoindex(false), client_body_limit(0) {return_d.enabled = false;}
+	: path(path), autoindex(false), client_max_body_size(0) {return_d.enabled = false;}
 
 Location::~Location() {}
 
@@ -15,7 +17,7 @@ void Location::setAutoindex(bool autoindex) {this->autoindex = autoindex;}
 
 void Location::addIndex(const std::string& index) {this->index.push_back(index);}
 
-void Location::setClientBodyLimit(size_t limit) {client_body_limit = limit;}
+void Location::setClientBodyLimit(size_t limit) {client_max_body_size = limit;}
 
 void Location::setCgiExtension(const std::string& ext,
 		const std::string& interpreter) {cgi_info[ext] = interpreter;}
@@ -30,8 +32,8 @@ void Location::inheritFrom(const Server* server)
 {
 	if (root.empty())
 		root = server->getRoot();
-	if (client_body_limit == 0)
-		client_body_limit = server->getClientBodyLimit();
+	if (client_max_body_size == 0)
+		client_max_body_size = server->getClientBodyLimit();
 	if (index.empty())
 		index = server->getIndex();
 }
@@ -49,7 +51,7 @@ bool Location::getAutoindex() const {return autoindex;}
 
 const std::vector<std::string>& Location::getIndex() const {return index;}
 
-size_t Location::getClientBodyLimit() const {return client_body_limit;}
+size_t Location::getClientBodyLimit() const {return client_max_body_size;}
 
 const std::string& Location::getReturn() const {return return_url;}
 

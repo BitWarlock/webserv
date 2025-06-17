@@ -101,7 +101,7 @@ bool isKnownDirective(const std::string& word)
 {
 	static const std::string directiveArray[] = {
 		"listen", "server_name", "root", "error_page", "client_body_limit",
-		"autoindex", "index", "allow_methods", "cgi_info", "return", "upload_store",
+		"autoindex", "index", "allowed_methods", "cgi_info", "return", "upload_store",
 		"return"
 	};
 	static const std::set<std::string> directives(

@@ -17,6 +17,7 @@ class Server;
 class Location
 {
 	public:
+		Location();
 		Location(const std::string& path);
 		~Location();
 
@@ -53,7 +54,7 @@ class Location
 		std::string					root;
 		bool						autoindex;
 		std::vector<std::string>	index;
-		size_t						client_body_limit;
+		size_t						client_max_body_size;
 		std::map<std::string,
 			std::string>			cgi_info;
 		std::string					return_url;

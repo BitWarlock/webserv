@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/21 20:57:28 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/06/16 18:36:17 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/06/17 18:26:33 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -71,6 +71,7 @@ void    SetupServers::CreateSocket(Server& server)
 	for (size_t i(0); i < server.getListen().size(); i++)
 	{
 		std::string port = server.getListen()[i].second;
+		
 		if (port[port.size() - 1] != 'T')
 		{
 			int fd_server = socket(AF_INET, SOCK_STREAM, 0);
@@ -145,6 +146,7 @@ struct epoll_event    SetupServers::InitEvents(int fd, int event)
 
 	ev.data.fd = fd;
 	ev.events = event;
+
 	return (ev);
 }
 
@@ -156,7 +158,9 @@ void    SetupServers::AddSocketToEpoll(int fd, int event, int job)
 	{
 		throw std::runtime_error("Warning: fcntl() function failed to set non-blocking mode\n");
 	}
+	
 	struct epoll_event          ev = InitEvents(fd, event);
+	
 	return_value = epoll_ctl(fd_epoll, job, fd, &ev);
 
 	if (return_value == -1)
@@ -193,8 +197,11 @@ void    SetupServers::AcceptConnection(int fd)
 	{
 		throw std::runtime_error("Warning: accept() function failed to accept new connection.\n");
 	}
+
 	fd_sockets.push_back(fd_accept);
+	
 	servers[fd_accept] = servers[fd];
+	
 	Advance();
 }
 
@@ -203,23 +210,28 @@ void    SetupServers::EraseFd(int fd)
 	std::vector<int>::iterator    target;
 
 	target = find(fd_sockets.begin(), fd_sockets.end(), fd);
+
 	if (target == fd_sockets.end())
 		return ;
+
 	close (fd);
+	
 	fd_sockets.erase(target);
+	
 	Retreat();
 }
 
 Server	SetupServers::GetBlockServer(int block)
 {
 	std::map<int, Server>::iterator	it = servers.find(block);
+
 	return (it->second);
 }
 
 void    SetupServers::Run(void)
 {
 	std::map<int, ParseRequest> Requests;
-	std::map<int, Response>		Responses;
+	// std::map<int, Response>		Responses;
 
 	CreateEpoll();
 
@@ -250,9 +262,9 @@ void    SetupServers::Run(void)
 			}
 			else if (events[i].events & EPOLLOUT)
 			{
-				Responses[fd].StartForResponse(Requests[fd], GetBlockServer(fd));
-				if (Responses[fd].getState() == FINISH || Responses[fd].getState() == ERROR)
-					AddSocketToEpoll(fd, EPOLLIN, EPOLL_CTL_MOD);
+				// Responses[fd].StartForResponse(Requests[fd], GetBlockServer(fd));
+				// if (Responses[fd].getState() == FINISH || Responses[fd].getState() == ERROR)
+				AddSocketToEpoll(fd, EPOLLIN, EPOLL_CTL_MOD);
 			}
 		}
 	}
@@ -268,6 +280,7 @@ void    SetupServers::StartSetup(void)
 	std::vector<Server*>& servers = const_cast<std::vector<Server*>&> (config.getServers());
 
 	FlagSharedPortIp();
+
 	for (size_t i(0); i < servers.size(); i++)
 	{
 		try {
@@ -279,13 +292,14 @@ void    SetupServers::StartSetup(void)
 				{
 					EraseFd(fd_sockets[index]);
 					std::cerr << YLW"Warning: listen() function failed to listen.\n"<< RESET;
-					
 				}
 				index++;
 			}
 		}
 		catch (...){}
 	}
+
 	endpoints = sock_number;
+
 	Run();
 }

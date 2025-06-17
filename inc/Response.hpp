@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/16 16:28:12 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/06/16 19:52:40 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/06/17 20:26:21 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,15 +15,15 @@
 
 #include <iostream>
 #include <sstream>
+#include "WebServ.hpp"
 #include "Lexer.hpp"
+#include "Location.hpp"
+#include "Server.hpp"
 #include <utility>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <string.h>
-#include "Server.hpp"
-#include "WebServ.hpp"
-#include "Location.hpp"
 
 #define GET "GET"
 #define POST "POST"
@@ -39,6 +39,7 @@ enum ResponseNumberState
     Content_Too_Large = 413,
     URI_Too_Long = 414,
     Request_Header_Fields_Too_Large = 431,
+    Internal_Server_Error = 500,
     Not_Implemented = 501,
     HTTP_Version_Not_Supported = 505,   
 };
@@ -51,6 +52,7 @@ class Response{
         ParseRequest    Request;
         Server          ServerBlock;
         Location        location;
+        bool            FromLocation;
         
     public:
         Response();
@@ -70,6 +72,8 @@ class Response{
         void    AploadContentResponse(void);
         void    DeleteContentResponse(void);
         void    CheckLocations(std::string& path);
+        bool    CheckRootLocation(std::string& path);
+        bool    GetFullPath(std::string& path);
         
 };
 
