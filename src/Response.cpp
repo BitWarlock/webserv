@@ -6,53 +6,31 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/16 16:32:33 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/06/17 20:51:20 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/06/18 21:51:51 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "Response.hpp"
+#include "../inc/Response.hpp"
 
 Response::Response(){}
 
-Response::~Response(){}
-
-bool    Response::CheckRootLocation(std::string& path)
-{
-    std::vector<Location*>  locations = ServerBlock.getLocations();
-    
-    if (path.size() != 1)
-        return (true);
-
-    for (size_t i(0); i < locations.size(); i++)
-    {
-        if (locations[i]->getPath().size() == 1 &&
-            path == locations[i]->getPath())
-        {
-            SetLocation(*(locations[i]));
-            return (false);
-        }
-    }
-    return (false);
-}    
+Response::~Response(){}   
 
 void    Response::CheckLocations(std::string& path)
 {
     std::vector<Location*>  locations = ServerBlock.getLocations();
     bool                    flag = false;
 
-    if (CheckRootLocation(path) == false)
-        return ;
-
     for (size_t i(0); i < locations.size(); i++)
     {
         size_t  pos = path.find(locations[i]->getPath());
         
-        if (flag == false && pos != std::string::npos)
+        if (flag == false && pos == 0)
         {
             SetLocation(*(locations[i]));
             flag = true;
         }
-        else if (flag == true && pos != std::string::npos)
+        else if (flag == true && pos == 0)
         {
             if (locations[i]->getPath().size() > location.getPath().size())
                 SetLocation(*(locations[i]));
@@ -63,11 +41,14 @@ void    Response::CheckLocations(std::string& path)
 bool    Response::GetFullPath(std::string& path)
 {
     if (FromLocation == true)
-    {
+    {    
         if (!location.getRoot().empty())
+        {
+            path = path.substr(location.getPath().size());
             path = location.getRoot() + path;
+        }
         else if (!ServerBlock.getRoot().empty())
-            path = ServerBlock.getRoot() + path;
+            path = ServerBlock.getRoot() + path.substr(1);
         else
         {
             state = Internal_Server_Error;
@@ -83,14 +64,64 @@ bool    Response::GetFullPath(std::string& path)
             ResponseWithError();
             return (false);
         }
-        path = ServerBlock.getRoot() + path;
+        path = ServerBlock.getRoot() + path.substr(1);
     }
     return (true);
 }
 
+bool    Response::CheckAutoIndex(void)
+{
+    if (FromLocation == true)
+        return (location.getAutoindex());
+
+    return (ServerBlock.getAutoindex());
+}
+
+void    Response::CheckIndexAccess(void)
+{
+    if (access(path.c_str(), R_OK) == -1)
+    {
+        SetState(Forbidden);
+        ResponseWithError();
+        return ;
+    }
+    std::ifstream   file(path.c_str());
+    if (!file.is_open())
+    {
+        SetState(Internal_Server_Error);
+        ResponseWithError();
+        return ;
+    }
+    
+}
+
+void    Response::SearchForIndex(void)
+{
+    if (FromLocation == true)
+    {
+        if (location.getIndex().empty())
+        {
+            SetState(Forbidden);
+            ResponseWithError();
+        }
+        else
+            CheckIndexAccess();
+    }
+    else
+    {
+        if (ServerBlock.getIndex().empty())
+        {
+            SetState(Forbidden);
+            ResponseWithError();
+        }
+        else
+            CheckIndexAccess();
+    }
+}
+
 void    Response::GetPageResponse(void)
 {
-    std::string path = Request.getUri();
+    this->path = Request.getUri();
     struct stat info;
     
     CheckLocations(path);
@@ -98,20 +129,24 @@ void    Response::GetPageResponse(void)
     if (GetFullPath(path) == false)
         return ;
 
-    if (stat(path.c_str(), &info) != 0)
-        throw std::runtime_error("Warning: stat() function failed to get file status\n");
+    if (stat(path.c_str(), &info) == -1)
+    {
+        SetState(Not_Found);
+        ResponseWithError();
+        return ;
+    }
         
     if (S_ISDIR(info.st_mode))
     {
-        if (ServerBlock.getAutoindex() == true)
+        if (CheckAutoIndex() == ON)
             GetListingPage();
         else
-            CHeckForIndex();
+            SearchForIndex();
     }
-    else
-    {
+    // else
+    // {
         
-    } 
+    // } 
 }
 
 void    Response::ResponseWithOk(void)
@@ -120,23 +155,24 @@ void    Response::ResponseWithOk(void)
 
     if (Method == GET)
         GetPageResponse();
-    else if (Method == POST)
-        AploadContentResponse();
-    else
-        DeleteContentResponse();   
+    // else if (Method == POST)
+    //     AploadContentResponse();
+    // else
+    //     DeleteContentResponse();   
 }
 
 void    Response::StartForResponse(ParseRequest request, Server BlockServer)
 {
     SetRequest(request);
     SetBlockServer(BlockServer);
+    SetState(request.getErrorNumber());
 
-    if (request.getErrorNumber() != OK)
+    if (getState() != OK)
         ResponseWithError();
     else
         ResponseWithOk();
 
-    SendResponse();
+    // SendResponse();
 }
 
 void    Response::ResponseWithError(void){}
@@ -148,3 +184,7 @@ void    Response::SetRequest(ParseRequest Request){this->Request = Request;}
 void    Response::SetBlockServer(Server BlockServer){this->ServerBlock = BlockServer;}
 
 void    Response::SetLocation(Location location){this->location = location; this->FromLocation = true;}
+
+void    Response::SetState(int state){this->state = state;}
+
+void    Response::SetPath(std::string path){this->path = path;}

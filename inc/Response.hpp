@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/16 16:28:12 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/06/17 20:51:30 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/06/18 21:44:20 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,6 +28,8 @@
 #define GET "GET"
 #define POST "POST"
 #define DELETE "DELETE"
+#define ON true
+#define OFF false
 
 enum ResponseNumberState
 {
@@ -53,6 +55,7 @@ class Response{
         Server          ServerBlock;
         Location        location;
         bool            FromLocation;
+        std::string     path;
         
     public:
         Response();
@@ -63,7 +66,9 @@ class Response{
 
         void    SetRequest(ParseRequest Request);
         void    SetBlockServer(Server BlockServer);
-        void    SetLocation(Location location);        
+        void    SetLocation(Location location);
+        void    SetState(int state);
+        void    SetPath(std::string path);        
         
         void    ResponseWithError(void);
         void    ResponseWithOk(void);
@@ -72,10 +77,11 @@ class Response{
         void    AploadContentResponse(void);
         void    DeleteContentResponse(void);
         void    CheckLocations(std::string& path);
-        bool    CheckRootLocation(std::string& path);
         bool    GetFullPath(std::string& path);
-        void    GetListingPage();
-        void    CHeckForIndex();
+        bool    CheckAutoIndex(void);
+        void    GetListingPage(void);
+        void    SearchForIndex(void);
+        void    CheckIndexAccess(void);
         
 };
 

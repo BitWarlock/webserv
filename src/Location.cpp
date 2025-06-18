@@ -30,8 +30,8 @@ void Location::addReturnDirective(const ReturnDirective rd) {return_d = rd;}
 
 void Location::inheritFrom(const Server* server)
 {
-	if (root.empty())
-		root = server->getRoot();
+	// if (root.empty())
+	// 	root = server->getRoot();
 	if (client_max_body_size == 0)
 		client_max_body_size = server->getClientBodyLimit();
 	if (index.empty())
