@@ -92,6 +92,8 @@ int main(int argc, char *argv[])
 
 		// 4. SetupServer
 		SetupServers	server(*config);
+
+		delete config;
 	}
 	
 	catch (const std::exception& e) {

@@ -5,11 +5,7 @@
 
 DirectiveParser::DirectiveParser(Lexer& lexer) : lexer(lexer) {}
 
-DirectiveParser::~DirectiveParser()
-{
-	for (size_t i = 0; i < serversInProgress.size(); ++i)
-		delete serversInProgress[i];
-}
+DirectiveParser::~DirectiveParser() {}
 
 void	validateMandatoryDirectives(const Config* config)
 {
@@ -61,7 +57,6 @@ Config* DirectiveParser::parseConfig()
 				if (server->getListen().empty())
 					server->setListen(std::make_pair("0.0.0.0", "8000"));
 				config->addServer(server);
-				serversInProgress.push_back(server);
 			}
 			else
 				throw ParseException("Unexpected token outside server block", currentToken.line);
@@ -73,7 +68,6 @@ Config* DirectiveParser::parseConfig()
 		throw;
 	}
 
-	serversInProgress.clear();
 	try
 	{
 		validateMandatoryDirectives(config);

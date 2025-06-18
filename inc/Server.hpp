@@ -10,6 +10,8 @@ class Server
 {
 	public:
 		Server();
+		Server(const Server &other);
+		Server	&operator=(const Server &other);
 		~Server();
 
 		// Setters

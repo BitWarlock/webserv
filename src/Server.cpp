@@ -6,10 +6,49 @@ Server::Server()
 	return_d.enabled = false;
 }
 
+Server::Server(const Server &other)  :
+	return_d(other.return_d),
+	listen(other.listen),
+	allowed_methods(other.allowed_methods),
+	server_names(other.server_names),
+	error_pages(other.error_pages),
+	root(other.root),
+	client_max_body_size(other.client_max_body_size),
+	autoindex(other.autoindex),
+	index(other.index)
+{
+	for (size_t i = 0; i < other.locations.size(); i++)
+		locations.push_back(new Location(*other.locations[i]));
+}
+
+Server	&Server::operator=(const Server &other)
+{
+	if (this != &other)
+	{
+		for (size_t i = 0; i < locations.size(); i++)
+			delete locations[i];
+		locations.clear();
+
+		return_d = other.return_d;
+		listen = other.listen;
+		allowed_methods = other.allowed_methods;
+		server_names = other.server_names;
+		error_pages = other.error_pages;
+		root = other.root;
+		client_max_body_size = other.client_max_body_size;
+		autoindex = other.autoindex;
+		index = other.index;
+
+		for (size_t i = 0; i < other.locations.size(); i++)
+			locations.push_back(new Location(*other.locations[i]));
+	}
+	return (*this);
+}
+
 Server::~Server()
 {
-	// for (size_t i = 0; i < locations.size(); ++i)
-	// 	delete locations[i];
+	for (size_t i = 0; i < locations.size(); ++i)
+		delete locations[i];
 }
 
 // Setters

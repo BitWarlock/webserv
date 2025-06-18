@@ -83,7 +83,7 @@ void    SetupServers::CreateSocket(Server& server)
 			else
 			{
 				this->fd_sockets.push_back(fd_server);
-				this->servers[fd_server] = server;			
+				this->servers[fd_server] = Server(server);			
 				Advance();
 			}
 		}
@@ -231,6 +231,7 @@ Server	SetupServers::GetBlockServer(int block)
 void    SetupServers::Run(void)
 {
 	std::map<int, ParseRequest> Requests;
+	std::string input;
 	// std::map<int, Response>		Responses;
 
 	CreateEpoll();
@@ -240,6 +241,9 @@ void    SetupServers::Run(void)
 
 	while (1337)
 	{
+		std::cin >> input;
+		if (input == "quit")
+			break ;
 		WaitEpoll();
 		for (int i(0); i < number_events; i++)
 		{
