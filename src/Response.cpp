@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/16 16:32:33 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/06/18 21:51:51 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/06/18 21:53:19 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -85,7 +85,9 @@ void    Response::CheckIndexAccess(void)
         ResponseWithError();
         return ;
     }
+
     std::ifstream   file(path.c_str());
+    
     if (!file.is_open())
     {
         SetState(Internal_Server_Error);
