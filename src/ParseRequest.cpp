@@ -68,24 +68,31 @@ ParseRequest::~ParseRequest() {}
 
 // getters
 
-std::string 										ParseRequest::getMethod()		{ return (Method); }
-std::string 										ParseRequest::getVersion()      { return (HttpProtocolVersion); }
-std::string 										ParseRequest::getUri()          { return (Url); }
-int 												ParseRequest::getParseState()   { return (CurrntParsState); }
-int         										ParseRequest::getErrorNumber()	{ return (errorNumber);}
-std::vector<std::pair<std::string, std::string> >	ParseRequest::getHeaders()		{return (Headers);}
-std::string											ParseRequest::getHost()			{return (Host);}
-std::string											ParseRequest::getPort()			{return (Port);}
+std::string 										ParseRequest::getMethod()						{ return (Method); }
+std::string 										ParseRequest::getVersion()      				{ return (HttpProtocolVersion); }
+std::string 										ParseRequest::getUri()          				{ return (Url); }
+int 												ParseRequest::getParseState()   				{ return (CurrntParsState); }
+int         										ParseRequest::getErrorNumber()					{ return (errorNumber);}
+std::vector<std::pair<std::string, std::string> >	ParseRequest::getHeaders()						{return (Headers);}
+std::string											ParseRequest::getHost()							{return (Host);}
+std::string											ParseRequest::getPort()							{return (Port);}
+int         										ParseRequest::getContentEncodingType(int Type)	{return (ContentEncodingType);}
+
+
 // setters
 
 
-void ParseRequest::setMethod(std::string m)     { Method = m; }
-void ParseRequest::SwitchState(int Next_State)  { CurrntParsState = Next_State; }
-void ParseRequest::setUri(std::string u)        { Url = u; }
-void ParseRequest::setVersion(std::string v)    { HttpProtocolVersion = v; }
-void ParseRequest::Reset()                      { SwitchState(NONE); }
-void ParseRequest::setErrorNumber(int Number)   {errorNumber = Number;  SwitchState(ERROR);}
-void ParseRequest::ResetBuffPos()               { pos = 0; }
+void ParseRequest::setMethod(std::string m)     	{ Method = m; }
+void ParseRequest::SwitchState(int Next_State)  	{ CurrntParsState = Next_State; }
+void ParseRequest::setUri(std::string u)        	{ Url = u; }
+void ParseRequest::setVersion(std::string v)    	{ HttpProtocolVersion = v; }
+void ParseRequest::Reset()                      	{ SwitchState(NONE); }
+void ParseRequest::setErrorNumber(int Number)   	{ errorNumber = Number;  SwitchState(ERROR);}
+void ParseRequest::ResetBuffPos()               	{ pos = 0; }
+void ParseRequest::setContentEncodingType(int Type)	{ 
+	ContentEncodingType = Type;
+
+}
 
 // checkers
 
@@ -171,6 +178,8 @@ void ParseRequest::trimBuff(std::string &str){
 		str.erase(0, pos);
 	ResetBuffPos();
 }
+
+
 
 // read and parse  the method ;
 void ParseRequest::parseMethod(std::string &str){
@@ -392,6 +401,7 @@ void ParseRequest::CheckingForBody(){
 	if (chunkedEncoding)
 		return SwitchState(READCHUNKSIZE);
 	SwitchState(CONTENTLENGTHBODY);
+	CheckContentEncoding();
 }
 
 // parse the content length body type ;
@@ -489,6 +499,27 @@ void        ParseRequest::ResetParserf(){
 void ParseRequest::StartNewRequest(std::string& buff){
 	(void)buff;
 	SwitchState(METHOD);
+}
+
+// check if the body coded with valid coding type ;
+void         ParseRequest::CheckContentEncoding(){
+	std::string Value =  getHeaderValue("content-encoding");
+	if (Value.empty())
+		return ;
+	trimBuff(Value);
+	if ((pos = Value.find_first_of(" \t")) != std::string::npos)
+		Value.erase(pos);
+	ResetBuffPos();
+	std::string &valueRefrence = Value;
+	toLowerCase(valueRefrence);
+	if (Value.compare("identity"))
+		return ;
+	else if (Value.compare("deflate"))
+		return (setContentEncodingType((DEFLATE)));
+	else if (Value.compare("gzip"))
+		return (setContentEncodingType((GZIP)));
+	else
+		return (SwitchState(ERROR), setErrorNumber(415));
 }
 
 // start reading and parsing ;

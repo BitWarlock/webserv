@@ -8,11 +8,13 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <string.h>
+#include <zlib.h>
+#include <brotli/decode.h>
 #include "Server.hpp"
 #define CLRF "\r\n"
 #define SPACE ' '
 
-enum RequestParseStats
+enum RequestParser
 {
     NONE,
     METHOD,
@@ -27,7 +29,10 @@ enum RequestParseStats
     PARSEARRAYSIZE,
     FINISH,
     ERROR,
-    CLOSE
+    CLOSE,
+    GZIP,
+    DEFLATE,
+    IDENTITY
 };
 
 class ParseRequest{
@@ -51,6 +56,7 @@ class ParseRequest{
         Server                                              *S;
         bool                                                chunkedEncoding;
         int                                                 contentLength;
+        int                                                 ContentEncodingType;
         std::vector<std::pair<std::string, std::string> >   Headers;
         bool                                                hasValidHost;
         size_t                                              ChunkSize;
@@ -93,6 +99,7 @@ class ParseRequest{
         bool        Reserved(char c);
         bool        PercentEncoded(size_t &i);
         bool        isValidVersion();
+        void        CheckContentEncoding();
 
         // getters
         std::string                                         getMethod();
@@ -104,6 +111,7 @@ class ParseRequest{
         std::vector<std::pair<std::string, std::string> >   getHeaders();
         std::string                                         getHost();
         std::string                                         getPort();
+        int                                                 getContentEncodingType(int Type);
 
         // setters
         void        setMethod(std::string m);
@@ -114,6 +122,7 @@ class ParseRequest{
         void        setQueryString(std::string qurieInUrl);
         void        Reset();
         void        ResetBuffPos();
+        void        setContentEncodingType(int Type);
 };
 
 #endif

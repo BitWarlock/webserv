@@ -20,7 +20,6 @@ class DirectiveParser
 	private:
 		Lexer&					lexer;
 		Token					currentToken;
-		std::vector<Server*>	serversInProgress;
 
 		// Block parsing
 		Server*		parseServerBlock();

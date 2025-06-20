@@ -6,6 +6,7 @@ Config::~Config()
 {
 	for (size_t i = 0; i < servers.size(); ++i)
 		delete servers[i];
+	servers.clear();
 }
 
 void Config::addServer(Server* server)

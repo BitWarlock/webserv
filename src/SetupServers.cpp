@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/21 20:57:28 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/06/18 18:27:33 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/06/20 21:49:11 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -83,7 +83,7 @@ void    SetupServers::CreateSocket(Server& server)
 			else
 			{
 				this->fd_sockets.push_back(fd_server);
-				this->servers[fd_server] = server;			
+				this->servers[fd_server] = Server(server);			
 				Advance();
 			}
 		}
@@ -240,6 +240,9 @@ void    SetupServers::Run(void)
 
 	while (1337)
 	{
+		std::cin >> input;
+		if (input == "quit")
+			break ;
 		WaitEpoll();
 		for (int i(0); i < number_events; i++)
 		{
