@@ -99,7 +99,7 @@ class ParseRequest{
         bool        Reserved(char c);
         bool        PercentEncoded(size_t &i);
         bool        isValidVersion();
-        bool        CheckContentEncoding();
+        void        CheckContentEncoding();
 
         // getters
         std::string                                         getMethod();
@@ -122,7 +122,7 @@ class ParseRequest{
         void        setQueryString(std::string qurieInUrl);
         void        Reset();
         void        ResetBuffPos();
-        int         setContentEncodingType(int Type);
+        void        setContentEncodingType(int Type);
 };
 
 #endif

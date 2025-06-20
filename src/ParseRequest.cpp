@@ -89,7 +89,10 @@ void ParseRequest::setVersion(std::string v)    	{ HttpProtocolVersion = v; }
 void ParseRequest::Reset()                      	{ SwitchState(NONE); }
 void ParseRequest::setErrorNumber(int Number)   	{ errorNumber = Number;  SwitchState(ERROR);}
 void ParseRequest::ResetBuffPos()               	{ pos = 0; }
-int  ParseRequest::setContentEncodingType(int Type)	{ ContentEncodingType = Type;}
+void ParseRequest::setContentEncodingType(int Type)	{ 
+	ContentEncodingType = Type;
+
+}
 
 // checkers
 
@@ -398,6 +401,7 @@ void ParseRequest::CheckingForBody(){
 	if (chunkedEncoding)
 		return SwitchState(READCHUNKSIZE);
 	SwitchState(CONTENTLENGTHBODY);
+	CheckContentEncoding();
 }
 
 // parse the content length body type ;
@@ -497,17 +501,25 @@ void ParseRequest::StartNewRequest(std::string& buff){
 	SwitchState(METHOD);
 }
 
-
-
-bool         ParseRequest::CheckContentEncoding(){
+// check if the body coded with valid coding type ;
+void         ParseRequest::CheckContentEncoding(){
 	std::string Value =  getHeaderValue("content-encoding");
 	if (Value.empty())
-		return (false);
+		return ;
 	trimBuff(Value);
-	Value.erase(Value.find_first_of(" \t"));
-	if (Value.compare("deflate"))
-		return (setContentEncodingType(()))
-
+	if ((pos = Value.find_first_of(" \t")) != std::string::npos)
+		Value.erase(pos);
+	ResetBuffPos();
+	std::string &valueRefrence = Value;
+	toLowerCase(valueRefrence);
+	if (Value.compare("identity"))
+		return ;
+	else if (Value.compare("deflate"))
+		return (setContentEncodingType((DEFLATE)));
+	else if (Value.compare("gzip"))
+		return (setContentEncodingType((GZIP)));
+	else
+		return (SwitchState(ERROR), setErrorNumber(415));
 }
 
 // start reading and parsing ;
