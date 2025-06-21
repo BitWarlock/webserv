@@ -130,7 +130,7 @@ void HttpResponse::generateFileResponse(const std::string& file_path, const Serv
 	{
 		std::string content = readFileContent(file_path);
 		if (content.empty())
-			return; generateErrorResponse(500, server);
+			return generateErrorResponse(500, server);
 
 		setStatus(200, "OK");
 		setDefaultHeaders();

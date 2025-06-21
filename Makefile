@@ -1,6 +1,6 @@
 CC      = c++
 NAME    = webserv
-CFLAGS  = -std=c++98 #-Wall -Wextra -Werror -MMD -MP -g
+CFLAGS  = -std=c++98 -Wall -Wextra -Werror -MMD -MP -g
 
 SRCS    = webserv.cpp src/Lexer.cpp src/ParseDirective.cpp src/Config.cpp src/Server.cpp src/Location.cpp src/SetupServers.cpp src/ParseRequest.cpp src/HttpResponse.cpp
 OBJS    = $(SRCS:%.cpp=objs/%.o)
