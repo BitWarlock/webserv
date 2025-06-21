@@ -8,7 +8,7 @@
 #include "ParseDirective.hpp"
 #include "SetupServers.hpp"
 #include "ParseRequest.hpp"
-#include "Response.hpp"
+#include "HttpResponse.hpp"
 
 #include <sys/stat.h>
 #include <fstream>

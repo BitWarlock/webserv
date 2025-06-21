@@ -228,47 +228,113 @@ Server	SetupServers::GetBlockServer(int block)
 	return (it->second);
 }
 
-void    SetupServers::Run(void)
+void SetupServers::Run(void)
 {
 	std::map<int, ParseRequest> Requests;
+	std::map<int, HttpResponse> Responses;
 	std::string input;
-	// std::map<int, Response>		Responses;
 
 	CreateEpoll();
 
 	for (size_t i(0); i < endpoints; i++)
+	{
+		std::cout << "Adding listening socket fd=" << fd_sockets[i] << " to epoll\n";
 		AddSocketToEpoll(fd_sockets[i], EPOLLIN, EPOLL_CTL_ADD);
+	}
 
 	while (1337)
 	{
-		std::cin >> input;
-		if (input == "quit")
-			break ;
+		std::cout << "Waiting for events...\n";
 		WaitEpoll();
+		std::cout << "Processing " << number_events << " events\n";
+
 		for (int i(0); i < number_events; i++)
 		{
-			int	fd = events[i].data.fd;
-			if (events[i].events & (EPOLLERR | EPOLLHUP))
+			int fd = events[i].data.fd;
+			std::cout << "\nProcessing event on fd=" << fd 
+				<< ", events=" << events[i].events << "\n";
+
+			if (events[i].events & (EPOLLERR | EPOLLHUP | EPOLLRDHUP))
+			{
+				std::cout << "Error or hangup event on fd=" << fd << "\n";
 				EraseFd(fd);
-			else if (events[i].events & EPOLLIN)
+				continue;
+			}
+
+			if (events[i].events & EPOLLIN)
 			{
 				if (fd_sockets.begin() + endpoints != find(fd_sockets.begin(), fd_sockets.begin() + endpoints, fd))
 				{
-					AcceptConnection(fd);
-					AddSocketToEpoll(fd_sockets.back(), EPOLLIN, EPOLL_CTL_ADD);
+					std::cout << "New connection on listening socket fd=" << fd << "\n";
+					try
+					{
+						AcceptConnection(fd);
+						std::cout << "Accepted new connection fd=" << fd_sockets.back() << "\n";
+						AddSocketToEpoll(fd_sockets.back(), EPOLLIN | EPOLLRDHUP, EPOLL_CTL_ADD);
+					}
+					catch (const std::exception& e)
+					{
+						std::cerr << "Error accepting connection: " << e.what() << "\n";
+					}
 				}
 				else
 				{
-					Requests[fd].startParse(fd, GetBlockServer(fd));
-					if (Requests[fd].getParseState() == FINISH || Requests[fd].getParseState() == ERROR)
-						AddSocketToEpoll(fd, EPOLLOUT, EPOLL_CTL_MOD);
+					std::cout << "Incoming data on client fd=" << fd << "\n";
+					try
+					{
+						Requests[fd].startParse(fd, GetBlockServer(fd));
+						std::cout << "Parse state: " << Requests[fd].getParseState() << "\n";
+
+						if (Requests[fd].getParseState() == FINISH || Requests[fd].getParseState() == ERROR)
+						{
+							std::cout << "Request parsing complete, generating response...\n";
+							Responses[fd].generateResponse(Requests[fd], GetBlockServer(fd));
+							std::cout << "Response generated:\n" << Responses[fd].serialize() << "\n";
+
+							AddSocketToEpoll(fd, EPOLLOUT | EPOLLRDHUP, EPOLL_CTL_MOD);
+							std::cout << "Switched fd=" << fd << " to EPOLLOUT mode\n";
+						}
+					}
+					catch (const std::exception& e)
+					{
+						std::cerr << "Error processing request: " << e.what() << "\n";
+						EraseFd(fd);
+					}
 				}
 			}
 			else if (events[i].events & EPOLLOUT)
 			{
-				// Responses[fd].StartForResponse(Requests[fd], GetBlockServer(fd));
-				// if (Responses[fd].getState() == FINISH || Responses[fd].getState() == ERROR)
-				AddSocketToEpoll(fd, EPOLLIN, EPOLL_CTL_MOD);
+				std::cout << "Sending response on fd=" << fd << "\n";
+				try
+				{
+					std::string response = Responses[fd].serialize();
+					std::cout << "Sending response (" << response.size() << " bytes):\n" 
+						<< response.substr(0, 200) << (response.size() > 200 ? "..." : "") << "\n";
+
+					ssize_t bytes_sent = send(fd, response.c_str(), response.size(), MSG_NOSIGNAL);
+					std::cout << "Sent " << bytes_sent << " bytes\n";
+
+					if (bytes_sent <= 0)
+						throw std::runtime_error("Failed to send response");
+
+					if (Responses[fd].isKeepAlive())
+					{
+						std::cout << "Keeping connection alive on fd=" << fd << "\n";
+						Requests.erase(fd);
+						Responses.erase(fd);
+						AddSocketToEpoll(fd, EPOLLIN | EPOLLRDHUP, EPOLL_CTL_MOD);
+					}
+					else
+					{
+						std::cout << "Closing connection on fd=" << fd << "\n";
+						EraseFd(fd);
+					}
+				}
+				catch (const std::exception& e)
+				{
+					std::cerr << "Error sending response: " << e.what() << "\n";
+					EraseFd(fd);
+				}
 			}
 		}
 	}

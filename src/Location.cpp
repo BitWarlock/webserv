@@ -36,6 +36,8 @@ void Location::inheritFrom(const Server* server)
 		client_max_body_size = server->getClientBodyLimit();
 	if (index.empty())
 		index = server->getIndex();
+	if (server->getAutoindex())
+		autoindex = true;
 }
 
 // Getters
