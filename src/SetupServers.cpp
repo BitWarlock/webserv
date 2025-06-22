@@ -240,9 +240,6 @@ void    SetupServers::Run(void)
 
 	while (1337)
 	{
-		std::cin >> input;
-		if (input == "quit")
-			break ;
 		WaitEpoll();
 		for (int i(0); i < number_events; i++)
 		{

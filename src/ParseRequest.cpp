@@ -30,7 +30,7 @@ ParseRequest::ParseRequest() : errorNumber(200), pos(0),
 	NonRepeatablesHeaders["content-encoding"] = 0;
 	NonRepeatablesHeaders["transfer-encoding"] = 0;
 	NonRepeatablesHeaders["authorization"] = 0;
-	NonRepeatablesHeaders["user-agent	"] = 0;
+	NonRepeatablesHeaders["user-agent"] = 0;
 	NonRepeatablesHeaders["connection"] = 0;
 	NonRepeatablesHeaders["date"] = 0;
 	NonRepeatablesHeaders["upgrade"] = 0;
@@ -76,8 +76,9 @@ int         										ParseRequest::getErrorNumber()					{ return (errorNumber);
 std::vector<std::pair<std::string, std::string> >	ParseRequest::getHeaders()						{return (Headers);}
 std::string											ParseRequest::getHost()							{return (Host);}
 std::string											ParseRequest::getPort()							{return (Port);}
-int         										ParseRequest::getContentEncodingType(int Type)	{return (ContentEncodingType);}
-
+int         										ParseRequest::getContentEncodingType(int Type)	{(void) Type; return (ContentEncodingType);}
+std::string                                         ParseRequest::getBufferBody()					{return (BufferBody);}
+std::string                                         ParseRequest::getBufferDecompressedBody()		{return (DecompressedBufferBody);}
 
 // setters
 
@@ -100,17 +101,17 @@ void ParseRequest::setContentEncodingType(int Type)	{
 bool ParseRequest::isFinish()                   { return (getParseState() == FINISH); }
 
 // checking the method if its a supporetd one by the server ;
-bool ParseRequest::isSupportedMethod(std::string &RequestMethod)
-{
-	const std::vector<std::string> &sMethods = S->getAllowedMethods();
-	std::string m = RequestMethod;
-	for (size_t i = 0; i < sMethods.size(); i++)
-	{
-		if (sMethods[i] == m)
-			return (true);
-	}
-	return (false);
-}
+// bool ParseRequest::isSupportedMethod(std::string &RequestMethod)
+// {
+// 	const std::vector<std::string> &sMethods = S->getAllowedMethods();
+// 	std::string m = RequestMethod;
+// 	for (size_t i = 0; i < sMethods.size(); i++)
+// 	{
+// 		if (sMethods[i] == m)
+// 			return (true);
+// 	}
+// 	return (false);
+// }
 
 // check the request method if its known one or not ;
 int ParseRequest::isKnownMethod()
@@ -197,8 +198,8 @@ void ParseRequest::parseMethod(std::string &str){
 	Method += str.substr(0, pos);
 	str.erase(0, pos + 1);
 	ResetBuffPos();
-	if (!isSupportedMethod(Method))
-	    return (setErrorNumber(isKnownMethod()));
+	// if (!isSupportedMethod(Method))
+	//     return (setErrorNumber(isKnownMethod()));
 	SwitchState(URL);
 }
 
@@ -414,6 +415,8 @@ void ParseRequest::parseContentlengthBody(std::string &str){
 		str.clear();
 		if (static_cast<size_t> (contentLength) != BufferBody.size())
 			return (SwitchState(ERROR), setErrorNumber(400));
+		if (ContentEncodingType == GZIP || ContentEncodingType == DEFLATE)
+			DecompressBody();
 		return (SwitchState(FINISH));
 	}
 }
@@ -440,12 +443,15 @@ void ParseRequest::parseChunkedBody(std::string &str){
 					return (SwitchState(ERROR), setErrorNumber(400));
 			}
 			ChunkSize = HexaStringToDecimalNum(StringChunkSize);
-			if (ChunkSize > S->getClientBodyLimit())
-				return (SwitchState(ERROR), setErrorNumber(413));
+			// if (ChunkSize > S->getClientBodyLimit())
+			// 	return (SwitchState(ERROR), setErrorNumber(413));
 			str.erase(0, pos + 2);
 			ResetBuffPos();
-			if (ChunkSize == 0)
+			if (ChunkSize == 0){
+				if (ContentEncodingType == GZIP || ContentEncodingType == DEFLATE)
+					DecompressBody();
 				return (SwitchState(FINISH));
+			}
 			SwitchState(READCHUNK);
 		}
 	}
@@ -520,6 +526,7 @@ void        ParseRequest::DecompressBody(){
 	int ret = Z_OK;
 	DecompressedBufferBody.clear();
 	while (ret != Z_STREAM_END){
+		std::cout << "here\n";
 		Strm.next_out = (Bytef *) outbuffer;
 		Strm.avail_out = sizeof(outbuffer);
 		ret = inflate(&Strm, Z_NO_FLUSH);
@@ -567,18 +574,20 @@ void ParseRequest::startParse(int fd, Server server){
 			ssize_t bytes = recv(fd, str, sizeof(str) - 1, 0);
 			if (bytes <= 0)
 				break ;
-			buff.append(str);
+			buff.append(str, bytes);
 		}
 		switch(CurrntParsState){
 			case FINISH:
-				return ;
+				return;
 			case ERROR:
 				return ;
 			default :
-				if (CurrntParsState < PARSEARRAYSIZE){
-					(this->*ParseRequest::ParseTable[CurrntParsState])(buff);
+			if (CurrntParsState < PARSEARRAYSIZE){
+				(this->*ParseRequest::ParseTable[CurrntParsState])(buff);
+				std::cout << getBufferDecompressedBody() << std::endl;
 				break;
 			}
 		}
 	}
+	std::cout << getBufferBody() <<    "next              "<< std::endl;
 }
