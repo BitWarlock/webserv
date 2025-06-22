@@ -61,6 +61,7 @@ class ParseRequest{
         bool                                                hasValidHost;
         size_t                                              ChunkSize;
         std::string                                         BufferBody;
+        std::string                                         DecompressedBufferBody;
         std::map<std::string, int>                          NonRepeatablesHeaders;
         std::string                                         Host;
         std::string                                         Port;
@@ -88,6 +89,7 @@ class ParseRequest{
         bool        checkIsThereaHost();
         bool        isNumber(std::string toCheck);
         void        ResetParserf();
+        void        DecompressBody();
 
         // checkers
         bool        isFinish();

@@ -412,7 +412,6 @@ void ParseRequest::parseContentlengthBody(std::string &str){
 	if (pos != std::string::npos){
 		BufferBody =  str.substr(0,pos);
 		str.clear();
-		std::cout << "something\n";
 		if (static_cast<size_t> (contentLength) != BufferBody.size())
 			return (SwitchState(ERROR), setErrorNumber(400));
 		return (SwitchState(FINISH));
@@ -499,6 +498,39 @@ void        ParseRequest::ResetParserf(){
 void ParseRequest::StartNewRequest(std::string& buff){
 	(void)buff;
 	SwitchState(METHOD);
+}
+
+void        ParseRequest::DecompressBody(){
+	z_stream	Strm;
+	memset(&Strm,0,sizeof(Strm));
+	int			Bits = 15;
+	if (ContentEncodingType == GZIP)
+		Bits += 16;
+	else if (ContentEncodingType == DEFLATE)
+		Bits *= -1;
+	Strm.zalloc = Z_NULL;
+	Strm.zfree = Z_NULL;
+	Strm.opaque = Z_NULL;
+	Strm.next_in = (Bytef *)BufferBody.data();
+	Strm.avail_in = BufferBody.size();
+
+	if (inflateInit2(&Strm, Bits) != Z_OK)
+		return (SwitchState(ERROR), setErrorNumber(400));
+	char outbuffer[32768];
+	int ret = Z_OK;
+	DecompressedBufferBody.clear();
+	while (ret != Z_STREAM_END){
+		Strm.next_out = (Bytef *) outbuffer;
+		Strm.avail_out = sizeof(outbuffer);
+		ret = inflate(&Strm, Z_NO_FLUSH);
+		if (ret != Z_OK && ret != Z_STREAM_END){
+			inflateEnd(&Strm);
+			return (SwitchState(ERROR), setErrorNumber(400));
+		}
+		DecompressedBufferBody.append(outbuffer, sizeof(outbuffer) - Strm.avail_out);
+	}
+	inflateEnd(&Strm);
+	SwitchState(FINISH);
 }
 
 // check if the body coded with valid coding type ;
