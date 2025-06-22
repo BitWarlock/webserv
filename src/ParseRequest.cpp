@@ -18,7 +18,7 @@ const ParseRequest::ParseFuncPtr ParseRequest::ParseTable[] = {
 
 
 // construct
-ParseRequest::ParseRequest() : errorNumber(0), pos(0), 
+ParseRequest::ParseRequest() : errorNumber(200), pos(0), 
     CurrntParsState(NONE), Method(""), Url(""),
 	HttpProtocolVersion(""),
     chunkedEncoding(false), contentLength(0){
@@ -44,7 +44,7 @@ ParseRequest::ParseRequest() : errorNumber(0), pos(0),
 	
 // }
 // construct with params
-ParseRequest::ParseRequest(Server *server) : errorNumber(0), pos(0), 
+ParseRequest::ParseRequest(Server *server) : errorNumber(200), pos(0), 
     CurrntParsState(NONE), Method(""), Url(""),
 	HttpProtocolVersion(""),
     S(server), chunkedEncoding(false), contentLength(0){

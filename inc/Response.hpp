@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/16 16:28:12 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/06/17 20:51:30 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/06/20 21:15:27 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,10 +24,14 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <string.h>
+#include <fcntl.h>
 
 #define GET "GET"
 #define POST "POST"
 #define DELETE "DELETE"
+#define ON true
+#define OFF false
+#define BUFFER_SIZE 400
 
 enum ResponseNumberState
 {
@@ -47,35 +51,62 @@ enum ResponseNumberState
 class Response{
     
     private:
-        std::string     Res;
-        int             state;
-        ParseRequest    Request;
-        Server          ServerBlock;
-        Location        location;
-        bool            FromLocation;
+        int                 fd;
+        int                 state;
+        ParseRequest        Request;
+        Server              ServerBlock;
+        Location            location;
+        bool                FromLocation;
+        std::string         path;
         
     public:
         Response();
         ~Response();
-
-        int     getState(void) const;
-        void    StartForResponse(ParseRequest Request, Server BlockServer);
-
+       
+        // Setters
+        
         void    SetRequest(ParseRequest Request);
         void    SetBlockServer(Server BlockServer);
-        void    SetLocation(Location location);        
+        void    SetState(int state);
+        void    SetLocation(Location location);
+        void    SetPath(std::string path);        
+        
+        // Getters
+        
+        int         getState(void) const;
+        std::string getStrState(void) const;
+        // std::string getMIME(void) const;
+        std::string ConnectionState(void) const;
+        
+        // Startresponse
+        
+        void    StartForResponse(ParseRequest Request, Server BlockServer);
         
         void    ResponseWithError(void);
+        
         void    ResponseWithOk(void);
-        void    SendResponse(void);
+        
         void    GetPageResponse(void);
+        
         void    AploadContentResponse(void);
+        
         void    DeleteContentResponse(void);
+        
         void    CheckLocations(std::string& path);
-        bool    CheckRootLocation(std::string& path);
+        
         bool    GetFullPath(std::string& path);
-        void    GetListingPage();
-        void    CHeckForIndex();
+        
+        void    CheckIfReadable(void);
+        
+        bool    CheckAutoIndex(void);
+        
+        void    GetListingPage(void);
+        
+        void    SearchForIndex(void);
+        
+        void    CheckIndexAccess(std::vector<std::string> indexs);
+        
+        void    BuildGetResponse(void);
         
 };
 
