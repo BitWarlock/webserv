@@ -293,10 +293,13 @@ void DirectiveParser::parseServerName(Server* server, const std::vector<std::str
 		server->addServerName(values[i]);
 }
 
-void DirectiveParser::parseRoot(Server* server, Location* location, const std::vector<std::string>& values)
+void DirectiveParser::parseRoot(Server* server, Location* location, std::vector<std::string>& values)
 {
 	if (values.size() != 1)
 		throw ParseException("root directive requires exactly one value", currentToken.line);
+
+	if (values[0][values[0].size() - 1] != '/')
+		values[0] += "/";
 
 	if (location)
 		location->setRoot(values[0]);
