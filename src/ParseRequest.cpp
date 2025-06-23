@@ -76,7 +76,7 @@ int         										ParseRequest::getErrorNumber()					{ return (errorNumber);
 std::vector<std::pair<std::string, std::string> >	ParseRequest::getHeaders()						{return (Headers);}
 std::string											ParseRequest::getHost()							{return (Host);}
 std::string											ParseRequest::getPort()							{return (Port);}
-int         										ParseRequest::getContentEncodingType(int Type)	{return (ContentEncodingType);}
+int         										ParseRequest::getContentEncodingType(int Type)	{(void) Type; return (ContentEncodingType);}
 
 
 // setters

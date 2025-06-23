@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/21 20:57:28 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/06/20 21:49:11 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/06/22 22:36:44 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -240,9 +240,6 @@ void    SetupServers::Run(void)
 
 	while (1337)
 	{
-		std::cin >> input;
-		if (input == "quit")
-			break ;
 		WaitEpoll();
 		for (int i(0); i < number_events; i++)
 		{
@@ -266,8 +263,9 @@ void    SetupServers::Run(void)
 			else if (events[i].events & EPOLLOUT)
 			{
 				Responses[fd].StartForResponse(Requests[fd], GetBlockServer(fd));
-				if (Responses[fd].getState() == FINISH || Responses[fd].getState() == ERROR)
-					AddSocketToEpoll(fd, EPOLLIN, EPOLL_CTL_MOD);
+				send(fd, Responses[fd].res.c_str(), Responses[fd].res.size(), MSG_NOSIGNAL);
+				AddSocketToEpoll(fd, EPOLLIN, EPOLL_CTL_MOD);
+				// exit(0);
 			}
 		}
 	}

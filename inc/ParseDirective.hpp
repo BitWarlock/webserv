@@ -32,7 +32,7 @@ class DirectiveParser
 		// Specialized parsers
 		void parseListen(Server* server, const std::vector<std::string>& values);
 		void parseServerName(Server* server, const std::vector<std::string>& values);
-		void parseRoot(Server* server, Location* location, const std::vector<std::string>& values);
+		void parseRoot(Server* server, Location* location, std::vector<std::string>& values);
 		void parseErrorPage(Server* server, const std::vector<std::string>& values);
 		void parseReturn(Server* server, const std::vector<std::string>& values);
 		void parseReturnLoc(Location *location, const std::vector<std::string>& values);
