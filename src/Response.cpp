@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/16 16:32:33 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/06/23 19:06:59 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/06/23 21:41:00 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -118,19 +118,24 @@ void    Response::CheckIndexAccess(std::vector<std::string> indexs)
 void    Response::GetListingPage(void)
 {
     DIR *dir = opendir(path.c_str());
-    fd = open("./error_pages/listening_page.html", O_RDWR);
-    
-    if (!dir || fd == -1)
+    int file = open("./error_pages/template.html", O_RDONLY);
+    fd = open("./error_pages/listening_page.html", O_RDWR | O_TRUNC);
+
+    if (!dir || file == -1 || fd == -1)
     {
         state = Forbidden;
         ResponseWithError(NONE);
         return ;
     }
-
     struct dirent *entry;
 
-    lseek (fd, 393, SEEK_SET);
-
+    char buff[500];
+    int bytes = read(file, buff, sizeof(buff));
+    write (fd, buff, bytes);
+    buff[bytes] = 0;
+    close(file);
+    
+    std::ostringstream  os;
     while ((entry = readdir(dir)) != NULL)
     {
         std::string value = entry->d_name;
@@ -141,13 +146,13 @@ void    Response::GetListingPage(void)
         if (entry->d_type == DT_DIR)
             value = "/" + value;
 
-        std::string name = "    <li><a href=\"" + value + "\">" + value + "</a></li>\n";
-        write (fd, name.c_str(), name.size());
+        os << "    <li><a href=\"" + value + "\">" + value + "</a></li>\n";
     }
-    write (fd, "  </ul>\n  <hr>\n</body>\n</html>\n", 32);
-    close(fd);
+    os << "  </ul>\n  <hr>\n</body>\n</html>";
     closedir (dir);
-    fd = open("./error_pages/listening_page.html", O_RDWR);
+    write (fd, os.str().c_str(), os.str().size());
+    close(fd);
+    SetPath("./error_pages/listening_page.html");
     BuildGetResponse();
 }
 
@@ -254,7 +259,7 @@ void    Response::BuildGetResponse(void)
     std::ostringstream  oss;
 
     oss << getState();
-
+    fd = open(path.c_str(), O_RDONLY);
     std::string header = "HTTP/1.1 " + oss.str() + " " + getStrState() + "\r\n";
     header += "Content-Type: " + MIME_Type() + "\r\n";
     
@@ -280,6 +285,7 @@ void    Response::BuildGetResponse(void)
     header += "Connection: " + Request.getHeaderValue("connection") + "\r\n\r\n";
     
     res = header + body;
+    close(fd);
     std::cout << res;
 }
 
@@ -295,8 +301,6 @@ void    Response::CheckIfReadable(void)
             ResponseWithError(NONE);
         return ;
     }
-
-    fd = open(path.c_str(), O_RDONLY);
 
     BuildGetResponse();
 }
@@ -368,7 +372,6 @@ void    Response::ResponseWithError(int serve)
     if (serve == DEFAULT)
     {
         SetPath(DefaultForMatchError());
-        fd = open(path.c_str(), O_RDONLY);
         BuildGetResponse();
         return ;
     }
@@ -410,6 +413,7 @@ void    Response::StartForResponse(ParseRequest request, Server BlockServer)
     SetPath(request.getUri());
     SetStatePath(NORMAL);
 
+    std::cout << "here ----------------------------\n";
     if (getState() != OK)
         ResponseWithError(NONE);
     else
