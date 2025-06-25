@@ -104,6 +104,7 @@ bool ParseRequest::isSupportedMethod(std::string &RequestMethod)
 {
 	const std::vector<std::string> &sMethods = S->getAllowedMethods();
 	std::string m = RequestMethod;
+
 	for (size_t i = 0; i < sMethods.size(); i++)
 	{
 		if (sMethods[i] == m)
@@ -198,7 +199,7 @@ void ParseRequest::parseMethod(std::string &str){
 	str.erase(0, pos + 1);
 	ResetBuffPos();
 	if (!isSupportedMethod(Method))
-	    return (setErrorNumber(isKnownMethod()));
+	    return (SwitchState(ERROR), setErrorNumber(isKnownMethod()));
 	SwitchState(URL);
 }
 
@@ -534,8 +535,9 @@ void ParseRequest::startParse(int fd, Server server){
 			memset(str, 0, sizeof(str));
 			ssize_t bytes = recv(fd, str, sizeof(str) - 1, 0);
 			if (bytes <= 0)
-				break ;
+			break ;
 			buff.append(str);
+			std::cout << buff;
 		}
 		switch(CurrntParsState){
 			case FINISH:

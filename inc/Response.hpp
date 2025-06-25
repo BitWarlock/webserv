@@ -40,7 +40,7 @@
 #define DEFAULT 0
 #define NONE 1
 #define NORMAL 2
-#define ERROR 3
+#define RES_ERROR 3
 
 #define html "html"
 #define htm "htm"
@@ -69,6 +69,7 @@
 enum ResponseNumberState
 {
     OK = 200,
+    Moved_Permanently = 301,
     Bad_Request = 400,
     Forbidden = 403,
     Not_Found = 404,
@@ -85,6 +86,7 @@ class Response{
     
     private:
         int                 fd;
+        int                 fd_client;
         int                 state;
         int                 state_path;
         ParseRequest        Request;
@@ -116,13 +118,15 @@ class Response{
         
         // Startresponse
         
-        void    StartForResponse(ParseRequest Request, Server BlockServer);
+        void    StartForResponse(ParseRequest Request, Server BlockServer, int fd_client);
         
         void    ResponseWithError(int serve);
         
         void    ResponseWithOk(void);
         
         void    GetPageResponse(void);
+
+        bool    ReturnDirective(void);
         
         void    AploadContentResponse(void);
         
@@ -132,7 +136,7 @@ class Response{
         
         bool    GetFullPath(std::string& path);
         
-        void    CheckIfReadable(void);
+        void    CheckForCGI(void);
         
         bool    CheckAutoIndex(void);
         

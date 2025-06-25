@@ -59,7 +59,7 @@ bool    Response::GetFullPath(std::string& path)
             SetPath(ServerBlock.getRoot() + path.erase(0, 1));
         else
         {
-            state = Internal_Server_Error;
+            SetState(Internal_Server_Error);
             ResponseWithError(DEFAULT);
             return (false);
         }
@@ -68,7 +68,7 @@ bool    Response::GetFullPath(std::string& path)
     {
         if (ServerBlock.getRoot().empty())
         {
-            state = Internal_Server_Error;
+            SetState(Internal_Server_Error);
             ResponseWithError(DEFAULT);
             return (false);
         }
@@ -97,20 +97,13 @@ void    Response::CheckIndexAccess(std::vector<std::string> indexs)
             break ;
         }
         else if (i + 1 == indexs.size())
-        {
-            SetState(Forbidden);
-            ResponseWithError(NONE);
-            return ;
-        }
+            return (SetState(Forbidden), ResponseWithError(NONE));
     }
+
     fd = open(path.c_str(), O_RDONLY);
 
     if (fd == -1)
-    {
-        SetState(Internal_Server_Error);
-        ResponseWithError(NONE);
-        return ;
-    }
+        return (SetState(Internal_Server_Error), ResponseWithError(NONE));
     
     BuildGetResponse();
 }
@@ -162,11 +155,10 @@ void    Response::SearchForIndex(void)
     {
         if (location.getIndex().empty() && CheckAutoIndex() == ON)
             GetListingPage();
+
         else if (location.getIndex().empty())
-        {
-            SetState(Forbidden);
-            ResponseWithError(NONE);
-        }
+            return (SetState(Forbidden), ResponseWithError(NONE));
+
         else
             CheckIndexAccess(location.getIndex());
     }
@@ -174,11 +166,10 @@ void    Response::SearchForIndex(void)
     {
         if (ServerBlock.getIndex().empty() && CheckAutoIndex() == ON)
             GetListingPage();
+
         else if (ServerBlock.getIndex().empty())
-        {
-            SetState(Forbidden);
-            ResponseWithError(NONE);
-        }
+            return (SetState(Forbidden), ResponseWithError(NONE));
+
         else
             CheckIndexAccess(ServerBlock.getIndex());
     }
@@ -259,50 +250,57 @@ void    Response::BuildGetResponse(void)
     std::ostringstream  oss;
 
     oss << getState();
+
     fd = open(path.c_str(), O_RDONLY);
+
+    struct stat info;
+
+    stat(path.c_str(), &info);
+
+    std::ostringstream  os;
+    os << info.st_size;
+
     std::string header = "HTTP/1.1 " + oss.str() + " " + getStrState() + "\r\n";
     header += "Content-Type: " + MIME_Type() + "\r\n";
-    
-    size_t      size(0);
-    std::string body;
-
-    while (1337)
-    {
-        char    buff[BUFFER_SIZE];
-        int bytes = read(fd, buff, BUFFER_SIZE - 1);
-        std::cout << bytes << "  bytes\n";
-        if (bytes == 0 || bytes == -1)
-            break ;
-        buff[bytes] = 0;
-        size += bytes;
-        body += buff;      
-    }
-        
-    std::ostringstream  os;
-    os << body.size();
-
     header += "Content-Length: " + os.str() + "\r\n";
-    header += "Connection: " + Request.getHeaderValue("connection") + "\r\n\r\n";
+    header += "Connection: close\r\n\r\n";
     
-    res = header + body;
+    send(fd_client, header.c_str(), strlen(header.c_str()), MSG_NOSIGNAL);
+
+    char buffer[4096];
+    ssize_t n(0);
+
+	while ((n = read(fd, buffer, sizeof(buffer))) > 0)
+        send(fd_client, buffer, n, MSG_NOSIGNAL);
     close(fd);
-    std::cout << res;
 }
 
-void    Response::CheckIfReadable(void)
+bool    Response::ReturnDirective(void)
 {
-    if (access(path.c_str(), R_OK) != 0)
+    std::ostringstream   statuscode;
+    std::string         redirecturl;
+    
+    if (ServerBlock.getReturnDirective().enabled == false && 
+        location.getReturnDirective().enabled == false)
+        return (true);
+
+    else if (FromLocation == true)
     {
-        std::cout << "Warning: The file " << path << " is not readable\n";
-        SetState(Forbidden);
-        if (state_path == ERROR)
-            ResponseWithError(DEFAULT);
-        else
-            ResponseWithError(NONE);
-        return ;
+        statuscode << location.getReturnDirective().status_code;
+        redirecturl = location.getReturnDirective().target;
+    }
+    else
+    {
+        statuscode << ServerBlock.getReturnDirective().status_code;
+        redirecturl = ServerBlock.getReturnDirective().target;
     }
 
-    BuildGetResponse();
+    std::string response = "HTTP/1.1 " + statuscode.str() + " Redirect\r\n";
+    response += "location: " + redirecturl + " \r\n";
+    response += "Content-Length: 0\r\n";
+    response += "Connection: close\r\n\r\n";
+    send(fd_client, response.c_str(), strlen(response.c_str()), MSG_NOSIGNAL);
+    return (false);
 }
 
 void    Response::GetPageResponse(void)
@@ -314,19 +312,20 @@ void    Response::GetPageResponse(void)
     if (GetFullPath(path) == false)
         return ;
 
-    if (stat(path.c_str(), &info) == -1)
-    {
-        std::cout << "Warning: the file does not exist\n";
-        SetState(Not_Found);
-        ResponseWithError(NONE);
+    if (ReturnDirective() == false)
         return ;
-    }
+
+    if (stat(path.c_str(), &info) == -1)
+        return (SetState(Not_Found), ResponseWithError(NONE));
         
     if (S_ISDIR(info.st_mode))
-        SearchForIndex();
+        return (SearchForIndex());
 
-    else
-        CheckIfReadable();
+    if (access(path.c_str(), R_OK) != 0)
+        return (SetState(Forbidden), ResponseWithError(NONE));
+
+    CheckForCGI();
+    BuildGetResponse();
 }
 
 void    Response::ResponseWithOk(void)
@@ -377,43 +376,36 @@ void    Response::ResponseWithError(int serve)
     }
 
     struct stat info;
-
-    SetStatePath(ERROR);
+    std::string error_page = ServerBlock.getErrorPage(getState());
     
-    size_t  size(0);
-
-    for (size_t i(0); i < ServerBlock.getErrorPage(getState()).size(); i++)
+    if (!error_page.empty())
     {
-        SetPath(ServerBlock.getErrorPage(getState()));
-        
+        SetStatePath(RES_ERROR);
+        SetPath(error_page);
         if (GetFullPath(path) == false)
             return ;
 
-        if (stat(path.c_str(), &info) == 0)
-            break ;
-        size++;
+        if (stat(path.c_str(), &info) != 0)
+            return (SetState(Not_Found), ResponseWithError(DEFAULT));
+
+        else if (S_ISDIR(info.st_mode) || access(path.c_str(), R_OK) != 0)
+            return (SetState(Internal_Server_Error), ResponseWithError(DEFAULT));
     }
-      
-    if (size + 1 >= ServerBlock.getErrorPage(getState()).size())
-    {
-        std::cout << "Warning: the file does not exist\n";
-        SetState(Not_Found);
-        ResponseWithError(DEFAULT);
-        return ;
-    }
-        
-    CheckIfReadable();
+    else
+        return (SetState(Not_Found), ResponseWithError(DEFAULT));
+    
+    BuildGetResponse();
 }
 
-void    Response::StartForResponse(ParseRequest request, Server BlockServer)
+void    Response::StartForResponse(ParseRequest request, Server BlockServer, int fd_client)
 {
     SetRequest(request);
     SetBlockServer(BlockServer);
     SetState(request.getErrorNumber());
     SetPath(request.getUri());
     SetStatePath(NORMAL);
+    this->fd_client = fd_client;
 
-    std::cout << "here ----------------------------\n";
     if (getState() != OK)
         ResponseWithError(NONE);
     else
