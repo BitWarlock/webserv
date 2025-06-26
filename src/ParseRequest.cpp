@@ -101,17 +101,17 @@ void ParseRequest::setContentEncodingType(int Type)	{
 bool ParseRequest::isFinish()                   { return (getParseState() == FINISH); }
 
 // checking the method if its a supporetd one by the server ;
-// bool ParseRequest::isSupportedMethod(std::string &RequestMethod)
-// {
-// 	const std::vector<std::string> &sMethods = S->getAllowedMethods();
-// 	std::string m = RequestMethod;
-// 	for (size_t i = 0; i < sMethods.size(); i++)
-// 	{
-// 		if (sMethods[i] == m)
-// 			return (true);
-// 	}
-// 	return (false);
-// }
+bool ParseRequest::isSupportedMethod(std::string &RequestMethod)
+{
+	const std::vector<std::string> &sMethods = S->getAllowedMethods();
+	std::string m = RequestMethod;
+	for (size_t i = 0; i < sMethods.size(); i++)
+	{
+		if (sMethods[i] == m)
+			return (true);
+	}
+	return (false);
+}
 
 // check the request method if its known one or not ;
 int ParseRequest::isKnownMethod()
@@ -198,8 +198,8 @@ void ParseRequest::parseMethod(std::string &str){
 	Method += str.substr(0, pos);
 	str.erase(0, pos + 1);
 	ResetBuffPos();
-	// if (!isSupportedMethod(Method))
-	//     return (setErrorNumber(isKnownMethod()));
+	if (!isSupportedMethod(Method))
+	    return (setErrorNumber(isKnownMethod()));
 	SwitchState(URL);
 }
 

@@ -158,3 +158,30 @@
 	- [ ] Verify against browser behavior
 	- [ ] Compare with NGINX for edge cases
 	- [ ] Ensure no memory leaks
+
+
+/Desktop/webserver/hello.html
+
+location /webserver/
+{
+
+}
+
+location /Desktop/webserver/
+
+server {
+    listen localhost:8002;
+
+    allowed_methods GET;
+    root /home/;
+    error_page 403 /webServer/error_pages/Forbidden.html;
+    autoindex on;
+
+    location /webserver/ {
+        allowed_methods GET;
+    }
+
+    location /Desktop/ {
+        allowed_methods GET;
+    }
+}

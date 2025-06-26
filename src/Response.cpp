@@ -36,6 +36,7 @@ void    Response::CheckLocations(std::string& path)
                 SetLocation(*(locations[i]));
         }
     }
+    std::cout << location.getPath() << "\n";
 }
 
 bool    Response::GetFullPath(std::string& path)
