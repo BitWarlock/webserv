@@ -27,6 +27,7 @@
 #include <fcntl.h>
 #include <dirent.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 
 #define GET "GET"
 #define POST "POST"
@@ -74,6 +75,7 @@ enum ResponseNumberState
     Forbidden = 403,
     Not_Found = 404,
     Method_Not_Allowed = 405,
+    LENGTH_REQUIRED = 411,
     Content_Too_Large = 413,
     URI_Too_Long = 414,
     Request_Header_Fields_Too_Large = 431,
@@ -94,6 +96,7 @@ class Response{
         Location            location;
         bool                FromLocation;
         std::string         path;
+        char                *env[7];
         
         public:
         Response();
@@ -136,7 +139,7 @@ class Response{
         
         bool    GetFullPath(std::string& path);
         
-        void    CheckForCGI(void);
+        bool    CheckForCGI(void);
         
         bool    CheckAutoIndex(void);
         
@@ -148,7 +151,11 @@ class Response{
         
         void    BuildGetResponse(void);
 
+        void    BuildDeleteResponse(void);
+
         std::string DefaultForMatchError(void);
+
+        void    ChildProccess(std::string interpreter);
         
 };
 

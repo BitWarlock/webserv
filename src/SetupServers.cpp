@@ -258,7 +258,6 @@ void    SetupServers::Run(void)
 				else
 				{
 					Requests[fd].startParse(fd, GetBlockServer(fd));
-					std::cout << Requests[fd].getParseState() << " ---\n";
 					if (Requests[fd].getParseState() == FINISH || Requests[fd].getParseState() == ERROR)
 						AddSocketToEpoll(fd, EPOLLOUT, EPOLL_CTL_MOD);
 				}

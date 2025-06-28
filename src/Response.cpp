@@ -272,6 +272,7 @@ void    Response::BuildGetResponse(void)
 
 	while ((n = read(fd, buffer, sizeof(buffer))) > 0)
         send(fd_client, buffer, n, MSG_NOSIGNAL);
+
     close(fd);
 }
 
@@ -279,11 +280,10 @@ bool    Response::ReturnDirective(void)
 {
     std::ostringstream   statuscode;
     std::string         redirecturl;
-    
+
     if (ServerBlock.getReturnDirective().enabled == false && 
         location.getReturnDirective().enabled == false)
         return (true);
-
     else if (FromLocation == true)
     {
         statuscode << location.getReturnDirective().status_code;
@@ -303,6 +303,74 @@ bool    Response::ReturnDirective(void)
     return (false);
 }
 
+void    Response::ChildProccess(std::string interpreter)
+{
+    std::vector<std::string>    env_storage;
+    env_storage.clear();
+
+    env_storage.push_back("REQUEST_METHOD=" + Request.getMethod());
+    env_storage.push_back("SCRIPT_NAME=" + Request.getUri());
+    env_storage.push_back("SCRIPT_FILENAME=" + path);
+    env_storage.push_back("QUERY_STRING=" + Request.getQueryString());
+    env_storage.push_back("CONTENT_TYPE=" + Request.getHeaderValue("content-type"));
+    env_storage.push_back("SERVER_PROTOCOL=HTTP/1.1");
+
+    for (size_t i = 0; i < env_storage.size(); ++i)
+        env[i] = (char*) env_storage[i].c_str();
+    env[env_storage.size()] = NULL;
+
+    char    *argv[3];
+    argv[0] = (char*) interpreter.c_str();
+    argv[1] = (char*) path.c_str();
+    argv[2] = NULL;
+
+    if (execve (argv[0], argv, env) == -1)
+        std::cerr << "execve: failed\n";
+    exit(1);
+}
+
+bool    Response::CheckForCGI(void)
+{
+    size_t  pos = path.rfind('.');
+    if (pos == std::string::npos)
+        return true;
+
+    std::string extenstion = path.substr(pos + 1);
+    std::string interpreter = location.getCgiInfo(extenstion);
+
+    if (interpreter.empty() || access(interpreter.c_str(), F_OK | X_OK) == -1)
+        return (SetState(Internal_Server_Error), ResponseWithError(NONE), false);
+
+    int pipe_fd[2];
+    if (pipe(pipe_fd) == -1)
+        return (SetState(Internal_Server_Error), ResponseWithError(NONE), false);
+    int pid = fork();
+    if (pid == -1)
+        return (SetState(Internal_Server_Error), ResponseWithError(NONE), false);
+    else if (pid == 0)
+    {
+        close(pipe_fd[0]);
+        dup2(pipe_fd[1], 1);
+        close(pipe_fd[1]);
+        ChildProccess(interpreter);
+    }
+    wait(NULL);
+    close(pipe_fd[1]);
+
+    std::string header = "HTTP/1.1 200 OK\r\n";
+    header += "Content-Type: text/html\r\n";
+    header += "Connection: close\r\n\r\n";
+    
+    send(fd_client, header.c_str(), strlen(header.c_str()), MSG_NOSIGNAL);
+
+    char buffer[4096];
+    ssize_t n(0);
+
+	while ((n = read(pipe_fd[0], buffer, sizeof(buffer))) > 0)
+        write(pipe_fd[0], buffer, strlen(buffer));
+    return (false);
+}
+
 void    Response::GetPageResponse(void)
 {
     struct stat info;
@@ -312,8 +380,8 @@ void    Response::GetPageResponse(void)
     if (GetFullPath(path) == false)
         return ;
 
-    if (ReturnDirective() == false)
-        return ;
+    // if (ReturnDirective() == false)
+    //     return ;
 
     if (stat(path.c_str(), &info) == -1)
         return (SetState(Not_Found), ResponseWithError(NONE));
@@ -324,8 +392,44 @@ void    Response::GetPageResponse(void)
     if (access(path.c_str(), R_OK) != 0)
         return (SetState(Forbidden), ResponseWithError(NONE));
 
-    CheckForCGI();
+    if (FromLocation == true)
+        if (CheckForCGI() == false)
+            return ;
+
     BuildGetResponse();
+}
+
+void    Response::BuildDeleteResponse(void)
+{
+    if (unlink(path.c_str()) == -1)
+        return (SetState(Internal_Server_Error), ResponseWithError(NONE));
+
+    std::string headers = "HTTP/1.1 204 Content\r\n";
+    headers += "content-Length: 0\r\n";
+    headers += "Connection: close\r\n\r\n";
+
+    send(fd_client, headers.c_str(), strlen(headers.c_str()), MSG_NOSIGNAL);
+}
+
+void    Response::DeleteContentResponse(void)
+{
+    struct stat info;
+    
+    CheckLocations(path);
+
+    if (GetFullPath(path) == false)
+        return ;
+
+    // if (ReturnDirective() == false)
+    //     return ;
+
+    if (stat(path.c_str(), &info) == -1)
+        return (SetState(Not_Found), ResponseWithError(NONE));
+
+    if (S_ISDIR(info.st_mode) || access(path.c_str(), W_OK) != 0)
+        return (SetState(Forbidden), ResponseWithError(NONE));
+
+    BuildDeleteResponse();
 }
 
 void    Response::ResponseWithOk(void)
@@ -336,8 +440,8 @@ void    Response::ResponseWithOk(void)
         GetPageResponse();
     // else if (Method == POST)
     //     AploadContentResponse();
-    // else
-    //     DeleteContentResponse();   
+    else
+        DeleteContentResponse();
 }
 
 std::string Response::DefaultForMatchError(void)
@@ -392,7 +496,7 @@ void    Response::ResponseWithError(int serve)
             return (SetState(Internal_Server_Error), ResponseWithError(DEFAULT));
     }
     else
-        return (SetState(Not_Found), ResponseWithError(DEFAULT));
+        return (ResponseWithError(DEFAULT));
     
     BuildGetResponse();
 }

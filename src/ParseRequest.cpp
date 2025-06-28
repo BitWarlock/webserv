@@ -73,10 +73,11 @@ std::string 										ParseRequest::getVersion()      				{ return (HttpProtocol
 std::string 										ParseRequest::getUri()          				{ return (Url); }
 int 												ParseRequest::getParseState()   				{ return (CurrntParsState); }
 int         										ParseRequest::getErrorNumber()					{ return (errorNumber);}
-std::vector<std::pair<std::string, std::string> >	ParseRequest::getHeaders()						{return (Headers);}
-std::string											ParseRequest::getHost()							{return (Host);}
-std::string											ParseRequest::getPort()							{return (Port);}
-int         										ParseRequest::getContentEncodingType(int Type)	{(void) Type; return (ContentEncodingType);}
+std::vector<std::pair<std::string, std::string> >	ParseRequest::getHeaders()						{ return (Headers);}
+std::string											ParseRequest::getHost()							{ return (Host);}
+std::string											ParseRequest::getPort()							{ return (Port);}
+int         										ParseRequest::getContentEncodingType(int Type)	{ (void) Type; return (ContentEncodingType);}
+std::string											ParseRequest::getQueryString()					{ return (QueryString);}
 
 
 // setters
