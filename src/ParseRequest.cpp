@@ -78,7 +78,8 @@ std::string											ParseRequest::getHost()							{ return (Host);}
 std::string											ParseRequest::getPort()							{ return (Port);}
 int         										ParseRequest::getContentEncodingType(int Type)	{ (void) Type; return (ContentEncodingType);}
 std::string											ParseRequest::getQueryString()					{ return (QueryString);}
-
+std::string											ParseRequest::getBufferBody()					{ return (BufferBody);}
+size_t												ParseRequest::getContentLength()				{ return (contentLength);}
 
 // setters
 

@@ -75,9 +75,11 @@ enum ResponseNumberState
     Forbidden = 403,
     Not_Found = 404,
     Method_Not_Allowed = 405,
-    LENGTH_REQUIRED = 411,
+    Conflict = 409,
+    Length_Required = 411,
     Content_Too_Large = 413,
     URI_Too_Long = 414,
+    Unsupported_Media_Type = 15,
     Request_Header_Fields_Too_Large = 431,
     Internal_Server_Error = 500,
     Not_Implemented = 501,
@@ -134,6 +136,8 @@ class Response{
         void    AploadContentResponse(void);
         
         void    DeleteContentResponse(void);
+        
+        void    PostContentResponse(void);
         
         void    CheckLocations(std::string& path);
         

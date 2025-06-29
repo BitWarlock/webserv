@@ -281,6 +281,8 @@ bool    Response::ReturnDirective(void)
     std::ostringstream   statuscode;
     std::string         redirecturl;
 
+    CheckLocations(path);
+
     if (ServerBlock.getReturnDirective().enabled == false && 
         location.getReturnDirective().enabled == false)
         return (true);
@@ -375,13 +377,11 @@ void    Response::GetPageResponse(void)
 {
     struct stat info;
     
-    CheckLocations(path);
+    // if (ReturnDirective() == false)
+    //     return ;
 
     if (GetFullPath(path) == false)
         return ;
-
-    // if (ReturnDirective() == false)
-    //     return ;
 
     if (stat(path.c_str(), &info) == -1)
         return (SetState(Not_Found), ResponseWithError(NONE));
@@ -415,13 +415,11 @@ void    Response::DeleteContentResponse(void)
 {
     struct stat info;
     
-    CheckLocations(path);
+    // if (ReturnDirective() == false)
+    //     return ;
 
     if (GetFullPath(path) == false)
         return ;
-
-    // if (ReturnDirective() == false)
-    //     return ;
 
     if (stat(path.c_str(), &info) == -1)
         return (SetState(Not_Found), ResponseWithError(NONE));
@@ -430,6 +428,61 @@ void    Response::DeleteContentResponse(void)
         return (SetState(Forbidden), ResponseWithError(NONE));
 
     BuildDeleteResponse();
+}
+
+void    Response::PostContentResponse(void)
+{
+    struct stat info;
+    
+    if (ReturnDirective() == false)
+        return ;
+
+    if (GetFullPath(path) == false)
+        return ;
+
+    if (FromLocation == true)
+        if (CheckForCGI() == false)
+            return ;
+
+    size_t  max_size = ServerBlock.getClientBodyLimit();
+
+    if (FromLocation == true)
+        max_size = location.getClientBodyLimit();
+
+    std::string lengthstr = Request.getHeaderValue("content-length");
+    if (lengthstr.empty())
+    {
+        std::string chunks = Request.getHeaderValue("transfer-encoding");
+        if (chunks.empty())
+            return (SetState(Length_Required), ResponseWithError(NONE));
+    }
+
+    if (Request.getContentLength() > max_size)
+        return (SetState(Content_Too_Large), ResponseWithError(NONE));
+
+    if (stat(path.c_str(), &info) == -1)
+    {
+        std::string dir = path.substr(0, path.rfind("/"));
+        if (access(dir.c_str(), W_OK) == -1)
+            return (SetState(Forbidden), ResponseWithError(NONE));
+    }
+    
+    if (S_ISDIR(info.st_mode))
+        return (SetState(Conflict), ResponseWithError(NONE));
+    
+    if (access(path.c_str(), W_OK) != 0)
+        return (SetState(Forbidden), ResponseWithError(NONE));
+    
+    int fd_file = open(path.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0664);
+
+    if (fd_file == -1)
+        return (SetState(Forbidden), ResponseWithError(NONE));
+
+    if (write(fd_file, Request.getBufferBody().c_str(), Request.getBufferBody().size()) == -1)
+        return (close(fd_file), SetState(Internal_Server_Error), ResponseWithError(NONE));
+    close(fd_file);
+
+    BuildGetResponse();
 }
 
 void    Response::ResponseWithOk(void)
@@ -510,8 +563,16 @@ void    Response::StartForResponse(ParseRequest request, Server BlockServer, int
     SetStatePath(NORMAL);
     this->fd_client = fd_client;
 
-    if (getState() != OK)
+    if (getState() == Method_Not_Allowed)
         ResponseWithError(NONE);
+
+    else if (getState() != OK)
+    {
+        if (ReturnDirective() == false)
+            return ;
+        ResponseWithError(NONE);
+    }
+
     else
         ResponseWithOk();
 }
