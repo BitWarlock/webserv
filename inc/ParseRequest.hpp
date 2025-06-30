@@ -119,6 +119,7 @@ class ParseRequest{
         std::string                                         getBufferBody(void);
         size_t                                              getContentLength(void);
         std::string                                         getBufferDecompressedBody();
+        Location                                            getMatchedLocation();
 
         // setters
         void        setMethod(std::string m);

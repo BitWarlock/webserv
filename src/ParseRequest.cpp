@@ -566,6 +566,10 @@ void         ParseRequest::CheckContentEncoding(){
 		return (SwitchState(ERROR), setErrorNumber(415));
 }
 
+
+Location     ParseRequest::getMatchedLocation(){
+	
+}
 // start reading and parsing ;
 void ParseRequest::startParse(int fd, Server server){
 	std::string buff;
