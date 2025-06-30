@@ -114,7 +114,10 @@ class ParseRequest{
         std::string                                         getHost();
         std::string                                         getPort();
         int                                                 getContentEncodingType(int Type);
-        std::string                                         getBufferBody();
+
+        std::string                                         getQueryString(void);
+        std::string                                         getBufferBody(void);
+        size_t                                              getContentLength(void);
         std::string                                         getBufferDecompressedBody();
 
         // setters

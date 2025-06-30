@@ -82,6 +82,8 @@ void    SetupServers::CreateSocket(Server& server)
 			}
 			else
 			{
+				int opt = 1;
+				setsockopt(fd_server, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 				this->fd_sockets.push_back(fd_server);
 				this->servers[fd_server] = Server(server);			
 				Advance();
@@ -262,10 +264,9 @@ void    SetupServers::Run(void)
 			}
 			else if (events[i].events & EPOLLOUT)
 			{
-				Responses[fd].StartForResponse(Requests[fd], GetBlockServer(fd));
-				send(fd, Responses[fd].res.c_str(), Responses[fd].res.size(), MSG_NOSIGNAL);
+				Responses[fd].StartForResponse(Requests[fd], GetBlockServer(fd), fd);
 				AddSocketToEpoll(fd, EPOLLIN, EPOLL_CTL_MOD);
-				// exit(0);
+				Requests[fd].ResetParserf();
 			}
 		}
 	}

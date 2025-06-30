@@ -73,12 +73,16 @@ std::string 										ParseRequest::getVersion()      				{ return (HttpProtocol
 std::string 										ParseRequest::getUri()          				{ return (Url); }
 int 												ParseRequest::getParseState()   				{ return (CurrntParsState); }
 int         										ParseRequest::getErrorNumber()					{ return (errorNumber);}
-std::vector<std::pair<std::string, std::string> >	ParseRequest::getHeaders()						{return (Headers);}
-std::string											ParseRequest::getHost()							{return (Host);}
-std::string											ParseRequest::getPort()							{return (Port);}
-int         										ParseRequest::getContentEncodingType(int Type)	{(void) Type; return (ContentEncodingType);}
-std::string                                         ParseRequest::getBufferBody()					{return (BufferBody);}
+
+std::vector<std::pair<std::string, std::string> >	ParseRequest::getHeaders()						{ return (Headers);}
+std::string											ParseRequest::getHost()							{ return (Host);}
+std::string											ParseRequest::getPort()							{ return (Port);}
+int         										ParseRequest::getContentEncodingType(int Type)	{ (void) Type; return (ContentEncodingType);}
+std::string											ParseRequest::getQueryString()					{ return (QueryString);}
+std::string											ParseRequest::getBufferBody()					{ return (BufferBody);}
+size_t												ParseRequest::getContentLength()				{ return (contentLength);}
 std::string                                         ParseRequest::getBufferDecompressedBody()		{return (DecompressedBufferBody);}
+
 
 // setters
 
@@ -105,6 +109,7 @@ bool ParseRequest::isSupportedMethod(std::string &RequestMethod)
 {
 	const std::vector<std::string> &sMethods = S->getAllowedMethods();
 	std::string m = RequestMethod;
+
 	for (size_t i = 0; i < sMethods.size(); i++)
 	{
 		if (sMethods[i] == m)
@@ -199,7 +204,7 @@ void ParseRequest::parseMethod(std::string &str){
 	str.erase(0, pos + 1);
 	ResetBuffPos();
 	if (!isSupportedMethod(Method))
-	    return (setErrorNumber(isKnownMethod()));
+	    return (SwitchState(ERROR), setErrorNumber(isKnownMethod()));
 	SwitchState(URL);
 }
 
@@ -398,9 +403,9 @@ void ParseRequest::CheckingForBody(){
 	if (TransferEncodingPresent && contentLengthPresent)
 		return (SwitchState(ERROR), setErrorNumber(400));
 	if (!chunkedEncoding && !contentLengthPresent)
-		return (SwitchState(FINISH));
 	if (chunkedEncoding)
 		return SwitchState(READCHUNKSIZE);
+		return (SwitchState(ERROR), setErrorNumber(411));
 	SwitchState(CONTENTLENGTHBODY);
 	CheckContentEncoding();
 }
@@ -589,5 +594,4 @@ void ParseRequest::startParse(int fd, Server server){
 			}
 		}
 	}
-	std::cout << getBufferBody() <<    "next              "<< std::endl;
 }

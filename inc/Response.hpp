@@ -27,6 +27,7 @@
 #include <fcntl.h>
 #include <dirent.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 
 #define GET "GET"
 #define POST "POST"
@@ -40,7 +41,7 @@
 #define DEFAULT 0
 #define NONE 1
 #define NORMAL 2
-#define ERROR 3
+#define RES_ERROR 3
 
 #define html "html"
 #define htm "htm"
@@ -69,12 +70,16 @@
 enum ResponseNumberState
 {
     OK = 200,
+    Moved_Permanently = 301,
     Bad_Request = 400,
     Forbidden = 403,
     Not_Found = 404,
     Method_Not_Allowed = 405,
+    Conflict = 409,
+    Length_Required = 411,
     Content_Too_Large = 413,
     URI_Too_Long = 414,
+    Unsupported_Media_Type = 15,
     Request_Header_Fields_Too_Large = 431,
     Internal_Server_Error = 500,
     Not_Implemented = 501,
@@ -85,6 +90,7 @@ class Response{
     
     private:
         int                 fd;
+        int                 fd_client;
         int                 state;
         int                 state_path;
         ParseRequest        Request;
@@ -92,6 +98,7 @@ class Response{
         Location            location;
         bool                FromLocation;
         std::string         path;
+        char                *env[7];
         
         public:
         Response();
@@ -116,23 +123,27 @@ class Response{
         
         // Startresponse
         
-        void    StartForResponse(ParseRequest Request, Server BlockServer);
+        void    StartForResponse(ParseRequest Request, Server BlockServer, int fd_client);
         
         void    ResponseWithError(int serve);
         
         void    ResponseWithOk(void);
         
         void    GetPageResponse(void);
+
+        bool    ReturnDirective(void);
         
         void    AploadContentResponse(void);
         
         void    DeleteContentResponse(void);
         
+        void    PostContentResponse(void);
+        
         void    CheckLocations(std::string& path);
         
         bool    GetFullPath(std::string& path);
         
-        void    CheckIfReadable(void);
+        bool    CheckForCGI(void);
         
         bool    CheckAutoIndex(void);
         
@@ -144,7 +155,11 @@ class Response{
         
         void    BuildGetResponse(void);
 
+        void    BuildDeleteResponse(void);
+
         std::string DefaultForMatchError(void);
+
+        void    ChildProccess(std::string interpreter);
         
 };
 
