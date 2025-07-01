@@ -107,7 +107,7 @@ bool ParseRequest::isFinish()                   { return (getParseState() == FIN
 // checking the method if its a supporetd one by the server ;
 bool ParseRequest::isSupportedMethod(std::string &RequestMethod)
 {
-	const std::vector<std::string> &sMethods = S->getAllowedMethods();
+	const std::vector<std::string> &sMethods = getMatchedLocationAllowedMethods();
 	std::string m = RequestMethod;
 
 	for (size_t i = 0; i < sMethods.size(); i++)
@@ -567,9 +567,28 @@ void         ParseRequest::CheckContentEncoding(){
 }
 
 
-Location     ParseRequest::getMatchedLocation(){
-	
+const std::vector<std::string>&     ParseRequest::getMatchedLocationAllowedMethods(){
+	std::string urlpath = Url;
+	const std::vector<Location*>& locations = S->getLocations();
+
+	while (true){
+		int i = 0;
+		while (i < locations.size()){
+			if (locations[i]->getPath() == urlpath)
+				return locations[i]->getAllowedMethods();
+			i++;
+		}
+		if (urlpath != "/"){
+			if (urlpath[urlpath.size() - 1] == '/')
+				urlpath.erase(urlpath.find_last_of('/'));
+			urlpath = urlpath.erase(urlpath.find_last_of('/')+1);
+		}
+		else
+			break;
+	}
+	return S->getAllowedMethods();
 }
+
 // start reading and parsing ;
 void ParseRequest::startParse(int fd, Server server){
 	std::string buff;
