@@ -566,7 +566,8 @@ void         ParseRequest::CheckContentEncoding(){
 		return (SwitchState(ERROR), setErrorNumber(415));
 }
 
-
+// check if the url match a location block on the server to get its allowed methods
+// if no location  matched i get the default allowed methods for the server  
 const std::vector<std::string>&     ParseRequest::getMatchedLocationAllowedMethods(){
 	std::string urlpath = Url;
 	const std::vector<Location*>& locations = S->getLocations();
