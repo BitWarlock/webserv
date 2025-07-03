@@ -68,20 +68,20 @@ ParseRequest::~ParseRequest() {}
 
 // getters
 
-std::string 										ParseRequest::getMethod()						{ return (Method); }
-std::string 										ParseRequest::getVersion()      				{ return (HttpProtocolVersion); }
-std::string 										ParseRequest::getUri()          				{ return (Url); }
+std::string& 										ParseRequest::getMethod()						{ return (Method); }
+std::string& 										ParseRequest::getVersion()      				{ return (HttpProtocolVersion); }
+std::string& 										ParseRequest::getUri()          				{ return (Url); }
 int 												ParseRequest::getParseState()   				{ return (CurrntParsState); }
 int         										ParseRequest::getErrorNumber()					{ return (errorNumber);}
 
-std::vector<std::pair<std::string, std::string> >	ParseRequest::getHeaders()						{ return (Headers);}
-std::string											ParseRequest::getHost()							{ return (Host);}
-std::string											ParseRequest::getPort()							{ return (Port);}
+std::vector<std::pair<std::string, std::string> >&	ParseRequest::getHeaders()						{ return (Headers);}
+std::string&										ParseRequest::getHost()							{ return (Host);}
+std::string&										ParseRequest::getPort()							{ return (Port);}
 int         										ParseRequest::getContentEncodingType(int Type)	{ (void) Type; return (ContentEncodingType);}
-std::string											ParseRequest::getQueryString()					{ return (QueryString);}
-std::string											ParseRequest::getBufferBody()					{ return (BufferBody);}
+std::string&										ParseRequest::getQueryString()					{ return (QueryString);}
+std::string&										ParseRequest::getBufferBody()					{ return (BufferBody);}
 size_t												ParseRequest::getContentLength()				{ return (contentLength);}
-std::string                                         ParseRequest::getBufferDecompressedBody()		{return (DecompressedBufferBody);}
+std::string&                                        ParseRequest::getBufferDecompressedBody()		{return (DecompressedBufferBody);}
 
 
 // setters
@@ -403,9 +403,9 @@ void ParseRequest::CheckingForBody(){
 	if (TransferEncodingPresent && contentLengthPresent)
 		return (SwitchState(ERROR), setErrorNumber(400));
 	if (!chunkedEncoding && !contentLengthPresent)
+		return (SwitchState(ERROR), setErrorNumber(411));
 	if (chunkedEncoding)
 		return SwitchState(READCHUNKSIZE);
-		return (SwitchState(ERROR), setErrorNumber(411));
 	SwitchState(CONTENTLENGTHBODY);
 	CheckContentEncoding();
 }
@@ -415,15 +415,14 @@ void ParseRequest::parseContentlengthBody(std::string &str){
 	if (contentLength == 0)
 		return (SwitchState(FINISH));
 	pos = str.find(CLRF);
-	if (pos != std::string::npos){
-		BufferBody =  str.substr(0,pos);
-		str.clear();
-		if (static_cast<size_t> (contentLength) != BufferBody.size())
-			return (SwitchState(ERROR), setErrorNumber(400));
-		if (ContentEncodingType == GZIP || ContentEncodingType == DEFLATE)
-			DecompressBody();
-		return (SwitchState(FINISH));
-	}
+	BufferBody =  str.substr(0,pos);
+	str.clear();
+	if (static_cast<size_t> (contentLength) != BufferBody.size())
+		return (SwitchState(ERROR), setErrorNumber(400));
+	ContentEncodingType = GZIP;
+	if (ContentEncodingType == GZIP || ContentEncodingType == DEFLATE)
+		DecompressBody();
+	return (SwitchState(FINISH));
 }
 
 // convert from hexadecimal to decimal ;
@@ -448,8 +447,8 @@ void ParseRequest::parseChunkedBody(std::string &str){
 					return (SwitchState(ERROR), setErrorNumber(400));
 			}
 			ChunkSize = HexaStringToDecimalNum(StringChunkSize);
-			// if (ChunkSize > S->getClientBodyLimit())
-			// 	return (SwitchState(ERROR), setErrorNumber(413));
+			if (ChunkSize > S->getClientBodyLimit())
+				return (SwitchState(ERROR), setErrorNumber(413));
 			str.erase(0, pos + 2);
 			ResetBuffPos();
 			if (ChunkSize == 0){
@@ -531,7 +530,6 @@ void        ParseRequest::DecompressBody(){
 	int ret = Z_OK;
 	DecompressedBufferBody.clear();
 	while (ret != Z_STREAM_END){
-		std::cout << "here\n";
 		Strm.next_out = (Bytef *) outbuffer;
 		Strm.avail_out = sizeof(outbuffer);
 		ret = inflate(&Strm, Z_NO_FLUSH);
@@ -573,13 +571,13 @@ const std::vector<std::string>&     ParseRequest::getMatchedLocationAllowedMetho
 	const std::vector<Location*>& locations = S->getLocations();
 
 	while (true){
-		int i = 0;
+		size_t i = 0;
 		while (i < locations.size()){
 			if (locations[i]->getPath() == urlpath)
 				return locations[i]->getAllowedMethods();
 			i++;
 		}
-		if (urlpath != "/"){
+		if (urlpath != "/" && urlpath.size() > 1){
 			if (urlpath[urlpath.size() - 1] == '/')
 				urlpath.erase(urlpath.find_last_of('/'));
 			urlpath = urlpath.erase(urlpath.find_last_of('/')+1);
@@ -604,18 +602,33 @@ void ParseRequest::startParse(int fd, Server server){
 			if (bytes <= 0)
 				break ;
 			buff.append(str, bytes);
+			std::cout << buff;
 		}
 		switch(CurrntParsState){
 			case FINISH:
-				return;
 			case ERROR:
-				return ;
+				break;
 			default :
 			if (CurrntParsState < PARSEARRAYSIZE){
 				(this->*ParseRequest::ParseTable[CurrntParsState])(buff);
-				std::cout << getBufferDecompressedBody() << std::endl;
+				// std::cout << CurrntParsState << "\n";
+				// std::cout << getErrorNumber() << " finish "<< std::endl;
 				break;
 			}
 		}
+		if (CurrntParsState == FINISH || CurrntParsState == ERROR)
+			break;
 	}
+	// ========  TEST ========//
+	/*________________________________________________________________*/
+
+	// std::vector<std::pair<std::string, std::string> > h = getHeaders();
+	// for (std::vector<std::pair<std::string, std::string> >::const_iterator it = h.begin(); it != h.end(); ++it) {
+    //     std::cout << it->first << ": " << it->second << std::endl;
+    // }
+	// std::cout << "here ++++> "<< getBufferBody() << std::endl;
+	// std::cout << "here toooo == .> "<< getBufferDecompressedBody() << std::endl;
+	// exit(0);
+
+	/*________________________________________________________________*/
 }
