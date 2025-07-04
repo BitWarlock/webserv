@@ -30,7 +30,7 @@ ParseRequest::ParseRequest() : errorNumber(200), pos(0),
 	NonRepeatablesHeaders["content-encoding"] = 0;
 	NonRepeatablesHeaders["transfer-encoding"] = 0;
 	NonRepeatablesHeaders["authorization"] = 0;
-	NonRepeatablesHeaders["user-agent	"] = 0;
+	NonRepeatablesHeaders["user-agent"] = 0;
 	NonRepeatablesHeaders["connection"] = 0;
 	NonRepeatablesHeaders["date"] = 0;
 	NonRepeatablesHeaders["upgrade"] = 0;
@@ -68,18 +68,21 @@ ParseRequest::~ParseRequest() {}
 
 // getters
 
-std::string 										ParseRequest::getMethod()						{ return (Method); }
-std::string 										ParseRequest::getVersion()      				{ return (HttpProtocolVersion); }
-std::string 										ParseRequest::getUri()          				{ return (Url); }
+std::string& 										ParseRequest::getMethod()						{ return (Method); }
+std::string& 										ParseRequest::getVersion()      				{ return (HttpProtocolVersion); }
+std::string& 										ParseRequest::getUri()          				{ return (Url); }
 int 												ParseRequest::getParseState()   				{ return (CurrntParsState); }
 int         										ParseRequest::getErrorNumber()					{ return (errorNumber);}
-std::vector<std::pair<std::string, std::string> >	ParseRequest::getHeaders()						{ return (Headers);}
-std::string											ParseRequest::getHost()							{ return (Host);}
-std::string											ParseRequest::getPort()							{ return (Port);}
+
+std::vector<std::pair<std::string, std::string> >&	ParseRequest::getHeaders()						{ return (Headers);}
+std::string&										ParseRequest::getHost()							{ return (Host);}
+std::string&										ParseRequest::getPort()							{ return (Port);}
 int         										ParseRequest::getContentEncodingType(int Type)	{ (void) Type; return (ContentEncodingType);}
-std::string											ParseRequest::getQueryString()					{ return (QueryString);}
-std::string											ParseRequest::getBufferBody()					{ return (BufferBody);}
+std::string&										ParseRequest::getQueryString()					{ return (QueryString);}
+std::string&										ParseRequest::getBufferBody()					{ return (BufferBody);}
 size_t												ParseRequest::getContentLength()				{ return (contentLength);}
+std::string&                                        ParseRequest::getBufferDecompressedBody()		{return (DecompressedBufferBody);}
+
 
 // setters
 
@@ -104,7 +107,7 @@ bool ParseRequest::isFinish()                   { return (getParseState() == FIN
 // checking the method if its a supporetd one by the server ;
 bool ParseRequest::isSupportedMethod(std::string &RequestMethod)
 {
-	const std::vector<std::string> &sMethods = S->getAllowedMethods();
+	const std::vector<std::string> &sMethods = getMatchedLocationAllowedMethods();
 	std::string m = RequestMethod;
 
 	for (size_t i = 0; i < sMethods.size(); i++)
@@ -400,7 +403,7 @@ void ParseRequest::CheckingForBody(){
 	if (TransferEncodingPresent && contentLengthPresent)
 		return (SwitchState(ERROR), setErrorNumber(400));
 	if (!chunkedEncoding && !contentLengthPresent)
-		return (SwitchState(FINISH));
+		return (SwitchState(ERROR), setErrorNumber(411));
 	if (chunkedEncoding)
 		return SwitchState(READCHUNKSIZE);
 	SwitchState(CONTENTLENGTHBODY);
@@ -411,15 +414,13 @@ void ParseRequest::CheckingForBody(){
 void ParseRequest::parseContentlengthBody(std::string &str){
 	if (contentLength == 0)
 		return (SwitchState(FINISH));
-	pos = str.find(CLRF);
-	if (pos != std::string::npos){
-		BufferBody =  str.substr(0,pos);
-		str.clear();
-		std::cout << BufferBody.size() << "  --  " << contentLength << "\n";
-		// if (static_cast<size_t> (contentLength) != BufferBody.size())
-		// 	return (SwitchState(ERROR), setErrorNumber(400));
-		return (SwitchState(FINISH));
-	}
+	BufferBody =  str.substr(0);
+	str.clear();
+	if (static_cast<size_t> (contentLength) != BufferBody.size())
+		return (SwitchState(ERROR), setErrorNumber(400));
+	if (ContentEncodingType == GZIP || ContentEncodingType == DEFLATE)
+		DecompressBody();
+	return (SwitchState(FINISH));
 }
 
 // convert from hexadecimal to decimal ;
@@ -448,8 +449,11 @@ void ParseRequest::parseChunkedBody(std::string &str){
 				return (SwitchState(ERROR), setErrorNumber(413));
 			str.erase(0, pos + 2);
 			ResetBuffPos();
-			if (ChunkSize == 0)
+			if (ChunkSize == 0){
+				if (ContentEncodingType == GZIP || ContentEncodingType == DEFLATE)
+					DecompressBody();
 				return (SwitchState(FINISH));
+			}
 			SwitchState(READCHUNK);
 		}
 	}
@@ -504,6 +508,39 @@ void ParseRequest::StartNewRequest(std::string& buff){
 	SwitchState(METHOD);
 }
 
+void        ParseRequest::DecompressBody(){
+	z_stream	Strm;
+	memset(&Strm,0,sizeof(Strm));
+	int			Bits = 15;
+	if (ContentEncodingType == GZIP)
+		Bits += 16;
+	else if (ContentEncodingType == DEFLATE)
+		Bits *= -1;
+	Strm.zalloc = Z_NULL;
+	Strm.zfree = Z_NULL;
+	Strm.opaque = Z_NULL;
+	Strm.next_in = (Bytef *)BufferBody.data();
+	Strm.avail_in = BufferBody.size();
+
+	if (inflateInit2(&Strm, Bits) != Z_OK)
+		return (SwitchState(ERROR), setErrorNumber(400));
+	char outbuffer[32768];
+	int ret = Z_OK;
+	DecompressedBufferBody.clear();
+	while (ret != Z_STREAM_END){
+		Strm.next_out = (Bytef *) outbuffer;
+		Strm.avail_out = sizeof(outbuffer);
+		ret = inflate(&Strm, Z_NO_FLUSH);
+		if (ret != Z_OK && ret != Z_STREAM_END){
+			inflateEnd(&Strm);
+			return (SwitchState(ERROR), setErrorNumber(400));
+		}
+		DecompressedBufferBody.append(outbuffer, sizeof(outbuffer) - Strm.avail_out);
+	}
+	inflateEnd(&Strm);
+	SwitchState(FINISH);
+}
+
 // check if the body coded with valid coding type ;
 void         ParseRequest::CheckContentEncoding(){
 	std::string Value =  getHeaderValue("content-encoding");
@@ -525,6 +562,30 @@ void         ParseRequest::CheckContentEncoding(){
 		return (SwitchState(ERROR), setErrorNumber(415));
 }
 
+// check if the url match a location block on the server to get its allowed methods
+// if no location  matched i get the default allowed methods for the server  
+const std::vector<std::string>&     ParseRequest::getMatchedLocationAllowedMethods(){
+	std::string urlpath = Url;
+	const std::vector<Location*>& locations = S->getLocations();
+
+	while (true){
+		size_t i = 0;
+		while (i < locations.size()){
+			if (locations[i]->getPath() == urlpath)
+				return locations[i]->getAllowedMethods();
+			i++;
+		}
+		if (urlpath != "/" && urlpath.size() > 1){
+			if (urlpath[urlpath.size() - 1] == '/')
+				urlpath.erase(urlpath.find_last_of('/'));
+			urlpath = urlpath.erase(urlpath.find_last_of('/')+1);
+		}
+		else
+			break;
+	}
+	return S->getAllowedMethods();
+}
+
 // start reading and parsing ;
 void ParseRequest::startParse(int fd, Server server){
 	std::string buff;
@@ -538,19 +599,32 @@ void ParseRequest::startParse(int fd, Server server){
 			ssize_t bytes = recv(fd, str, 999, 0);
 			if (bytes <= 0)
 				break ;
-			buff.append(str);
-			std::cout << buff << "\n";
+			buff.append(str, bytes);
+			std::cout << buff;
 		}
 		switch(CurrntParsState){
 			case FINISH:
-				return ;
 			case ERROR:
-				return ;
+				break;
 			default :
 				if (CurrntParsState < PARSEARRAYSIZE){
 					(this->*ParseRequest::ParseTable[CurrntParsState])(buff);
-				break;
+					break;
 			}
 		}
+		if (CurrntParsState == FINISH || CurrntParsState == ERROR)
+			break;
 	}
+	// ========  TEST ========//
+	/*________________________________________________________________*/
+
+	// std::vector<std::pair<std::string, std::string> > h = getHeaders();
+	// for (std::vector<std::pair<std::string, std::string> >::const_iterator it = h.begin(); it != h.end(); ++it) {
+    //     std::cout << it->first << ": " << it->second << std::endl;
+    // }
+	// std::cout << "here ++++> "<< getBufferBody() << std::endl;
+	// std::cout << "here toooo == .> "<< getBufferDecompressedBody() << std::endl;
+	// exit(0);
+
+	/*________________________________________________________________*/
 }

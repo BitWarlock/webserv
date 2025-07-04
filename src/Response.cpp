@@ -385,6 +385,7 @@ void    Response::GetPageResponse(void)
     if (GetFullPath(path) == false)
         return ;
 
+    std::cout << path;
     if (stat(path.c_str(), &info) == -1)
         return (SetState(Not_Found), ResponseWithError(NONE));
         
@@ -451,6 +452,7 @@ void    Response::BuildPostResponse(void)
 
 void    Response::FilterBody(int fd_file)
 {
+    (void) fd_file;
     std::string ContentType = Request.getHeaderValue("content-type");
     size_t      multipart = ContentType.find("multipart/form-data");
     std::string body = Request.getBufferBody();
@@ -460,11 +462,11 @@ void    Response::FilterBody(int fd_file)
         size_t  pos = ContentType.find("boundary=");
         if (pos == std::string::npos)
             return (SetState(Bad_Request), ResponseWithError(NONE));
-        std::string boundary = "--" + ContentType.substr(pos + 9);
-        while (!body.empty())
-        {
+        // std::string boundary = "--" + ContentType.substr(pos + 9);
+        // while (!body.empty())
+        // {
             
-        }
+        // }
     }
 }
 
@@ -522,6 +524,7 @@ void    Response::ResponseWithOk(void)
 {
     std::string Method = Request.getMethod();
 
+    std::cout << "Method\n";
     if (Method == GET)
         GetPageResponse();
     else if (Method == POST)
@@ -604,8 +607,9 @@ void    Response::StartForResponse(ParseRequest request, Server BlockServer, int
     SetStatePath(NORMAL);
     this->fd_client = fd_client;
 
-    std::cout << Request.getBufferBody() << "\n";
-    // std::cout << path << "\n" << getState() << "\n";
+    // std::cout << "here\\n";
+    // std::cout << Request.getBufferBody() << "\n";
+    std::cout << path << " --- " << getState() << "\n";
     if (getState() == Method_Not_Allowed)
         ResponseWithError(NONE);
 

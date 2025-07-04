@@ -61,6 +61,7 @@ class ParseRequest{
         bool                                                hasValidHost;
         size_t                                              ChunkSize;
         std::string                                         BufferBody;
+        std::string                                         DecompressedBufferBody;
         std::map<std::string, int>                          NonRepeatablesHeaders;
         std::string                                         Host;
         std::string                                         Port;
@@ -88,6 +89,7 @@ class ParseRequest{
         bool        checkIsThereaHost();
         bool        isNumber(std::string toCheck);
         void        ResetParserf();
+        void        DecompressBody();
 
         // checkers
         bool        isFinish();
@@ -102,19 +104,22 @@ class ParseRequest{
         void        CheckContentEncoding();
 
         // getters
-        std::string                                         getMethod();
-        std::string                                         getUri();
-        std::string                                         getVersion();
+        std::string&                                        getMethod();
+        std::string&                                        getUri();
+        std::string&                                        getVersion();
         int                                                 getParseState();
-        std::string                                         getHeaderValue(std::string key);
+        std::string                                        getHeaderValue(std::string key);
         int                                                 getErrorNumber();
-        std::vector<std::pair<std::string, std::string> >   getHeaders();
-        std::string                                         getHost();
-        std::string                                         getPort();
+        std::vector<std::pair<std::string, std::string> >&  getHeaders();
+        std::string&                                        getHost();
+        std::string&                                        getPort();
         int                                                 getContentEncodingType(int Type);
-        std::string                                         getQueryString(void);
-        std::string                                         getBufferBody(void);
+
+        std::string&                                        getQueryString(void);
+        std::string&                                        getBufferBody(void);
         size_t                                              getContentLength(void);
+        std::string&                                        getBufferDecompressedBody();
+        const std::vector<std::string>&                     getMatchedLocationAllowedMethods();
 
         // setters
         void        setMethod(std::string m);
