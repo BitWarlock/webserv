@@ -70,6 +70,7 @@
 enum ResponseNumberState
 {
     OK = 200,
+    Created = 201,
     Moved_Permanently = 301,
     Bad_Request = 400,
     Forbidden = 403,
@@ -79,7 +80,7 @@ enum ResponseNumberState
     Length_Required = 411,
     Content_Too_Large = 413,
     URI_Too_Long = 414,
-    Unsupported_Media_Type = 15,
+    Unsupported_Media_Type = 415,
     Request_Header_Fields_Too_Large = 431,
     Internal_Server_Error = 500,
     Not_Implemented = 501,
@@ -157,9 +158,13 @@ class Response{
 
         void    BuildDeleteResponse(void);
 
+        void    BuildPostResponse(void);
+
         std::string DefaultForMatchError(void);
 
         void    ChildProccess(std::string interpreter);
+
+        void    FilterBody(int fd_file);
         
 };
 

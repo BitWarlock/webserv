@@ -415,9 +415,9 @@ void ParseRequest::parseContentlengthBody(std::string &str){
 	if (pos != std::string::npos){
 		BufferBody =  str.substr(0,pos);
 		str.clear();
-		std::cout << "something\n";
-		if (static_cast<size_t> (contentLength) != BufferBody.size())
-			return (SwitchState(ERROR), setErrorNumber(400));
+		std::cout << BufferBody.size() << "  --  " << contentLength << "\n";
+		// if (static_cast<size_t> (contentLength) != BufferBody.size())
+		// 	return (SwitchState(ERROR), setErrorNumber(400));
 		return (SwitchState(FINISH));
 	}
 }
@@ -535,11 +535,11 @@ void ParseRequest::startParse(int fd, Server server){
 		char        str[1000];
 		if (buff.empty()){
 			memset(str, 0, sizeof(str));
-			ssize_t bytes = recv(fd, str, sizeof(str) - 1, 0);
+			ssize_t bytes = recv(fd, str, 999, 0);
 			if (bytes <= 0)
-			break ;
+				break ;
 			buff.append(str);
-			std::cout << buff;
+			std::cout << buff << "\n";
 		}
 		switch(CurrntParsState){
 			case FINISH:
