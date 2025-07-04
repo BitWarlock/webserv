@@ -180,6 +180,8 @@ std::string Response::getStrState(void) const
 {
     switch (getState())
     {
+        case Created:
+            return ("Created");
         case Bad_Request:
             return ("Bad Request");
         case Forbidden:
@@ -378,8 +380,8 @@ void    Response::GetPageResponse(void)
 {
     struct stat info;
     
-    // if (ReturnDirective() == false)
-    //     return ;
+    if (ReturnDirective() == false)
+        return ;
 
     if (GetFullPath(path) == false)
         return ;
@@ -416,8 +418,8 @@ void    Response::DeleteContentResponse(void)
 {
     struct stat info;
     
-    // if (ReturnDirective() == false)
-    //     return ;
+    if (ReturnDirective() == false)
+        return ;
 
     if (GetFullPath(path) == false)
         return ;
@@ -431,12 +433,59 @@ void    Response::DeleteContentResponse(void)
     BuildDeleteResponse();
 }
 
+void    Response::BuildPostResponse(void)
+{
+    std::ostringstream  os;
+    std::ostringstream  oss;
+
+    os << getState();
+    std::string body = "<html><body><h1>Upload Successful</h1></body></html>";
+    oss << body.size();
+    std::string headers = "HTTP/1.1 " + os.str() + getStrState() + "\r\n";
+    headers += "content-Length: " + oss.str() + "\r\n";
+    headers += "Connection: close\r\n\r\n";
+
+    std::string response = headers + body;
+
+    send(fd_client, response.c_str(), response.size(), MSG_NOSIGNAL);
+}
+
+void    Response::FilterBody(int fd_file)
+{
+    (void) fd_file;
+    std::string ContentType = Request.getHeaderValue("content-type");
+    size_t      multipart = ContentType.find("multipart/form-data");
+    std::string body = Request.getBufferBody();
+
+    if (multipart != std::string::npos)
+    {
+        size_t  pos = ContentType.find("boundary=");
+        if (pos == std::string::npos)
+            return (SetState(Bad_Request), ResponseWithError(NONE));
+        std::string boundary = "--" + ContentType.substr(pos + 9);
+        while (!body.empty())
+        {
+            
+        }
+    }
+}
+
 void    Response::PostContentResponse(void)
 {
     struct stat info;
-    
+
     if (ReturnDirective() == false)
         return ;
+        
+    size_t  max_size = ServerBlock.getClientBodyLimit();
+        
+    if (FromLocation == true)
+        max_size = location.getClientBodyLimit();
+        
+    size_t lengthstr = Request.getBufferBody().size();
+        
+    if (lengthstr > max_size)
+        return (SetState(Content_Too_Large), ResponseWithError(NONE));
 
     if (GetFullPath(path) == false)
         return ;
@@ -445,45 +494,30 @@ void    Response::PostContentResponse(void)
         if (CheckForCGI() == false)
             return ;
 
-    size_t  max_size = ServerBlock.getClientBodyLimit();
-
-    if (FromLocation == true)
-        max_size = location.getClientBodyLimit();
-
-    std::string lengthstr = Request.getHeaderValue("content-length");
-    if (lengthstr.empty())
-    {
-        std::string chunks = Request.getHeaderValue("transfer-encoding");
-        if (chunks.empty())
-            return (SetState(Length_Required), ResponseWithError(NONE));
-    }
-
-    if (Request.getContentLength() > max_size)
-        return (SetState(Content_Too_Large), ResponseWithError(NONE));
-
+    int fd_file(0);
     if (stat(path.c_str(), &info) == -1)
     {
-        std::string dir = path.substr(0, path.rfind("/"));
-        if (access(dir.c_str(), W_OK) == -1)
+        if ((fd_file = open(path.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0664)) == -1)
             return (SetState(Forbidden), ResponseWithError(NONE));
+        SetState(Created);
     }
-    
-    if (S_ISDIR(info.st_mode))
-        return (SetState(Conflict), ResponseWithError(NONE));
-    
-    if (access(path.c_str(), W_OK) != 0)
-        return (SetState(Forbidden), ResponseWithError(NONE));
-    
-    int fd_file = open(path.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0664);
+    else
+    {
+        if (S_ISDIR(info.st_mode))
+            return (SetState(Conflict), ResponseWithError(NONE));
+        
+        if (access(path.c_str(), W_OK) != 0
+            || (fd_file = open(path.c_str(), O_WRONLY | O_TRUNC)) == -1)
+                return (SetState(Forbidden), ResponseWithError(NONE));
+    }
 
-    if (fd_file == -1)
-        return (SetState(Forbidden), ResponseWithError(NONE));
-
+    FilterBody(fd_file);
     if (write(fd_file, Request.getBufferBody().c_str(), Request.getBufferBody().size()) == -1)
         return (close(fd_file), SetState(Internal_Server_Error), ResponseWithError(NONE));
+    
     close(fd_file);
-
-    BuildGetResponse();
+    
+    BuildPostResponse();
 }
 
 void    Response::ResponseWithOk(void)
@@ -492,8 +526,8 @@ void    Response::ResponseWithOk(void)
 
     if (Method == GET)
         GetPageResponse();
-    // else if (Method == POST)
-    //     AploadContentResponse();
+    else if (Method == POST)
+        PostContentResponse();
     else
         DeleteContentResponse();
 }
@@ -502,7 +536,9 @@ std::string Response::DefaultForMatchError(void)
 {
     int error = getState();
     
-    if (error == Bad_Request)
+    if (error == Moved_Permanently)
+        return "./error_pages/Moved_Permanently.html";
+    else if (error == Bad_Request)
         return "./error_pages/Bad_request.html";
     else if (error == Forbidden)
         return "./error_pages/Forbidden.html";
@@ -510,10 +546,16 @@ std::string Response::DefaultForMatchError(void)
         return "./error_pages/Not_Found.html";
     else if (error == Method_Not_Allowed)
         return "./error_pages/Method_Not_Allowed.html";
+    else if (error == Conflict)
+        return "./error_pages/Conflict.html";
+    else if (error == Length_Required)
+        return "./error_pages/Length_Required.html";
     else if (error == Content_Too_Large)
         return "./error_pages/Content_Too_Large.html";
     else if (error == URI_Too_Long)
         return "./error_pages/URI_Too_Long.html";
+    else if (error == Unsupported_Media_Type)
+        return "./error_pages/Unsupported_Media_Type.html";
     else if (error == Request_Header_Fields_Too_Large)
         return "./error_pages/Request_Header_Fields_Too_Large.html";
     else if (error == Internal_Server_Error)
@@ -564,6 +606,8 @@ void    Response::StartForResponse(ParseRequest request, Server BlockServer, int
     SetStatePath(NORMAL);
     this->fd_client = fd_client;
 
+    std::cout << Request.getBufferBody() << "\n";
+    // std::cout << path << "\n" << getState() << "\n";
     if (getState() == Method_Not_Allowed)
         ResponseWithError(NONE);
 
