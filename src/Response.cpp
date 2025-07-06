@@ -44,36 +44,21 @@ bool    Response::GetFullPath(std::string& path)
     {    
         if (!location.getRoot().empty())
         {
-            std::string join = path;
-            
             if (state_path == NORMAL)
-                join = path.erase(location.getPath().size());
-            if (join.empty())
-                SetPath(location.getRoot());
-            else if (join[0] == '/')
-                SetPath(location.getRoot() + join.erase(0, 1));
-            else
-                SetPath(location.getRoot() + join);
+                path.erase(0, location.getPath().size());
+            if (path[0] == '/')
+                path.erase(0, 1);
+            SetPath(location.getRoot() + path);
         }
         else if (!ServerBlock.getRoot().empty())
             SetPath(ServerBlock.getRoot() + path.erase(0, 1));
         else
-        {
-            SetState(Internal_Server_Error);
-            ResponseWithError(DEFAULT);
-            return (false);
-        }
+            return (SetState(Internal_Server_Error),
+                ResponseWithError(DEFAULT), false);
     }
     else
-    {
-        if (ServerBlock.getRoot().empty())
-        {
-            SetState(Internal_Server_Error);
-            ResponseWithError(DEFAULT);
-            return (false);
-        }
         SetPath(ServerBlock.getRoot() + path.erase(0, 1));
-    }
+
     return (true);
 }
 
@@ -330,6 +315,7 @@ void    Response::ChildProccess(std::string interpreter)
 
     if (execve (argv[0], argv, env) == -1)
         std::cerr << "execve: failed\n";
+
     exit(1);
 }
 
@@ -361,31 +347,29 @@ bool    Response::CheckForCGI(void)
     wait(NULL);
     close(pipe_fd[1]);
 
-    std::string header = "HTTP/1.1 200 OK\r\n";
-    header += "Content-Type: text/html\r\n";
-    header += "Connection: close\r\n\r\n";
-    
-    send(fd_client, header.c_str(), strlen(header.c_str()), MSG_NOSIGNAL);
-
     char buffer[4096];
     ssize_t n(0);
+    std::string cgi;
 
-	while ((n = read(pipe_fd[0], buffer, sizeof(buffer))) > 0)
-        write(pipe_fd[0], buffer, strlen(buffer));
+	while ((n = read(pipe_fd[0], buffer, sizeof(buffer))) > 0){
+        buffer[n] = 0;
+        cgi += buffer;
+    }
+
+    close(pipe_fd[0]);
     return (false);
 }
 
 void    Response::GetPageResponse(void)
 {
     struct stat info;
-    CheckLocations(path);
     // if (ReturnDirective() == false)
     //     return ;
-
+    CheckLocations(path);
+    
     if (GetFullPath(path) == false)
         return ;
 
-    std::cout << "\n --- " << path;
     if (stat(path.c_str(), &info) == -1)
         return (SetState(Not_Found), ResponseWithError(NONE));
         
@@ -474,9 +458,10 @@ void    Response::PostContentResponse(void)
 {
     struct stat info;
 
-    if (ReturnDirective() == false)
-        return ;
-        
+    // if (ReturnDirective() == false)
+    //     return ;
+    std::cout << Request.getBufferBody();
+    CheckLocations(path);
     size_t  max_size = ServerBlock.getClientBodyLimit();
         
     if (FromLocation == true)
@@ -524,7 +509,6 @@ void    Response::ResponseWithOk(void)
 {
     std::string Method = Request.getMethod();
 
-    std::cout << "\n -- " << Method << "\n";
     if (Method == GET)
         GetPageResponse();
     else if (Method == POST)
@@ -613,8 +597,8 @@ void    Response::StartForResponse(ParseRequest request, Server BlockServer, int
 
     else if (getState() != OK)
     {
-        if (ReturnDirective() == false)
-            return ;
+        // if (ReturnDirective() == false)
+        //     return ;
         ResponseWithError(NONE);
     }
 

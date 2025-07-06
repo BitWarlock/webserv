@@ -414,7 +414,8 @@ void ParseRequest::CheckingForBody(){
 void ParseRequest::parseContentlengthBody(std::string &str){
 	if (contentLength == 0)
 		return (SwitchState(FINISH));
-	BufferBody =  str.substr(0);
+	pos = str.find(CLRF);
+	BufferBody =  str.substr(0,pos);
 	str.clear();
 	if (static_cast<size_t> (contentLength) != BufferBody.size())
 		return (SwitchState(ERROR), setErrorNumber(400));
@@ -599,8 +600,8 @@ void ParseRequest::startParse(int fd, Server server){
 			ssize_t bytes = recv(fd, str, 999, 0);
 			if (bytes <= 0)
 				break ;
-			buff.append(str, bytes);
-			std::cout << buff;
+			buff.append(str);
+			// std::cout << buff << "\n";
 		}
 		switch(CurrntParsState){
 			case FINISH:
