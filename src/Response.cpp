@@ -379,13 +379,17 @@ bool    Response::CheckForCGI(void)
 void    Response::GetPageResponse(void)
 {
     struct stat info;
-    
-    if (ReturnDirective() == false)
-        return ;
+    CheckLocations(path);
+    // if (ReturnDirective() == false)
+    //     return ;
 
     if (GetFullPath(path) == false)
         return ;
 
+<<<<<<< HEAD
+=======
+    std::cout << "\n --- " << path;
+>>>>>>> 6e7e8bf (GET method is done)
     if (stat(path.c_str(), &info) == -1)
         return (SetState(Not_Found), ResponseWithError(NONE));
         
@@ -524,6 +528,10 @@ void    Response::ResponseWithOk(void)
 {
     std::string Method = Request.getMethod();
 
+<<<<<<< HEAD
+=======
+    std::cout << "\n -- " << Method << "\n";
+>>>>>>> 6e7e8bf (GET method is done)
     if (Method == GET)
         GetPageResponse();
     else if (Method == POST)
@@ -606,8 +614,12 @@ void    Response::StartForResponse(ParseRequest request, Server BlockServer, int
     SetStatePath(NORMAL);
     this->fd_client = fd_client;
 
+<<<<<<< HEAD
     std::cout << Request.getBufferBody() << "\n";
     // std::cout << path << "\n" << getState() << "\n";
+=======
+    std::cout << "\n" << path << " --- " << getState() << "\n";
+>>>>>>> 6e7e8bf (GET method is done)
     if (getState() == Method_Not_Allowed)
         ResponseWithError(NONE);
 
