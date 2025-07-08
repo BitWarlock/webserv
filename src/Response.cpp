@@ -363,9 +363,9 @@ bool    Response::CheckForCGI(void)
 void    Response::GetPageResponse(void)
 {
     struct stat info;
-    // if (ReturnDirective() == false)
-    //     return ;
-    CheckLocations(path);
+
+    if (ReturnDirective() == false)
+        return ;
     
     if (GetFullPath(path) == false)
         return ;
@@ -434,34 +434,51 @@ void    Response::BuildPostResponse(void)
     send(fd_client, response.c_str(), response.size(), MSG_NOSIGNAL);
 }
 
-void    Response::FilterBody(int fd_file)
+bool    Response::MultiPart(void)
 {
-    (void) fd_file;
     std::string ContentType = Request.getHeaderValue("content-type");
     size_t      multipart = ContentType.find("multipart/form-data");
-    std::string body = Request.getBufferBody();
-
+    struct stat info;
+    std::string filename;
+    
     if (multipart != std::string::npos)
     {
-        size_t  pos = ContentType.find("boundary=");
-        if (pos == std::string::npos)
-            return (SetState(Bad_Request), ResponseWithError(NONE));
-        // std::string boundary = "--" + ContentType.substr(pos + 9);
-        // while (!body.empty())
-        // {
-            
-        // }
+        std::string content;
+        std::vector<std::string>    body = Request.getBody();
+        for (size_t i(0); i < body.size(); i++)
+        {
+            size_t  pos = body[i].find("Content-Disposition:");
+            std::string line = body[i].substr(pos, '\n');
+            if ((pos = line.find("filename=")) != std::string::npos)
+            {
+                size_t  clrf = body[i].find("\r\n\r\n");
+                if (clrf != std::string::npos)
+                    content += body[i].substr(pos + 4);
+                filename = line.substr(pos + 2, '"');
+            }
+        }
+        if (stat(path.c_str(), &info) == -1)
+            return (SetState(Not_Found), ResponseWithError(NONE), false);
+
+        if (!S_ISDIR(info.st_mode) == -1)
+            return (SetState(Conflict), ResponseWithError(NONE), false);
+
+        if (access(path.c_str(), W_OK) == -1)
+            return (SetState(Forbidden), ResponseWithError(NONE), false);
+    
+        SetPath(path + "/" + filename);
+        Body = content;
+        return (true);
     }
+    Body = Request.getBufferBody();
+    return (true);
 }
 
 void    Response::PostContentResponse(void)
 {
-    struct stat info;
+    if (ReturnDirective() == false)
+        return ;
 
-    // if (ReturnDirective() == false)
-    //     return ;
-    std::cout << Request.getBufferBody();
-    CheckLocations(path);
     size_t  max_size = ServerBlock.getClientBodyLimit();
         
     if (FromLocation == true)
@@ -474,30 +491,22 @@ void    Response::PostContentResponse(void)
 
     if (GetFullPath(path) == false)
         return ;
+    
+    if (MultiPart() == false)
+        return ;
 
     if (FromLocation == true)
         if (CheckForCGI() == false)
             return ;
 
     int fd_file(0);
-    if (stat(path.c_str(), &info) == -1)
-    {
-        if ((fd_file = open(path.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0664)) == -1)
-            return (SetState(Forbidden), ResponseWithError(NONE));
+    if ((fd_file = open(path.c_str(), O_WRONLY | O_TRUNC)) == -1)
         SetState(Created);
-    }
-    else
-    {
-        if (S_ISDIR(info.st_mode))
-            return (SetState(Conflict), ResponseWithError(NONE));
-        
-        if (access(path.c_str(), W_OK) != 0
-            || (fd_file = open(path.c_str(), O_WRONLY | O_TRUNC)) == -1)
-                return (SetState(Forbidden), ResponseWithError(NONE));
-    }
 
-    FilterBody(fd_file);
-    if (write(fd_file, Request.getBufferBody().c_str(), Request.getBufferBody().size()) == -1)
+    else if ((fd_file = open(path.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644)) == -1)
+            return (SetState(Forbidden), ResponseWithError(NONE));
+
+    if (write(fd_file, Body.c_str(), Body.size()) == -1)
         return (close(fd_file), SetState(Internal_Server_Error), ResponseWithError(NONE));
     
     close(fd_file);
@@ -511,8 +520,10 @@ void    Response::ResponseWithOk(void)
 
     if (Method == GET)
         GetPageResponse();
+
     else if (Method == POST)
         PostContentResponse();
+
     else
         DeleteContentResponse();
 }
@@ -591,14 +602,13 @@ void    Response::StartForResponse(ParseRequest request, Server BlockServer, int
     SetStatePath(NORMAL);
     this->fd_client = fd_client;
 
-    std::cout << "\n" << path << " --- " << getState() << "\n";
     if (getState() == Method_Not_Allowed)
         ResponseWithError(NONE);
 
     else if (getState() != OK)
     {
-        // if (ReturnDirective() == false)
-        //     return ;
+        if (ReturnDirective() == false)
+            return ;
         ResponseWithError(NONE);
     }
 

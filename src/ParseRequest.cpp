@@ -414,11 +414,14 @@ void ParseRequest::CheckingForBody(){
 void ParseRequest::parseContentlengthBody(std::string &str){
 	if (contentLength == 0)
 		return (SwitchState(FINISH));
-	pos = str.find(CLRF);
-	BufferBody =  str.substr(0,pos);
-	str.clear();
-	if (static_cast<size_t> (contentLength) != BufferBody.size())
+	// pos = str.find(CLRF);
+	BufferBody +=  str;
+	str.erase(0, str.size());
+	std::cout << "  content length " << contentLength << "  bufferbody size " << BufferBody.size() << "\n";
+	if (static_cast<size_t> (contentLength) < BufferBody.size())
 		return (SwitchState(ERROR), setErrorNumber(400));
+	// if (static_cast<size_t> (contentLength) == BufferBody.size())
+	// 	return (SwitchState(ERROR), setErrorNumber(400));
 	if (ContentEncodingType == GZIP || ContentEncodingType == DEFLATE)
 		DecompressBody();
 	return (SwitchState(FINISH));
@@ -600,8 +603,9 @@ void ParseRequest::startParse(int fd, Server server){
 			ssize_t bytes = recv(fd, str, 999, 0);
 			if (bytes <= 0)
 				break ;
+			str[bytes] = 0;
 			buff.append(str);
-			// std::cout << buff << "\n";
+			std::cout << buff << "\n";
 		}
 		switch(CurrntParsState){
 			case FINISH:
