@@ -345,7 +345,10 @@ bool    Response::CheckForCGI(void)
         close(pipe_fd[1]);
         ChildProccess(interpreter);
     }
-    wait(NULL);
+    int status(0);
+    waitpid(pid, &status, 0);
+    if (status == 1)
+        return (SetState(Internal_Server_Error), ResponseWithError(NONE), false);
     close(pipe_fd[1]);
 
     char buffer[4096];
@@ -358,7 +361,7 @@ bool    Response::CheckForCGI(void)
     }
 
     close(pipe_fd[0]);
-    return (false);
+    return (true);
 }
 
 void    Response::GetPageResponse(void)
@@ -466,6 +469,9 @@ bool    Response::MultiPart(void)
             }
         }
     }
+    else
+        return (Chunked());
+
     if (path[path.size() - 1] == '/')
     {
         if (stat(path.c_str(), &info) == -1)
@@ -488,6 +494,7 @@ bool    Response::MultiPart(void)
 
     if (!filename.empty())
         SetPath(path + "/" + filename);
+    return (true);
 }
 
 bool    Response::Chunked(void)
@@ -519,26 +526,23 @@ bool    Response::Chunked(void)
 
 void    Response::PostContentResponse(void)
 {
-    // if (ReturnDirective() == false)
-    //     return ;
+    if (ReturnDirective() == false)
+        return ;
 
-    // size_t  max_size = ServerBlock.getClientBodyLimit();
+    size_t  max_size = ServerBlock.getClientBodyLimit();
         
-    // if (FromLocation == true)
-    //     max_size = location.getClientBodyLimit();
+    if (FromLocation == true)
+        max_size = location.getClientBodyLimit();
         
-    // size_t lengthstr = Request.getBufferBody().size();
+    size_t lengthstr = Request.getBufferBody().size();
         
-    // if (lengthstr > max_size)
-    //     return (SetState(Content_Too_Large), ResponseWithError(NONE));
+    if (lengthstr > max_size)
+        return (SetState(Content_Too_Large), ResponseWithError(NONE));
 
     if (GetFullPath(path) == false)
         return ;
     
     if (MultiPart() == false)
-        return ;
-
-    if (Chunked() == false)
         return ;
 
     if (FromLocation == true)
