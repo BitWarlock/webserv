@@ -100,6 +100,7 @@ class Response{
         bool                FromLocation;
         std::string         path;
         char                *env[7];
+        std::string         Body;
         
         public:
         Response();
@@ -164,7 +165,9 @@ class Response{
 
         void    ChildProccess(std::string interpreter);
 
-        void    FilterBody(int fd_file);
+        bool    MultiPart(void);
+
+        bool    Chunked(void);
         
 };
 

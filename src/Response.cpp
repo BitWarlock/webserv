@@ -19,23 +19,24 @@ Response::~Response(){}
 void    Response::CheckLocations(std::string& path)
 {
     std::vector<Location*>  locations = ServerBlock.getLocations();
-    bool                    flag = false;
+    std::string urlpath = path;
 
-    for (size_t i(0); i < locations.size(); i++)
-    {
-        size_t  pos = path.find(locations[i]->getPath());
-        
-        if (flag == false && pos == 0)
-        {
-            SetLocation(*(locations[i]));
-            flag = true;
-        }
-        else if (flag == true && pos == 0)
-        {
-            if (locations[i]->getPath().size() > location.getPath().size())
-                SetLocation(*(locations[i]));
-        }
-    }
+	while (true){
+		size_t i = 0;
+		while (i < locations.size()){
+			if (locations[i]->getPath() == urlpath)
+				return (FromLocation = true, SetLocation(*(locations[i])));
+			i++;
+		}
+		if (urlpath != "/" && urlpath.size() > 1){
+			if (urlpath[urlpath.size() - 1] == '/')
+				urlpath.erase(urlpath.find_last_of('/'));
+			urlpath = urlpath.erase(urlpath.find_last_of('/')+1);
+		}
+		else
+			break;
+	}
+    FromLocation = false;
 }
 
 bool    Response::GetFullPath(std::string& path)
@@ -44,36 +45,21 @@ bool    Response::GetFullPath(std::string& path)
     {    
         if (!location.getRoot().empty())
         {
-            std::string join = path;
-            
             if (state_path == NORMAL)
-                join = path.erase(location.getPath().size());
-            if (join.empty())
-                SetPath(location.getRoot());
-            else if (join[0] == '/')
-                SetPath(location.getRoot() + join.erase(0, 1));
-            else
-                SetPath(location.getRoot() + join);
+                path.erase(0, location.getPath().size());
+            if (path[0] == '/')
+                path.erase(0, 1);
+            SetPath(location.getRoot() + path);
         }
         else if (!ServerBlock.getRoot().empty())
             SetPath(ServerBlock.getRoot() + path.erase(0, 1));
         else
-        {
-            SetState(Internal_Server_Error);
-            ResponseWithError(DEFAULT);
-            return (false);
-        }
+            return (SetState(Internal_Server_Error),
+                ResponseWithError(DEFAULT), false);
     }
     else
-    {
-        if (ServerBlock.getRoot().empty())
-        {
-            SetState(Internal_Server_Error);
-            ResponseWithError(DEFAULT);
-            return (false);
-        }
         SetPath(ServerBlock.getRoot() + path.erase(0, 1));
-    }
+
     return (true);
 }
 
@@ -300,7 +286,7 @@ bool    Response::ReturnDirective(void)
     }
 
     std::string response = "HTTP/1.1 " + statuscode.str() + " Redirect\r\n";
-    response += "location: " + redirecturl + " \r\n";
+    response += "Location: " + redirecturl + " \r\n";
     response += "Content-Length: 0\r\n";
     response += "Connection: close\r\n\r\n";
     send(fd_client, response.c_str(), strlen(response.c_str()), MSG_NOSIGNAL);
@@ -330,6 +316,7 @@ void    Response::ChildProccess(std::string interpreter)
 
     if (execve (argv[0], argv, env) == -1)
         std::cerr << "execve: failed\n";
+
     exit(1);
 }
 
@@ -361,31 +348,29 @@ bool    Response::CheckForCGI(void)
     wait(NULL);
     close(pipe_fd[1]);
 
-    std::string header = "HTTP/1.1 200 OK\r\n";
-    header += "Content-Type: text/html\r\n";
-    header += "Connection: close\r\n\r\n";
-    
-    send(fd_client, header.c_str(), strlen(header.c_str()), MSG_NOSIGNAL);
-
     char buffer[4096];
     ssize_t n(0);
+    std::string cgi;
 
-	while ((n = read(pipe_fd[0], buffer, sizeof(buffer))) > 0)
-        write(pipe_fd[0], buffer, strlen(buffer));
+	while ((n = read(pipe_fd[0], buffer, sizeof(buffer))) > 0){
+        buffer[n] = 0;
+        cgi += buffer;
+    }
+
+    close(pipe_fd[0]);
     return (false);
 }
 
 void    Response::GetPageResponse(void)
 {
     struct stat info;
-    CheckLocations(path);
-    // if (ReturnDirective() == false)
-    //     return ;
+
+    if (ReturnDirective() == false)
+        return ;
 
     if (GetFullPath(path) == false)
         return ;
 
-    std::cout << "\n --- " << path;
     if (stat(path.c_str(), &info) == -1)
         return (SetState(Not_Found), ResponseWithError(NONE));
         
@@ -407,8 +392,8 @@ void    Response::BuildDeleteResponse(void)
     if (unlink(path.c_str()) == -1)
         return (SetState(Internal_Server_Error), ResponseWithError(NONE));
 
-    std::string headers = "HTTP/1.1 204 Content\r\n";
-    headers += "content-Length: 0\r\n";
+    std::string headers = "HTTP/1.1 204 No Content\r\n";
+    headers += "Content-Length: 0\r\n";
     headers += "Connection: close\r\n\r\n";
 
     send(fd_client, headers.c_str(), strlen(headers.c_str()), MSG_NOSIGNAL);
@@ -450,44 +435,110 @@ void    Response::BuildPostResponse(void)
     send(fd_client, response.c_str(), response.size(), MSG_NOSIGNAL);
 }
 
-void    Response::FilterBody(int fd_file)
+bool    Response::MultiPart(void)
 {
-    (void) fd_file;
     std::string ContentType = Request.getHeaderValue("content-type");
     size_t      multipart = ContentType.find("multipart/form-data");
-    std::string body = Request.getBufferBody();
-
+    struct stat info;
+    std::string filename;
+    
     if (multipart != std::string::npos)
     {
-        size_t  pos = ContentType.find("boundary=");
-        if (pos == std::string::npos)
-            return (SetState(Bad_Request), ResponseWithError(NONE));
-        // std::string boundary = "--" + ContentType.substr(pos + 9);
-        // while (!body.empty())
-        // {
-            
-        // }
+        std::vector<std::string>    body = Request.getBody();
+        for (size_t i(0); i < body.size(); i++)
+        {
+            size_t  pos = body[i].find("Content-Disposition:");
+            if (pos == std::string::npos)
+                continue ;
+            size_t end = body[i].find('\n', pos);
+            if (end == std::string::npos)
+                continue ;
+            std::string line = body[i].substr(pos, end - pos);
+            if ((pos = line.find("filename=")) != std::string::npos)
+            {
+                end = line.find('"', pos);
+                if (end == std::string::npos)
+                    continue ;
+                filename = line.substr(pos + 10, end - pos);
+                size_t  clrf = body[i].find("\r\n\r\n");
+                if (clrf != std::string::npos)
+                    Body += body[i].substr(clrf + 4);
+            }
+        }
     }
+    if (path[path.size() - 1] == '/')
+    {
+        if (stat(path.c_str(), &info) == -1)
+            return (SetState(Not_Found), ResponseWithError(NONE), false);
+
+        if (!S_ISDIR(info.st_mode))
+            return (SetState(Conflict), ResponseWithError(NONE), false);
+    }
+    else
+    {
+        if (stat(path.c_str(), &info) == -1)
+            return (SetState(Created), true);
+
+        if (S_ISDIR(info.st_mode))
+            return (SetState(Conflict), ResponseWithError(NONE), false);
+    }
+
+    if (access(path.c_str(), W_OK) == -1)
+        return (SetState(Forbidden), ResponseWithError(NONE), false);
+
+    if (!filename.empty())
+        SetPath(path + "/" + filename);
+}
+
+bool    Response::Chunked(void)
+{
+    struct stat info;
+
+    if (path[path.size() - 1] == '/')
+    {
+        if (stat(path.c_str(), &info) == -1)
+            return (SetState(Not_Found), ResponseWithError(NONE), false);
+
+        if (S_ISDIR(info.st_mode))
+            return (SetState(Conflict), ResponseWithError(NONE), false);
+
+        return (SetState(Bad_Request), ResponseWithError(NONE), false);
+    }
+
+    if (stat(path.c_str(), &info) == -1)
+        return (SetState(Created), true);
+
+    if (S_ISDIR(info.st_mode))
+        return (SetState(Conflict), ResponseWithError(NONE), false);
+
+    if (access(path.c_str(), F_OK | W_OK) == -1)
+        return (SetState(Forbidden), ResponseWithError(NONE), false);
+    
+    return (true);
 }
 
 void    Response::PostContentResponse(void)
 {
-    struct stat info;
+    // if (ReturnDirective() == false)
+    //     return ;
 
-    if (ReturnDirective() == false)
-        return ;
+    // size_t  max_size = ServerBlock.getClientBodyLimit();
         
-    size_t  max_size = ServerBlock.getClientBodyLimit();
+    // if (FromLocation == true)
+    //     max_size = location.getClientBodyLimit();
         
-    if (FromLocation == true)
-        max_size = location.getClientBodyLimit();
+    // size_t lengthstr = Request.getBufferBody().size();
         
-    size_t lengthstr = Request.getBufferBody().size();
-        
-    if (lengthstr > max_size)
-        return (SetState(Content_Too_Large), ResponseWithError(NONE));
+    // if (lengthstr > max_size)
+    //     return (SetState(Content_Too_Large), ResponseWithError(NONE));
 
     if (GetFullPath(path) == false)
+        return ;
+    
+    if (MultiPart() == false)
+        return ;
+
+    if (Chunked() == false)
         return ;
 
     if (FromLocation == true)
@@ -495,24 +546,11 @@ void    Response::PostContentResponse(void)
             return ;
 
     int fd_file(0);
-    if (stat(path.c_str(), &info) == -1)
-    {
-        if ((fd_file = open(path.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0664)) == -1)
-            return (SetState(Forbidden), ResponseWithError(NONE));
-        SetState(Created);
-    }
-    else
-    {
-        if (S_ISDIR(info.st_mode))
-            return (SetState(Conflict), ResponseWithError(NONE));
-        
-        if (access(path.c_str(), W_OK) != 0
-            || (fd_file = open(path.c_str(), O_WRONLY | O_TRUNC)) == -1)
-                return (SetState(Forbidden), ResponseWithError(NONE));
-    }
 
-    FilterBody(fd_file);
-    if (write(fd_file, Request.getBufferBody().c_str(), Request.getBufferBody().size()) == -1)
+    if ((fd_file = open(path.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644)) == -1)
+        return (SetState(Forbidden), ResponseWithError(NONE));
+
+    if (write(fd_file, Body.c_str(), Body.size()) == -1)
         return (close(fd_file), SetState(Internal_Server_Error), ResponseWithError(NONE));
     
     close(fd_file);
@@ -524,11 +562,12 @@ void    Response::ResponseWithOk(void)
 {
     std::string Method = Request.getMethod();
 
-    std::cout << "\n -- " << Method << "\n";
     if (Method == GET)
         GetPageResponse();
+
     else if (Method == POST)
         PostContentResponse();
+
     else
         DeleteContentResponse();
 }
@@ -569,6 +608,7 @@ std::string Response::DefaultForMatchError(void)
 
 void    Response::ResponseWithError(int serve)
 {
+    CheckLocations(path);
     if (serve == DEFAULT)
     {
         SetPath(DefaultForMatchError());
@@ -607,7 +647,6 @@ void    Response::StartForResponse(ParseRequest request, Server BlockServer, int
     SetStatePath(NORMAL);
     this->fd_client = fd_client;
 
-    std::cout << "\n" << path << " --- " << getState() << "\n";
     if (getState() == Method_Not_Allowed)
         ResponseWithError(NONE);
 
