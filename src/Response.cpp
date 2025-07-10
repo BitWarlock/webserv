@@ -402,9 +402,9 @@ void    Response::DeleteContentResponse(void)
 {
     struct stat info;
     
-    if (ReturnDirective() == false)
-        return ;
-
+    // if (ReturnDirective() == false)
+    //     return ;
+    CheckLocations(path);
     if (GetFullPath(path) == false)
         return ;
 
@@ -434,45 +434,47 @@ void    Response::BuildPostResponse(void)
     send(fd_client, response.c_str(), response.size(), MSG_NOSIGNAL);
 }
 
-bool    Response::MultiPart(void)
-{
-    std::string ContentType = Request.getHeaderValue("content-type");
-    size_t      multipart = ContentType.find("multipart/form-data");
-    struct stat info;
-    std::string filename;
+// bool    Response::MultiPart(void)
+// {
+//     std::string ContentType = Request.getHeaderValue("content-type");
+//     size_t      multipart = ContentType.find("multipart/form-data");
+//     struct stat info;
+//     std::string filename;
     
-    if (multipart != std::string::npos)
-    {
-        std::string content;
-        std::vector<std::string>    body = Request.getBody();
-        for (size_t i(0); i < body.size(); i++)
-        {
-            size_t  pos = body[i].find("Content-Disposition:");
-            std::string line = body[i].substr(pos, '\n');
-            if ((pos = line.find("filename=")) != std::string::npos)
-            {
-                size_t  clrf = body[i].find("\r\n\r\n");
-                if (clrf != std::string::npos)
-                    content += body[i].substr(pos + 4);
-                filename = line.substr(pos + 2, '"');
-            }
-        }
-        if (stat(path.c_str(), &info) == -1)
-            return (SetState(Not_Found), ResponseWithError(NONE), false);
+//     if (multipart != std::string::npos)
+//     {
+//         std::string content;
+//         std::vector<std::string>    body = Request.getBody();
+//         for (size_t i(0); i < body.size(); i++)
+//         {
+//             size_t  pos = body[i].find("Content-Disposition:");
+//             std::string line = body[i].substr(pos, '\n');
+//             if ((pos = line.find("filename=")) != std::string::npos)
+//             {
+//                 size_t  clrf = body[i].find("\r\n\r\n");
+//                 if (clrf != std::string::npos)
+//                     content += body[i].substr(pos + 4);
+//                 filename = line.substr(pos + 2, '"');
+//             }
+//         }    
+//         Body = content;
+//     }
 
-        if (!S_ISDIR(info.st_mode) == -1)
-            return (SetState(Conflict), ResponseWithError(NONE), false);
-
-        if (access(path.c_str(), W_OK) == -1)
-            return (SetState(Forbidden), ResponseWithError(NONE), false);
+//     if (stat(path.c_str(), &info) == -1)
+//     return (SetState(Not_Found), ResponseWithError(NONE), false);
     
-        SetPath(path + "/" + filename);
-        Body = content;
-        return (true);
-    }
-    Body = Request.getBufferBody();
-    return (true);
-}
+//     if (!S_ISDIR(info.st_mode))
+//     return (SetState(Conflict), ResponseWithError(NONE), false);
+    
+//     if (access(path.c_str(), W_OK) == -1)
+//         return (SetState(Forbidden), ResponseWithError(NONE), false);
+
+//     if (multipart != std::string::npos)
+//         return (SetPath(path + "/" + filename), true);
+
+//     Body = Request.getBufferBody();
+//     return (true);
+// }
 
 void    Response::PostContentResponse(void)
 {
@@ -492,8 +494,8 @@ void    Response::PostContentResponse(void)
     if (GetFullPath(path) == false)
         return ;
     
-    if (MultiPart() == false)
-        return ;
+    // if (MultiPart() == false)
+    //     return ;
 
     if (FromLocation == true)
         if (CheckForCGI() == false)
@@ -602,6 +604,8 @@ void    Response::StartForResponse(ParseRequest request, Server BlockServer, int
     SetStatePath(NORMAL);
     this->fd_client = fd_client;
 
+    // std::cout << " ** " << Request.getBufferBody() << " \n** ";
+    std::cout << getState() << "\n";
     if (getState() == Method_Not_Allowed)
         ResponseWithError(NONE);
 
