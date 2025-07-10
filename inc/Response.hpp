@@ -166,6 +166,8 @@ class Response{
         void    ChildProccess(std::string interpreter);
 
         bool    MultiPart(void);
+
+        bool    Chunked(void);
         
 };
 

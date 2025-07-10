@@ -112,7 +112,6 @@ bool ParseRequest::isSupportedMethod(std::string &RequestMethod)
 
 	for (size_t i = 0; i < sMethods.size(); i++)
 	{
-		std::cout << "hey : " << sMethods[i];
 		if (sMethods[i] == m)
 			return (true);
 	}
@@ -204,8 +203,6 @@ void ParseRequest::parseMethod(std::string &str){
 	Method += str.substr(0, pos);
 	str.erase(0, pos + 1);
 	ResetBuffPos();
-	if (!isSupportedMethod(Method))
-	    return (setErrorNumber(isKnownMethod()));
 	SwitchState(URL);
 }
 
@@ -234,6 +231,8 @@ void ParseRequest::parseUrl(std::string &str){
 		Url.erase(pos);
 	}
 	ResetBuffPos();
+	if (!isSupportedMethod(Method))
+	    return (setErrorNumber(isKnownMethod()));
 	SwitchState(HTTPVERSION);
 }
 
@@ -374,10 +373,8 @@ bool ParseRequest::isNumber(std::string toCheck){
 void ParseRequest::CheckingForBody(){
 	bool TransferEncodingPresent = false;
 	bool contentLengthPresent = false;
-	if (Method == "GET" || Method == "DELETE"){
-
+	if (Method == "GET" || Method == "DELETE")
 		return (SwitchState(FINISH));
-	}
 	std::vector<std::pair<std::string, std::string> >::iterator Headersit;
 	for (Headersit = Headers.begin(); Headersit != Headers.end(); Headersit++)
 	{
