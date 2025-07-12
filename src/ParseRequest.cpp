@@ -82,7 +82,12 @@ std::string&										ParseRequest::getQueryString()					{ return (QueryString);
 std::string&										ParseRequest::getBufferBody()					{ return (BufferBody);}
 size_t												ParseRequest::getContentLength()				{ return (contentLength);}
 std::string&                                        ParseRequest::getBufferDecompressedBody()		{return (DecompressedBufferBody);}
+std::vector<std::string >&							ParseRequest::getMultipartBody(){
+	std::string ContentTypeValue = getHeaderValue("content-type");
+	if (ContentTypeValue.empty())
+		return ;
 
+}
 
 // setters
 
@@ -92,8 +97,7 @@ void ParseRequest::SwitchState(int Next_State)  	{ CurrntParsState = Next_State;
 void ParseRequest::setUri(std::string u)        	{ Url = u; }
 void ParseRequest::setVersion(std::string v)    	{ HttpProtocolVersion = v; }
 void ParseRequest::Reset()                      	{ SwitchState(NONE); }
-void ParseRequest::setErrorNumber(int Number)   	{ errorNumber = Number;  ;}
-void ParseRequest::setErrorNumber(int Number)   	{ errorNumber = Number;  ;}
+void ParseRequest::setErrorNumber(int Number)   	{ errorNumber = Number;  SwitchState(ERROR);}
 void ParseRequest::ResetBuffPos()               	{ pos = 0; }
 void ParseRequest::setContentEncodingType(int Type)	{ 
 	ContentEncodingType = Type;
@@ -158,14 +162,11 @@ bool ParseRequest::PercentEncoded(size_t &i){
 bool ParseRequest::isValidUrl(){
 	if (Url.size() >= 8192)
 		return (setErrorNumber(414), false);
-		return (setErrorNumber(414), false);
 	if (Url.empty() || Url[0] != '/')
-		return (setErrorNumber(400), false);
 		return (setErrorNumber(400), false);
 	for (size_t i(0); i < Url.size(); i++)
 	{
 		if ((Url[i] == '%' && !PercentEncoded(i)) || (!Unresreved(Url[i]) && !Reserved(Url[i])))
-			return (setErrorNumber(400), false);
 			return (setErrorNumber(400), false);
 	}
 	return (true);
@@ -195,12 +196,10 @@ void ParseRequest::trimBuff(std::string &str){
 void ParseRequest::parseMethod(std::string &str){
 	if (isspace(str[0]))
 		return (setErrorNumber(400));
-		return (setErrorNumber(400));
 	pos = str.find(SPACE);
 	if (pos == std::string::npos)
 	{
 		if ((str.find('\r') != std::string::npos) || str.find('\n') != std::string::npos)
-			return (setErrorNumber(400));
 			return (setErrorNumber(400));
 		Method += str;
 		str.clear();
@@ -210,7 +209,6 @@ void ParseRequest::parseMethod(std::string &str){
 	str.erase(0, pos + 1);
 	ResetBuffPos();
 	if (!isSupportedMethod(Method))
-	    return (setErrorNumber(isKnownMethod()));
 	    return (setErrorNumber(isKnownMethod()));
 	SwitchState(URL);
 }
@@ -225,7 +223,6 @@ void ParseRequest::parseUrl(std::string &str){
 	if (pos == std::string::npos)
 	{
 		if ((str.find('\r') != std::string::npos) || str.find('\n') != std::string::npos)
-			return (setErrorNumber(400));
 			return (setErrorNumber(400));
 		Url.append(str);
 		str.erase(0);
@@ -252,8 +249,6 @@ bool ParseRequest::isValidVersion(){
 			HttpProtocolVersion == "HTTP/2" || HttpProtocolVersion == "HTTP/3")
 		return (setErrorNumber(505), false);
 	return (setErrorNumber(400), false);
-		return (setErrorNumber(505), false);
-	return (setErrorNumber(400), false);
 }
 
 // read and parse the http request  version ;
@@ -267,7 +262,6 @@ void ParseRequest::parseHttpVersion(std::string &str){
 		return (ResetBuffPos());
 	}
 	if (isspace(str[pos - 1]))
-		return (setErrorNumber(400));
 		return (setErrorNumber(400));
 	HttpProtocolVersion.append(str.substr(0, pos));
 	str.erase(0, pos + 2);
@@ -318,7 +312,6 @@ bool ParseRequest::checkIsThereaHost(){
 		}
 	}
 	return (setErrorNumber(400), false);
-	return (setErrorNumber(400), false);
 }
 
 // read and parse the request headers once at a time ;
@@ -331,10 +324,8 @@ void ParseRequest::parseHeaders(std::string &str){
 		str.erase(0, pos + 2);
 		if (Current_header_line.size() >= 8192)
 			return (setErrorNumber(431));
-			return (setErrorNumber(431));
 		pos = Current_header_line.find(':');
 		if (pos == std::string::npos || isspace(Current_header_line[pos - 1]))
-			return (setErrorNumber(400));    
 			return (setErrorNumber(400));    
 		Current_key = Current_header_line.substr(0, pos);
 		toLowerCase(Current_key);
@@ -346,7 +337,6 @@ void ParseRequest::parseHeaders(std::string &str){
 		if (!validKey(Current_key) || Current_key.empty() || \
             isAllSpaces(Current_key) || Current_value.empty()){
 			return (setErrorNumber(400));
-			return (setErrorNumber(400));
         }
         SwitchState(ADD_HEADER);
 	}
@@ -355,7 +345,6 @@ void ParseRequest::parseHeaders(std::string &str){
 		if (it != NonRepeatablesHeaders.end())
 		{
 			if (it->second)
-				return (setErrorNumber(400));
 				return (setErrorNumber(400));
 			it->second++;
 		}
@@ -369,7 +358,6 @@ void ParseRequest::parseHeaders(std::string &str){
 	{
 		str.erase(0, 2);
 		if (!checkIsThereaHost())
-			return (setErrorNumber(400));
 			return (setErrorNumber(400));
 		CheckingForBody();
 		return;
@@ -406,25 +394,20 @@ void ParseRequest::CheckingForBody(){
 				chunkedEncoding = true;
 			else
 				return (setErrorNumber(501));
-				return (setErrorNumber(501));
 		}
 		if (Headersit->first == "content-length")
 		{
 			contentLengthPresent = true;
 			if (!isNumber(Headersit->second))
 				return (setErrorNumber(400));
-				return (setErrorNumber(400));
 			contentLength = std::atoi(Headersit->second.c_str());
 			if (contentLength < 0)
-			    return (setErrorNumber(400));
 			    return (setErrorNumber(400));
 		}
 	}
 	if (TransferEncodingPresent && contentLengthPresent)
 		return (setErrorNumber(400));
-		return (setErrorNumber(400));
 	if (!chunkedEncoding && !contentLengthPresent)
-		return (setErrorNumber(411));
 		return (setErrorNumber(411));
 	if (chunkedEncoding)
 		return SwitchState(READCHUNKSIZE);
@@ -478,11 +461,9 @@ void ParseRequest::parseChunkedBody(std::string &str){
 			{
 				if (!isHexa(StringChunkSize[i]))
 					return (setErrorNumber(400));
-					return (setErrorNumber(400));
 			}
 			ChunkSize = HexaStringToDecimalNum(StringChunkSize);
 			if (ChunkSize > S->getClientBodyLimit())
-				return (setErrorNumber(413));
 				return (setErrorNumber(413));
 			str.erase(0, pos + 2);
 			ResetBuffPos();
@@ -561,7 +542,6 @@ void        ParseRequest::DecompressBody(){
 
 	if (inflateInit2(&Strm, Bits) != Z_OK)
 		return (setErrorNumber(400));
-		return (setErrorNumber(400));
 	char outbuffer[32768];
 	int ret = Z_OK;
 	DecompressedBufferBody.clear();
@@ -571,7 +551,6 @@ void        ParseRequest::DecompressBody(){
 		ret = inflate(&Strm, Z_NO_FLUSH);
 		if (ret != Z_OK && ret != Z_STREAM_END){
 			inflateEnd(&Strm);
-			return (setErrorNumber(400));
 			return (setErrorNumber(400));
 		}
 		DecompressedBufferBody.append(outbuffer, sizeof(outbuffer) - Strm.avail_out);
@@ -598,7 +577,6 @@ void         ParseRequest::CheckContentEncoding(){
 	else if (Value.compare("gzip"))
 		return (setContentEncodingType((GZIP)));
 	else
-		return (setErrorNumber(415));
 		return (setErrorNumber(415));
 }
 

@@ -108,7 +108,7 @@ class ParseRequest{
         std::string&                                        getUri();
         std::string&                                        getVersion();
         int                                                 getParseState();
-        std::string                                        getHeaderValue(std::string key);
+        std::string                                         getHeaderValue(std::string key);
         int                                                 getErrorNumber();
         std::vector<std::pair<std::string, std::string> >&  getHeaders();
         std::string&                                        getHost();
@@ -120,7 +120,7 @@ class ParseRequest{
         size_t                                              getContentLength(void);
         std::string&                                        getBufferDecompressedBody();
         const std::vector<std::string>&                     getMatchedLocationAllowedMethods();
-
+        std::vector<std::string >&							getMultipartBody();
         // setters
         void        setMethod(std::string m);
         void        setUri(std::string u);
