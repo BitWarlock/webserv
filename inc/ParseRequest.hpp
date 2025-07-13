@@ -61,6 +61,8 @@ class ParseRequest{
         bool                                                hasValidHost;
         size_t                                              ChunkSize;
         std::string                                         BufferBody;
+        std::string                                         MultipartBoundary;
+        std::vector<std::string >&                          MultipartBufferBody;
         std::string                                         DecompressedBufferBody;
         std::map<std::string, int>                          NonRepeatablesHeaders;
         std::string                                         Host;
@@ -90,6 +92,8 @@ class ParseRequest{
         bool        isNumber(std::string toCheck);
         void        ResetParserf();
         void        DecompressBody();
+        void		ParseMultipartBodyBoundary();
+        void        ParseMultiPartBufferBody();
 
         // checkers
         bool        isFinish();
@@ -120,7 +124,9 @@ class ParseRequest{
         size_t                                              getContentLength(void);
         std::string&                                        getBufferDecompressedBody();
         const std::vector<std::string>&                     getMatchedLocationAllowedMethods();
-        std::vector<std::string >&							getMultipartBody();
+        std::vector<std::string >&							getMultipartBuferBody();
+
+
         // setters
         void        setMethod(std::string m);
         void        setUri(std::string u);

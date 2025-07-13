@@ -81,13 +81,8 @@ int         										ParseRequest::getContentEncodingType(int Type)	{ (void) Ty
 std::string&										ParseRequest::getQueryString()					{ return (QueryString);}
 std::string&										ParseRequest::getBufferBody()					{ return (BufferBody);}
 size_t												ParseRequest::getContentLength()				{ return (contentLength);}
-std::string&                                        ParseRequest::getBufferDecompressedBody()		{return (DecompressedBufferBody);}
-std::vector<std::string >&							ParseRequest::getMultipartBody(){
-	std::string ContentTypeValue = getHeaderValue("content-type");
-	if (ContentTypeValue.empty())
-		return ;
-
-}
+std::string&                                        ParseRequest::getBufferDecompressedBody()		{ return (DecompressedBufferBody);}
+std::vector<std::string >&							ParseRequest::getMultipartBuferBody()			{ return (MultipartBufferBody);}
 
 // setters
 
@@ -602,6 +597,69 @@ const std::vector<std::string>&     ParseRequest::getMatchedLocationAllowedMetho
 			break;
 	}
 	return S->getAllowedMethods();
+}
+
+
+void        ParseRequest::ParseMultiPartBufferBody(){
+	std::string Delimiter = "--" + MultipartBoundary;
+	std::string Part;
+	size_t StartPart = 0;
+	size_t NextPos = 0;
+	ResetBuffPos();
+	while (true){
+		pos = BufferBody.find(Delimiter, pos);
+		if (pos == std::string::npos)
+			return ;
+		StartPart = pos + Delimiter.size();
+		if (StartPart + 2 <= BufferBody.size() && !BufferBody.compare(StartPart, 2, "--"))
+			return ;
+		if (StartPart + 2 <= BufferBody.size() && !BufferBody.compare(StartPart, 2, CLRF))
+			StartPart += 2;
+		else if (StartPart + 1 <= BufferBody.size() && !BufferBody.compare(StartPart, 1, "\n"))
+			StartPart += 1;
+		NextPos = BufferBody.find(Delimiter, StartPart);
+		if (NextPos == std::string::npos)
+			return ;
+		if (NextPos >= 2 && !BufferBody.compare(NextPos - 2, 2, CLRF))
+			NextPos -= 2;
+		else if (NextPos >= 1 && !BufferBody.compare(NextPos - 1, 1, "\n"))
+			NextPos -= 1;
+		Part = BufferBody.substr(StartPart, NextPos - StartPart);
+		MultipartBufferBody.push_back(Part);
+		pos = NextPos;
+	}
+}
+
+void	ParseRequest::ParseMultipartBodyBoundary(){
+	std::string ContentTypeValue = getHeaderValue("content-type");
+	if (ContentTypeValue.empty())
+		return ;
+	pos = ContentTypeValue.find("multipart/");
+	if (pos != std::string::npos){
+		if (ContentTypeValue.find(";") != std::string::npos){
+			pos = ContentTypeValue.find("boundary=");
+			if (pos != std::string::npos){
+				if (pos + 9 < ContentTypeValue.size()){
+					MultipartBoundary = ContentTypeValue.substr(pos+9);
+					if (!MultipartBoundary.empty() && MultipartBoundary.front() == '"'){
+						size_t EndQuoat = MultipartBoundary.find('"', 1);
+						if (EndQuoat == std::string::npos)
+							return setErrorNumber(400);
+						MultipartBoundary = MultipartBoundary.substr(1, --EndQuoat);
+					}
+					else{
+						size_t EndBoundary = MultipartBoundary.find_first_of(" ;");
+						if (EndBoundary != std::string::npos){
+							MultipartBoundary = MultipartBoundary.substr(0, EndBoundary);
+
+						}
+					}
+					return ;	
+				}
+			}
+		}
+		return setErrorNumber(400);
+	}
 }
 
 // start reading and parsing ;
