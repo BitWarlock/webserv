@@ -599,6 +599,27 @@ const std::vector<std::string>&     ParseRequest::getMatchedLocationAllowedMetho
 	return S->getAllowedMethods();
 }
 
+int     ParseRequest::getMatchedLocationBodySizeMax(){
+	std::string urlpath = Url;
+	const std::vector<Location*>& locations = S->getLocations();
+
+	while (true){
+		size_t i = 0;
+		while (i < locations.size()){
+			if (locations[i]->getPath() == urlpath)
+				return locations[i]->getClientBodyLimit();
+			i++;
+		}
+		if (urlpath != "/" && urlpath.size() > 1){
+			if (urlpath[urlpath.size() - 1] == '/')
+				urlpath.erase(urlpath.find_last_of('/'));
+			urlpath = urlpath.erase(urlpath.find_last_of('/')+1);
+		}
+		else
+			break;
+	}
+	return S->getClientBodyLimit();
+}
 
 void        ParseRequest::ParseMultiPartBufferBody(){
 	std::string Delimiter = "--" + MultipartBoundary;
