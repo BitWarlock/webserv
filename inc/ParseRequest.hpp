@@ -61,6 +61,8 @@ class ParseRequest{
         bool                                                hasValidHost;
         size_t                                              ChunkSize;
         std::string                                         BufferBody;
+        std::string                                         MultipartBoundary;
+        std::vector<std::string >&                          MultipartBufferBody;
         std::string                                         DecompressedBufferBody;
         std::map<std::string, int>                          NonRepeatablesHeaders;
         std::string                                         Host;
@@ -90,6 +92,8 @@ class ParseRequest{
         bool        isNumber(std::string toCheck);
         void        ResetParserf();
         void        DecompressBody();
+        void		ParseMultipartBodyBoundary();
+        void        ParseMultiPartBufferBody();
 
         // checkers
         bool        isFinish();
@@ -108,7 +112,7 @@ class ParseRequest{
         std::string&                                        getUri();
         std::string&                                        getVersion();
         int                                                 getParseState();
-        std::string                                        getHeaderValue(std::string key);
+        std::string                                         getHeaderValue(std::string key);
         int                                                 getErrorNumber();
         std::vector<std::pair<std::string, std::string> >&  getHeaders();
         std::string&                                        getHost();
@@ -120,6 +124,8 @@ class ParseRequest{
         size_t                                              getContentLength(void);
         std::string&                                        getBufferDecompressedBody();
         const std::vector<std::string>&                     getMatchedLocationAllowedMethods();
+        std::vector<std::string >&							getMultipartBuferBody();
+        int                                                 getMatchedLocationBodySizeMax();
 
         // setters
         void        setMethod(std::string m);

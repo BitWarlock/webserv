@@ -447,7 +447,7 @@ bool    Response::MultiPart(void)
     
     if (multipart != std::string::npos)
     {
-        std::vector<std::string>    body = Request.getBody();
+        std::vector<std::string>    body = Request.getMultipartBuferBody();
         for (size_t i(0); i < body.size(); i++)
         {
             size_t  pos = body[i].find("Content-Disposition:");
