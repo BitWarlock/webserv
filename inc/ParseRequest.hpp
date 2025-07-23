@@ -9,7 +9,7 @@
 #include <sys/socket.h>
 #include <string.h>
 #include <zlib.h>
-#include <brotli/decode.h>
+//#include <brotli/decode.h>
 #include "Server.hpp"
 #define CLRF "\r\n"
 #define SPACE ' '
@@ -26,6 +26,8 @@ enum RequestParser
     CONTENTLENGTHBODY,
     READCHUNKSIZE,
     READCHUNK,
+	READ_BOUNDARY,
+	READ_MULTIPART_BODY,
     PARSEARRAYSIZE,
     FINISH,
     ERROR,

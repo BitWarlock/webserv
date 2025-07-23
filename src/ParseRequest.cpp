@@ -3,16 +3,18 @@
 
 // tbale that hold apointers to parse functions;
 const ParseRequest::ParseFuncPtr ParseRequest::ParseTable[] = {
-	&ParseRequest::StartNewRequest,  			//	NONE (so the parse will start)
-	&ParseRequest::parseMethod,         		//	METHOD 
-    &ParseRequest::parseUrl,            		//	URL
-    &ParseRequest::parseHttpVersion, 			//	HTTPVERSION
-	&ParseRequest::parseHeaders,				//	HEADERS_KEY
-	&ParseRequest::parseHeaders,				//	HEDERS_VALUE
-	&ParseRequest::parseHeaders,				//	ADDING THE HEADER
-	&ParseRequest::parseContentlengthBody,		//	CONTENT_LENGHT_BODY
-	&ParseRequest::parseChunkedBody,			//	CHUNED_BODY_SIZE
-	&ParseRequest::parseChunkedBody,			//	READ_THE_CHUNK
+	&ParseRequest::StartNewRequest,  			//	NONE_ (so the parse will start)
+	&ParseRequest::parseMethod,         		//	METHOD_ 
+    &ParseRequest::parseUrl,            		//	URL_
+    &ParseRequest::parseHttpVersion, 			//	HTTPVERSION_
+	&ParseRequest::parseHeaders,				//	HEADERS_KEY_
+	&ParseRequest::parseHeaders,				//	HEDERS_VALUE_
+	&ParseRequest::parseHeaders,				//	ADDING THE HEADER_
+	&ParseRequest::parseContentlengthBody,		//	CONTENT_LENGHT_BODY_
+	&ParseRequest::parseChunkedBody,			//	CHUNED_BODY_SIZE_
+	&ParseRequest::parseChunkedBody,			//	READ_THE_CHUNK_
+	&ParseRequest::ParseMultipartBodyBoundary,	//	READ_THE BOUNDARY_
+	&ParseRequest::ParseMultiPartBufferBody,	//	READ_THE_MULTIPART_BODY_
 };
 
 
@@ -398,6 +400,8 @@ void ParseRequest::CheckingForBody(){
 			contentLength = std::atoi(Headersit->second.c_str());
 			if (contentLength < 0)
 			    return (setErrorNumber(400));
+			if (contentLength > getMatchedLocationBodySizeMax())
+				return setErrorNumber(413);
 		}
 	}
 	if (TransferEncodingPresent && contentLengthPresent)
@@ -430,6 +434,8 @@ void ParseRequest::parseContentlengthBody(std::string &str){
 	if (static_cast<size_t> (contentLength) == BufferBody.size()){
         if (ContentEncodingType == GZIP || ContentEncodingType == DEFLATE)
 	    	DecompressBody();
+		if (getMethod() == "POST")
+				return SwitchState(READ_BOUNDARY);
         return (SwitchState(FINISH));
     }
 }
@@ -463,6 +469,8 @@ void ParseRequest::parseChunkedBody(std::string &str){
 			if (ChunkSize == 0){
 				if (ContentEncodingType == GZIP || ContentEncodingType == DEFLATE)
 					DecompressBody();
+				if (getMethod() == "POST")
+					return SwitchState(READ_BOUNDARY);
 				return (SwitchState(FINISH));
 			}
 			SwitchState(READCHUNK);
@@ -664,7 +672,7 @@ void        ParseRequest::ParseMultiPartBufferBody(){
 void	ParseRequest::ParseMultipartBodyBoundary(){
 	std::string ContentTypeValue = getHeaderValue("content-type");
 	if (ContentTypeValue.empty())
-		return ;
+		return SwitchState(FINISH);
 	pos = ContentTypeValue.find("multipart/");
 	if (pos != std::string::npos){
 		if (ContentTypeValue.find(";") != std::string::npos){
@@ -685,7 +693,7 @@ void	ParseRequest::ParseMultipartBodyBoundary(){
 
 						}
 					}
-					return ;	
+					return SwitchState(READ_MULTIPART_BODY);	
 				}
 			}
 		}
