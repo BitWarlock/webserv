@@ -453,6 +453,7 @@ bool    Response::MultiPart(void)
     if (multipart != std::string::npos)
     {
         std::vector<std::string>    body = Request.getMultipartBuferBody();
+        // std::cout << body[0] << "\n";
         for (size_t i(0); i < body.size(); i++)
         {
             size_t  pos = body[i].find("Content-Disposition:");
@@ -462,6 +463,7 @@ bool    Response::MultiPart(void)
             if (end == std::string::npos)
                 continue ;
             std::string line = body[i].substr(pos, end - pos);
+            std::cout << "pos : " << pos << " -- end : " << end << " -- line : " << line << "\n";
             if ((pos = line.find("filename=")) != std::string::npos)
             {
                 end = line.find('"', pos);

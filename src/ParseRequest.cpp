@@ -416,7 +416,6 @@ void ParseRequest::parseContentlengthBody(std::string &str){
 		return (SwitchState(FINISH));
 	BufferBody +=  str.substr(0);
 	str.erase(0, str.size());
-	// std::cout <<"content lenght " <<contentLength << "\n" <<  "Buffer body size"<<BufferBody.size() << "\n";
 	if (static_cast<size_t> (contentLength) < BufferBody.size())
 		return (setErrorNumber(400));
 	if (static_cast<size_t> (contentLength) == BufferBody.size()){
@@ -426,7 +425,6 @@ void ParseRequest::parseContentlengthBody(std::string &str){
     }
 	BufferBody +=  str.substr(0);
 	str.erase(0, str.size());
-	// std::cout <<"content lenght " <<contentLength << "\n" <<  "Buffer body size"<<BufferBody.size() << "\n";
 	if (static_cast<size_t> (contentLength) < BufferBody.size())
 		return (setErrorNumber(400));
 	if (static_cast<size_t> (contentLength) == BufferBody.size()){
@@ -620,6 +618,12 @@ int     ParseRequest::getMatchedLocationBodySizeMax(){
 			if (urlpath[urlpath.size() - 1] == '/')
 				urlpath.erase(urlpath.find_last_of('/'));
 			urlpath = urlpath.erase(urlpath.find_last_of('/')+1);
+		}
+        else if (urlpath == "/") {
+			while (i < locations.size()){
+			if (locations[i]->getPath() == "/")
+				return locations[i]->getClientBodyLimit();
+			}
 		}
 		else
 			break;
