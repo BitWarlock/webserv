@@ -62,7 +62,7 @@ class ParseRequest{
         size_t                                              ChunkSize;
         std::string                                         BufferBody;
         std::string                                         MultipartBoundary;
-        std::vector<std::string >&                          MultipartBufferBody;
+        std::vector<std::string >                           MultipartBufferBody;
         std::string                                         DecompressedBufferBody;
         std::map<std::string, int>                          NonRepeatablesHeaders;
         std::string                                         Host;

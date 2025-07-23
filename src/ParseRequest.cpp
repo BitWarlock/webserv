@@ -535,22 +535,22 @@ void        ParseRequest::DecompressBody(){
 	Strm.next_in = (Bytef *)BufferBody.data();
 	Strm.avail_in = BufferBody.size();
 
-	if (inflateInit2(&Strm, Bits) != Z_OK)
-		return (setErrorNumber(400));
+	// if (inflateInit2(&Strm, Bits) != Z_OK)
+	// 	return (setErrorNumber(400));
 	char outbuffer[32768];
 	int ret = Z_OK;
 	DecompressedBufferBody.clear();
 	while (ret != Z_STREAM_END){
 		Strm.next_out = (Bytef *) outbuffer;
 		Strm.avail_out = sizeof(outbuffer);
-		ret = inflate(&Strm, Z_NO_FLUSH);
-		if (ret != Z_OK && ret != Z_STREAM_END){
-			inflateEnd(&Strm);
-			return (setErrorNumber(400));
-		}
+		// ret = inflate(&Strm, Z_NO_FLUSH);
+		// if (ret != Z_OK && ret != Z_STREAM_END){
+		// 	inflateEnd(&Strm);
+		// 	return (setErrorNumber(400));
+		// }
 		DecompressedBufferBody.append(outbuffer, sizeof(outbuffer) - Strm.avail_out);
 	}
-	inflateEnd(&Strm);
+	// inflateEnd(&Strm);
 	SwitchState(FINISH);
 }
 
@@ -592,6 +592,12 @@ const std::vector<std::string>&     ParseRequest::getMatchedLocationAllowedMetho
 			if (urlpath[urlpath.size() - 1] == '/')
 				urlpath.erase(urlpath.find_last_of('/'));
 			urlpath = urlpath.erase(urlpath.find_last_of('/')+1);
+		}
+		else if (urlpath == "/") {
+			while (i < locations.size()){
+			if (locations[i]->getPath() == "/")
+				return locations[i]->getAllowedMethods();
+			}
 		}
 		else
 			break;
@@ -662,7 +668,7 @@ void	ParseRequest::ParseMultipartBodyBoundary(){
 			if (pos != std::string::npos){
 				if (pos + 9 < ContentTypeValue.size()){
 					MultipartBoundary = ContentTypeValue.substr(pos+9);
-					if (!MultipartBoundary.empty() && MultipartBoundary.front() == '"'){
+					if (!MultipartBoundary.empty()){
 						size_t EndQuoat = MultipartBoundary.find('"', 1);
 						if (EndQuoat == std::string::npos)
 							return setErrorNumber(400);

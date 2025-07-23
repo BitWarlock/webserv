@@ -313,7 +313,7 @@ void DirectiveParser::parseReturnLoc(Location *location, const std::vector<std::
 		throw ParseException("return directive must have 1 or 2 values", currentToken.line);
 
 	int code = atoi(values[0].c_str());
-	if (code < 100 || code > 599)
+	if (code != 301 && code != 302 && code != 307)
 		throw ParseException("Invalid HTTP status code", currentToken.line);
 
 	ReturnDirective	return_d;

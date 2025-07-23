@@ -33,6 +33,12 @@ void    Response::CheckLocations(std::string& path)
 				urlpath.erase(urlpath.find_last_of('/'));
 			urlpath = urlpath.erase(urlpath.find_last_of('/')+1);
 		}
+        else if (urlpath == "/") {
+			while (i < locations.size()){
+			if (locations[i]->getPath() == "/")
+				return (FromLocation = true, SetLocation(*(locations[i])));
+			}
+		}
 		else
 			break;
 	}
@@ -286,7 +292,7 @@ bool    Response::ReturnDirective(void)
     }
 
     std::string response = "HTTP/1.1 " + statuscode.str() + " Redirect\r\n";
-    response += "Location: " + redirecturl + " \r\n";
+    response += "Location: " + redirecturl + "\r\n";
     response += "Content-Length: 0\r\n";
     response += "Connection: close\r\n\r\n";
     send(fd_client, response.c_str(), strlen(response.c_str()), MSG_NOSIGNAL);
@@ -383,10 +389,9 @@ void    Response::GetPageResponse(void)
     if (access(path.c_str(), R_OK) != 0)
         return (SetState(Forbidden), ResponseWithError(NONE));
 
-    if (FromLocation == true)
-        if (CheckForCGI() == false)
-            return ;
-
+    // if (FromLocation == true)
+    //     if (CheckForCGI() == false)
+    //         return ;
     BuildGetResponse();
 }
 
@@ -405,7 +410,7 @@ void    Response::BuildDeleteResponse(void)
 void    Response::DeleteContentResponse(void)
 {
     struct stat info;
-    
+    std::cout << path << "\n";
     if (ReturnDirective() == false)
         return ;
 
@@ -471,7 +476,7 @@ bool    Response::MultiPart(void)
     }
     else
         return (Chunked());
-
+    std::cout << "here : " << path << "\n";
     if (path[path.size() - 1] == '/')
     {
         if (stat(path.c_str(), &info) == -1)
@@ -529,15 +534,15 @@ void    Response::PostContentResponse(void)
     if (ReturnDirective() == false)
         return ;
 
-    size_t  max_size = ServerBlock.getClientBodyLimit();
+    // size_t  max_size = ServerBlock.getClientBodyLimit();
         
-    if (FromLocation == true)
-        max_size = location.getClientBodyLimit();
+    // if (FromLocation == true)
+    //     max_size = location.getClientBodyLimit();
         
-    size_t lengthstr = Request.getBufferBody().size();
+    // size_t lengthstr = Request.getBufferBody().size();
         
-    if (lengthstr > max_size)
-        return (SetState(Content_Too_Large), ResponseWithError(NONE));
+    // if (lengthstr > max_size)
+    //     return (SetState(Content_Too_Large), ResponseWithError(NONE));
 
     if (GetFullPath(path) == false)
         return ;
