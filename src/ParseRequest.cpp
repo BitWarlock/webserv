@@ -13,8 +13,6 @@ const ParseRequest::ParseFuncPtr ParseRequest::ParseTable[] = {
 	&ParseRequest::parseContentlengthBody,		//	CONTENT_LENGHT_BODY_
 	&ParseRequest::parseChunkedBody,			//	CHUNED_BODY_SIZE_
 	&ParseRequest::parseChunkedBody,			//	READ_THE_CHUNK_
-	&ParseRequest::ParseMultipartBodyBoundary,	//	READ_THE BOUNDARY_
-	&ParseRequest::ParseMultiPartBufferBody,	//	READ_THE_MULTIPART_BODY_
 };
 
 
@@ -432,10 +430,11 @@ void ParseRequest::parseContentlengthBody(std::string &str){
 	if (static_cast<size_t> (contentLength) < BufferBody.size())
 		return (setErrorNumber(400));
 	if (static_cast<size_t> (contentLength) == BufferBody.size()){
-        if (ContentEncodingType == GZIP || ContentEncodingType == DEFLATE)
-	    	DecompressBody();
+        if (ContentEncodingType == GZIP || ContentEncodingType == DEFLATE){
+			DecompressBody();
+		}
 		if (getMethod() == "POST")
-				return SwitchState(READ_BOUNDARY);
+			return SwitchState(READ_BOUNDARY);
         return (SwitchState(FINISH));
     }
 }
@@ -720,6 +719,12 @@ void ParseRequest::startParse(int fd, Server server){
 			std::cout << buff;
 		}
 		switch(CurrntParsState){
+			case READ_BOUNDARY:
+				this->ParseMultipartBodyBoundary();
+				break;
+			case READ_MULTIPART_BODY:
+				this->ParseMultiPartBufferBody();
+				break;
 			case FINISH:
 			case ERROR:
 				break;
