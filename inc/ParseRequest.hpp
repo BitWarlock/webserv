@@ -94,8 +94,8 @@ class ParseRequest{
         bool        isNumber(std::string toCheck);
         void        ResetParserf();
         void        DecompressBody();
-        void		ParseMultipartBodyBoundary();
-        void        ParseMultiPartBufferBody();
+        void		ParseMultipartBodyBoundary(std::string &None);
+        void        ParseMultiPartBufferBody(std::string &None);
 
         // checkers
         bool        isFinish();

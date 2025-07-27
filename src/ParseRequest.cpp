@@ -13,6 +13,8 @@ const ParseRequest::ParseFuncPtr ParseRequest::ParseTable[] = {
 	&ParseRequest::parseContentlengthBody,		//	CONTENT_LENGHT_BODY_
 	&ParseRequest::parseChunkedBody,			//	CHUNED_BODY_SIZE_
 	&ParseRequest::parseChunkedBody,			//	READ_THE_CHUNK_
+	&ParseRequest::ParseMultipartBodyBoundary,	//	READ_BOUNDARY_
+	&ParseRequest::ParseMultiPartBufferBody,	//	READ_MULTYPART_BUFFER_BODY_
 };
 
 
@@ -238,10 +240,10 @@ void ParseRequest::parseUrl(std::string &str){
 
 // check request verison and define the error number if its not valid ;
 bool ParseRequest::isValidVersion(){
-	if (HttpProtocolVersion == "HTTP/1.1")
+	if (HttpProtocolVersion == "HTTP/1.1" || HttpProtocolVersion == "HTTP/1.0")
 		return (true);
-	if (HttpProtocolVersion == "HTTP/1.0" || HttpProtocolVersion == "HTTP/0.9" ||
-			HttpProtocolVersion == "HTTP/2" || HttpProtocolVersion == "HTTP/3")
+	if (HttpProtocolVersion == "HTTP/0.9" || HttpProtocolVersion == "HTTP/2" \
+		|| HttpProtocolVersion == "HTTP/3")
 		return (setErrorNumber(505), false);
 	return (setErrorNumber(400), false);
 }
@@ -418,23 +420,18 @@ void ParseRequest::parseContentlengthBody(std::string &str){
 		return (SwitchState(FINISH));
 	BufferBody +=  str.substr(0);
 	str.erase(0, str.size());
-	if (static_cast<size_t> (contentLength) < BufferBody.size())
-		return (setErrorNumber(400));
-	if (static_cast<size_t> (contentLength) == BufferBody.size()){
-        if (ContentEncodingType == GZIP || ContentEncodingType == DEFLATE)
-	    	DecompressBody();
-        return (SwitchState(FINISH));
-    }
-	BufferBody +=  str.substr(0);
-	str.erase(0, str.size());
+	if (static_cast<size_t> (contentLength) > BufferBody.size())
+		return ;
 	if (static_cast<size_t> (contentLength) < BufferBody.size())
 		return (setErrorNumber(400));
 	if (static_cast<size_t> (contentLength) == BufferBody.size()){
         if (ContentEncodingType == GZIP || ContentEncodingType == DEFLATE){
 			DecompressBody();
 		}
-		if (getMethod() == "POST")
+		if (getMethod() == "POST"){
+			std::cout << getMethod() <<"  "<< BufferBody.size() << "    here   " << contentLength << "\n\n\n\n";
 			return SwitchState(READ_BOUNDARY);
+		}
         return (SwitchState(FINISH));
     }
 }
@@ -638,7 +635,8 @@ int     ParseRequest::getMatchedLocationBodySizeMax(){
 	return S->getClientBodyLimit();
 }
 
-void        ParseRequest::ParseMultiPartBufferBody(){
+void        ParseRequest::ParseMultiPartBufferBody(std::string& None){
+	(void) None;
 	std::string Delimiter = "--" + MultipartBoundary;
 	std::string Part;
 	size_t StartPart = 0;
@@ -650,14 +648,14 @@ void        ParseRequest::ParseMultiPartBufferBody(){
 			return ;
 		StartPart = pos + Delimiter.size();
 		if (StartPart + 2 <= BufferBody.size() && !BufferBody.compare(StartPart, 2, "--"))
-			return ;
+			break ;
 		if (StartPart + 2 <= BufferBody.size() && !BufferBody.compare(StartPart, 2, CLRF))
 			StartPart += 2;
 		else if (StartPart + 1 <= BufferBody.size() && !BufferBody.compare(StartPart, 1, "\n"))
 			StartPart += 1;
 		NextPos = BufferBody.find(Delimiter, StartPart);
 		if (NextPos == std::string::npos)
-			return ;
+			break ;
 		if (NextPos >= 2 && !BufferBody.compare(NextPos - 2, 2, CLRF))
 			NextPos -= 2;
 		else if (NextPos >= 1 && !BufferBody.compare(NextPos - 1, 1, "\n"))
@@ -665,11 +663,17 @@ void        ParseRequest::ParseMultiPartBufferBody(){
 		Part = BufferBody.substr(StartPart, NextPos - StartPart);
 		MultipartBufferBody.push_back(Part);
 		pos = NextPos;
+		// if (getParseState() == FINISH || getParseState() == ERROR)
+		// 	return ;
 	}
+	SwitchState(FINISH);
 }
 
-void	ParseRequest::ParseMultipartBodyBoundary(){
+void	ParseRequest::ParseMultipartBodyBoundary(std::string& None){
+	std::cerr << "             BOUNDARY\n";
+	(void ) None;
 	std::string ContentTypeValue = getHeaderValue("content-type");
+	std::cout << ContentTypeValue << "\n\n\n\n";
 	if (ContentTypeValue.empty())
 		return SwitchState(FINISH);
 	pos = ContentTypeValue.find("multipart/");
@@ -679,19 +683,20 @@ void	ParseRequest::ParseMultipartBodyBoundary(){
 			if (pos != std::string::npos){
 				if (pos + 9 < ContentTypeValue.size()){
 					MultipartBoundary = ContentTypeValue.substr(pos+9);
-					if (!MultipartBoundary.empty()){
-						size_t EndQuoat = MultipartBoundary.find('"', 1);
-						if (EndQuoat == std::string::npos)
-							return setErrorNumber(400);
-						MultipartBoundary = MultipartBoundary.substr(1, --EndQuoat);
-					}
-					else{
-						size_t EndBoundary = MultipartBoundary.find_first_of(" ;");
-						if (EndBoundary != std::string::npos){
-							MultipartBoundary = MultipartBoundary.substr(0, EndBoundary);
+					// if (!MultipartBoundary.empty()){
+					// 	// size_t 
+					// 	// size_t EndQuoat = MultipartBoundary.find('"', 1);
+					// 	// if (EndQuoat == std::string::npos)
+					// 	// 	return setErrorNumber(400);
+					// 	// MultipartBoundary = MultipartBoundary.substr(1, --EndQuoat);
+					// }
+					// else{
+						// size_t EndBoundary = MultipartBoundary.find_first_of(" ;");
+						// if (EndBoundary != std::string::npos){
+						// 	MultipartBoundary = MultipartBoundary.substr(0, EndBoundary);
 
-						}
-					}
+						// }
+					// }
 					return SwitchState(READ_MULTIPART_BODY);	
 				}
 			}
@@ -707,36 +712,42 @@ void ParseRequest::startParse(int fd, Server server){
 		S = &server;
 	while(true)
 	{
+		std::cout << "=== DEBUG INFO ===" << std::endl;
+        std::cout << "Current state: " << CurrntParsState << std::endl;
+        std::cout << "PARSEARRAYSIZE: " << PARSEARRAYSIZE << std::endl;
+        std::cout << "Method: " << Method << std::endl;
 		char        str[1000];
 		if (buff.empty()){
 			memset(str, 0, sizeof(str));
 			ssize_t bytes = recv(fd, str, 999, 0);
-			if (bytes <= 0)
-				break ;
+			if (bytes <= 0 && (getParseState() == FINISH || getParseState() ==  ERROR))
+				return ;
 			str[bytes] = 0;
-			str[bytes] = 0;
-			buff.append(str, bytes);
+			if (bytes > 0)
+				buff.append(str, bytes);
 			std::cout << buff;
 		}
 		switch(CurrntParsState){
-			case READ_BOUNDARY:
-				this->ParseMultipartBodyBoundary();
-				break;
-			case READ_MULTIPART_BODY:
-				this->ParseMultiPartBufferBody();
-				break;
 			case FINISH:
 			case ERROR:
-				break;
+				return;
 			default :
 				if (CurrntParsState < PARSEARRAYSIZE){
+					if (!MultipartBoundary.empty()){
+						std::cout << "here      " << MultipartBoundary << "\n";
+					}
+					if (MultipartBufferBody.size() > 0){
+						for (size_t i(0); i < MultipartBufferBody.size();i++){
+							std::cout << MultipartBufferBody[i] << "\n";
+						}
+					}
+					std::cout << CurrntParsState << "\n"; 
 					(this->*ParseRequest::ParseTable[CurrntParsState])(buff);
 					break;
 			}
 		}
-		if (CurrntParsState == FINISH || CurrntParsState == ERROR)
-			break;
 	}
+	// std::cout << "\n here : "<< getMultipartBuferBody()[0] << " : here\n";
 	// ========  TEST ========//
 	/*________________________________________________________________*/
 
