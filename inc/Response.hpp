@@ -118,6 +118,7 @@ class Response{
         
         // Getters
         
+        std::string getPath();
         int         getState(void) const;
         std::string getStrState(void) const;
         std::string MIME_Type(void) const;
@@ -165,7 +166,7 @@ class Response{
 
         void    ChildProccess(std::string interpreter);
 
-        bool    MultiPart(void);
+        bool    MultiPart(std::string body);
 
         bool    Chunked(void);
         

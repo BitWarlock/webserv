@@ -375,10 +375,8 @@ bool ParseRequest::isNumber(std::string toCheck){
 void ParseRequest::CheckingForBody(){
 	bool TransferEncodingPresent = false;
 	bool contentLengthPresent = false;
-	if (Method == "GET" || Method == "DELETE"){
-
+	if (Method == "GET" || Method == "DELETE")
 		return (SwitchState(FINISH));
-	}
 	std::vector<std::pair<std::string, std::string> >::iterator Headersit;
 	for (Headersit = Headers.begin(); Headersit != Headers.end(); Headersit++)
 	{
@@ -428,10 +426,8 @@ void ParseRequest::parseContentlengthBody(std::string &str){
         if (ContentEncodingType == GZIP || ContentEncodingType == DEFLATE){
 			DecompressBody();
 		}
-		if (getMethod() == "POST"){
-			std::cout << getMethod() <<"  "<< BufferBody.size() << "    here   " << contentLength << "\n\n\n\n";
+		if (getMethod() == "POST")
 			return SwitchState(READ_BOUNDARY);
-		}
         return (SwitchState(FINISH));
     }
 }
@@ -497,7 +493,7 @@ std::string ParseRequest::getHeaderValue(std::string key){
 
 // reset the variable to parse another request ;
 void        ParseRequest::ResetParserf(){
-	errorNumber = 0;
+	errorNumber = 200;
 	ResetBuffPos();
 	CurrntParsState = NONE;
 	Current_key.clear();
@@ -663,17 +659,15 @@ void        ParseRequest::ParseMultiPartBufferBody(std::string& None){
 		Part = BufferBody.substr(StartPart, NextPos - StartPart);
 		MultipartBufferBody.push_back(Part);
 		pos = NextPos;
-		// if (getParseState() == FINISH || getParseState() == ERROR)
-		// 	return ;
+		if (getParseState() == FINISH || getParseState() == ERROR)
+			return ;
 	}
 	SwitchState(FINISH);
 }
 
 void	ParseRequest::ParseMultipartBodyBoundary(std::string& None){
-	std::cerr << "             BOUNDARY\n";
 	(void ) None;
 	std::string ContentTypeValue = getHeaderValue("content-type");
-	std::cout << ContentTypeValue << "\n\n\n\n";
 	if (ContentTypeValue.empty())
 		return SwitchState(FINISH);
 	pos = ContentTypeValue.find("multipart/");
@@ -683,20 +677,6 @@ void	ParseRequest::ParseMultipartBodyBoundary(std::string& None){
 			if (pos != std::string::npos){
 				if (pos + 9 < ContentTypeValue.size()){
 					MultipartBoundary = ContentTypeValue.substr(pos+9);
-					// if (!MultipartBoundary.empty()){
-					// 	// size_t 
-					// 	// size_t EndQuoat = MultipartBoundary.find('"', 1);
-					// 	// if (EndQuoat == std::string::npos)
-					// 	// 	return setErrorNumber(400);
-					// 	// MultipartBoundary = MultipartBoundary.substr(1, --EndQuoat);
-					// }
-					// else{
-						// size_t EndBoundary = MultipartBoundary.find_first_of(" ;");
-						// if (EndBoundary != std::string::npos){
-						// 	MultipartBoundary = MultipartBoundary.substr(0, EndBoundary);
-
-						// }
-					// }
 					return SwitchState(READ_MULTIPART_BODY);	
 				}
 			}
@@ -712,15 +692,11 @@ void ParseRequest::startParse(int fd, Server server){
 		S = &server;
 	while(true)
 	{
-		std::cout << "=== DEBUG INFO ===" << std::endl;
-        std::cout << "Current state: " << CurrntParsState << std::endl;
-        std::cout << "PARSEARRAYSIZE: " << PARSEARRAYSIZE << std::endl;
-        std::cout << "Method: " << Method << std::endl;
 		char        str[1000];
 		if (buff.empty()){
 			memset(str, 0, sizeof(str));
 			ssize_t bytes = recv(fd, str, 999, 0);
-			if (bytes <= 0 && (getParseState() == FINISH || getParseState() ==  ERROR))
+			if (bytes <= 0 && (CurrntParsState == ERROR || CurrntParsState == FINISH || CurrntParsState == NONE))
 				return ;
 			str[bytes] = 0;
 			if (bytes > 0)
@@ -733,19 +709,12 @@ void ParseRequest::startParse(int fd, Server server){
 				return;
 			default :
 				if (CurrntParsState < PARSEARRAYSIZE){
-					if (!MultipartBoundary.empty()){
-						std::cout << "here      " << MultipartBoundary << "\n";
-					}
-					if (MultipartBufferBody.size() > 0){
-						for (size_t i(0); i < MultipartBufferBody.size();i++){
-							std::cout << MultipartBufferBody[i] << "\n";
-						}
-					}
-					std::cout << CurrntParsState << "\n"; 
 					(this->*ParseRequest::ParseTable[CurrntParsState])(buff);
-					break;
+						break;
 			}
 		}
+		if (CurrntParsState == FINISH || CurrntParsState == ERROR)
+			break ;
 	}
 	// std::cout << "\n here : "<< getMultipartBuferBody()[0] << " : here\n";
 	// ========  TEST ========//

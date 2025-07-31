@@ -389,9 +389,6 @@ void    Response::GetPageResponse(void)
     if (access(path.c_str(), R_OK) != 0)
         return (SetState(Forbidden), ResponseWithError(NONE));
 
-    // if (FromLocation == true)
-    //     if (CheckForCGI() == false)
-    //         return ;
     BuildGetResponse();
 }
 
@@ -443,42 +440,31 @@ void    Response::BuildPostResponse(void)
     send(fd_client, response.c_str(), response.size(), MSG_NOSIGNAL);
 }
 
-bool    Response::MultiPart(void)
+bool    Response::MultiPart(std::string body)
 {
-    std::string ContentType = Request.getHeaderValue("content-type");
-    size_t      multipart = ContentType.find("multipart/form-data");
     struct stat info;
     std::string filename;
-    
-    if (multipart != std::string::npos)
+
+    size_t  pos = body.find("Content-Disposition:");
+    if (pos != std::string::npos)
     {
-        std::vector<std::string>    body = Request.getMultipartBuferBody();
-        // std::cout << body[0] << "\n";
-        for (size_t i(0); i < body.size(); i++)
+        size_t end = body.find('\n', pos);
+        if (end != std::string::npos)
         {
-            size_t  pos = body[i].find("Content-Disposition:");
-            if (pos == std::string::npos)
-                continue ;
-            size_t end = body[i].find('\n', pos);
-            if (end == std::string::npos)
-                continue ;
-            std::string line = body[i].substr(pos, end - pos);
-            std::cout << "pos : " << pos << " -- end : " << end << " -- line : " << line << "\n";
+            std::string line = body.substr(pos, end - pos);
             if ((pos = line.find("filename=")) != std::string::npos)
             {
-                end = line.find('"', pos);
-                if (end == std::string::npos)
-                    continue ;
-                filename = line.substr(pos + 10, end - pos);
-                size_t  clrf = body[i].find("\r\n\r\n");
-                if (clrf != std::string::npos)
-                    Body += body[i].substr(clrf + 4);
+                size_t start = line.find('"', pos);
+                size_t finish = line.find('"', start + 1);
+                if (start != std::string::npos && finish != std::string::npos)
+                    filename = line.substr(start + 1, finish - (start + 1));
             }
         }
     }
-    else
-        return (Chunked());
-    std::cout << "here : " << path << "\n";
+    size_t  clrf = body.find("\r\n\r\n");
+    if (clrf != std::string::npos)
+        Body += body.substr(clrf + 4);
+
     if (path[path.size() - 1] == '/')
     {
         if (stat(path.c_str(), &info) == -1)
@@ -533,28 +519,45 @@ bool    Response::Chunked(void)
 
 void    Response::PostContentResponse(void)
 {
+    std::string ContentType = Request.getHeaderValue("content-type");
+    size_t      multipart = ContentType.find("multipart/form-data");
+
     if (ReturnDirective() == false)
         return ;
 
-    // size_t  max_size = ServerBlock.getClientBodyLimit();
-        
-    // if (FromLocation == true)
-    //     max_size = location.getClientBodyLimit();
-        
-    // size_t lengthstr = Request.getBufferBody().size();
-        
-    // if (lengthstr > max_size)
-    //     return (SetState(Content_Too_Large), ResponseWithError(NONE));
-
     if (GetFullPath(path) == false)
         return ;
-    
-    if (MultiPart() == false)
-        return ;
 
-    if (FromLocation == true)
-        if (CheckForCGI() == false)
+    if (multipart != std::string::npos)
+    {
+        std::vector<std::string>    body = Request.getMultipartBuferBody();
+        for (size_t i(0); i < body.size(); i++)
+        {
+            std::string old_path = getPath();
+            if (MultiPart(body[i]) == false)
+                return ;
+
+            int fd_file(0);
+
+            if ((fd_file = open(path.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644)) == -1)
+                return (SetState(Forbidden), ResponseWithError(NONE));
+
+            if (write(fd_file, Body.c_str(), Body.size()) == -1)
+                return (close(fd_file), SetState(Internal_Server_Error), ResponseWithError(NONE));
+            
+            close(fd_file);
+            
+            BuildPostResponse();
+            SetPath(old_path);
+            Body = "";
+        }
+        return ;
+    }
+    else
+    {
+        if (Chunked() == false)
             return ;
+    }
 
     int fd_file(0);
 
@@ -673,6 +676,8 @@ void    Response::StartForResponse(ParseRequest request, Server BlockServer, int
 }
 
 int     Response::getState() const {return state;}
+
+std::string Response::getPath() {return path;}
 
 void    Response::SetRequest(ParseRequest Request){this->Request = Request;}
 
