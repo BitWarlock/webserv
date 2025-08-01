@@ -7,7 +7,7 @@
 #include <utility>
 #include <unistd.h>
 #include <sys/socket.h>
-#include <string.h>
+#include <cstring>
 #include <zlib.h>
 //#include <brotli/decode.h>
 #include "Server.hpp"

@@ -48,7 +48,7 @@ class SetupServers
         Server              GetBlockServer(int block);
         
     private:
-        const Config&           config;
+        Config&                 config;
         std::map<int, Server>   servers;
         size_t                  sock_number;
         std::vector<int>        fd_sockets;

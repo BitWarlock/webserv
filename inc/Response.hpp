@@ -23,7 +23,7 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
-#include <string.h>
+#include <cstring>
 #include <fcntl.h>
 #include <dirent.h>
 #include <sys/types.h>

@@ -16,7 +16,7 @@ CgiResult	Cgi::execute(ParseRequest& request)
 {
 	if (access(script_path.c_str(), F_OK | R_OK | X_OK) != 0)
 	{
-		return CgiResult(false, "Script not accessible: " + std::string(strerror(errno)));
+		return CgiResult(false, "Script not accessible: " + script_path);
 	}
 	
 	setupEnv(request);
@@ -35,6 +35,10 @@ CgiResult Cgi::executePipes(ParseRequest& request)
 	
 	pid_t pid = fork();
 	if (pid == -1) {
+		close(pipe_in[0]);
+		close(pipe_in[1]);
+		close(pipe_out[0]);
+		close(pipe_out[1]);
 		return CgiResult(false, "Fork failed");
 	}
 	
@@ -56,7 +60,6 @@ CgiResult Cgi::executePipes(ParseRequest& request)
 		cleanEnv(env_array);
 		exit(1);
 	}
-	
 	close(pipe_in[0]);
 	close(pipe_out[1]);
 	
@@ -67,7 +70,21 @@ CgiResult Cgi::executePipes(ParseRequest& request)
 	close(pipe_out[0]);
 	
 	int status;
-	waitpid(pid, &status, 0);
+	int wait_result = waitpid(pid, &status, WNOHANG);
+	int timeout_count = 0;
+	const int max_timeout = 30;
+	
+	while (wait_result == 0 && timeout_count < max_timeout) {
+		sleep(1);
+		wait_result = waitpid(pid, &status, WNOHANG);
+		timeout_count++;
+	}
+	
+	if (wait_result == 0) {
+		killProcess(pid);
+		waitpid(pid, &status, 0);
+		return CgiResult(false, "CGI script execution timed out");
+	}
 	
 	if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
 	{
@@ -93,6 +110,8 @@ std::string	Cgi::readCgiOutput(int pipe_fd, pid_t pid, int timeout_seconds)
 	timeout.tv_sec = timeout_seconds;
 	timeout.tv_usec = 0;
 	
+	const size_t max_output_size = 1024 * 1024;
+	
 	while (select(pipe_fd + 1, &read_fds, NULL, NULL, &timeout) > 0)
 	{
 		ssize_t bytes_read = read(pipe_fd, buffer, sizeof(buffer) - 1);
@@ -100,6 +119,10 @@ std::string	Cgi::readCgiOutput(int pipe_fd, pid_t pid, int timeout_seconds)
 		{
 			buffer[bytes_read] = '\0';
 			output += buffer;
+			
+			if (output.size() > max_output_size) {
+				break;
+			}
 		}
 		else if (bytes_read == 0)
 		{
@@ -243,20 +266,30 @@ char**	Cgi::getEnv(ParseRequest& request) const
 	char**	env_array = new char*[env_vars.size() + 1];
 	int		i = 0;
 
-	for (std::map<std::string, std::string>::const_iterator it = env_vars.begin();
-			it != env_vars.end(); ++it, ++i)
-	{
-		std::string env_var = it->first + "=" + it->second;
-		env_array[i] = new char[env_var.length() + 1];
-		std::strcpy(env_array[i], env_var.c_str());
-	}
+	try {
+		for (std::map<std::string, std::string>::const_iterator it = env_vars.begin();
+				it != env_vars.end(); ++it, ++i)
+		{
+			std::string env_var = it->first + "=" + it->second;
+			env_array[i] = new char[env_var.length() + 1];
+			std::strcpy(env_array[i], env_var.c_str());
+		}
 
-	env_array[i] = NULL;
-	return env_array;
+		env_array[i] = NULL;
+		return env_array;
+	}
+	catch (...) {
+		for (int j = 0; j < i; j++)
+			delete[] env_array[j];
+		delete[] env_array;
+		throw;
+	}
 }
 
 void	Cgi::cleanEnv(char **env) const
 {
+	if (!env) return;
+	
 	for (int i = 0; env[i] != NULL; i++)
 		delete[] env[i];
 	delete[] env;

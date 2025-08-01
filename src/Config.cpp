@@ -19,6 +19,11 @@ const std::vector<Server*>& Config::getServers() const
 	return (servers);
 }
 
+std::vector<Server*>& Config::getServers()
+{
+	return (servers);
+}
+
 const Server* Config::getServer(const std::string& host, const std::string& port) const
 {
 	for (size_t i = 0; i < servers.size(); ++i)

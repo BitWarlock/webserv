@@ -29,6 +29,8 @@ class Server
 		// Getters
 		const std::vector<std::pair
 	 	  <std::string, std::string> >& getListen() const;
+		std::vector<std::pair
+	 	  <std::string, std::string> >& getListen();
 		const ReturnDirective			getReturnDirective() const;
 		const std::vector<std::string>& getAllowedMethods() const;
 		const std::vector<std::string>& getServerNames() const;

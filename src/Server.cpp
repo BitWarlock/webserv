@@ -79,6 +79,8 @@ const ReturnDirective	Server::getReturnDirective() const {return return_d;}
 
 const std::vector<std::pair<std::string, std::string> >& Server::getListen() const {return listen;}
 
+std::vector<std::pair<std::string, std::string> >& Server::getListen() {return listen;}
+
 const std::vector<std::string>& Server::getServerNames() const {return server_names;}
 
 const std::vector<Location*>& Server::getLocations() const {return locations;}

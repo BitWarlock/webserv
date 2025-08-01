@@ -13,6 +13,7 @@ class Config
 
 		void						addServer(Server* server);
 		const std::vector<Server*>&	getServers() const;
+		std::vector<Server*>&		getServers();
 		const Server*				getServer(const std::string& host,
 												const std::string& port) const;
 

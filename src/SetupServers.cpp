@@ -33,7 +33,7 @@ SetupServers::~SetupServers()
 
 void    SetupServers::CheckPortIp(const std::string& host, const std::string& port, size_t pos_server)
 {
-	std::vector<Server*>& servers = const_cast<std::vector<Server*>&> (config.getServers());
+	std::vector<Server*>& servers = config.getServers();
 
 	for (size_t i(0); i < pos_server; i++)
 	{
@@ -42,8 +42,9 @@ void    SetupServers::CheckPortIp(const std::string& host, const std::string& po
 			if ((servers[i]->getListen()[s].first == host || host == "0.0.0.0")
 					&& servers[i]->getListen()[s].second == port)
 			{
-				std::string&    _port = const_cast<std::string&> (port);
-				_port += "T";
+				// Mark this port as taken by modifying the server's listen vector
+				std::vector<std::pair<std::string, std::string> >& listen_vec = servers[i]->getListen();
+				listen_vec[s].second += "T";
 				return ;
 			}
 		}
@@ -52,7 +53,7 @@ void    SetupServers::CheckPortIp(const std::string& host, const std::string& po
 
 void    SetupServers::FlagSharedPortIp(void)
 {
-	std::vector<Server*>& servers = const_cast<std::vector<Server*>&> (config.getServers());
+	std::vector<Server*>& servers = config.getServers();
 
 	for (size_t i(0); i < servers.size(); i++)
 	{
@@ -126,8 +127,9 @@ void    SetupServers::Binding(Server& server, size_t index)
 		}
 		else
 		{
-			std::string& str = const_cast<std::string&> ((server.getListen()[i].second));
-			str.erase(port.size() - 1);
+			// Remove the 'T' marker from the port string
+			std::vector<std::pair<std::string, std::string> >& listen_vec = server.getListen();
+			listen_vec[i].second.erase(port.size() - 1);
 		}
 	}
 }
@@ -279,7 +281,7 @@ void    SetupServers::Retreat(void) {this->sock_number--;}
 void    SetupServers::StartSetup(void)
 {
 	static size_t         index(0);
-	std::vector<Server*>& servers = const_cast<std::vector<Server*>&> (config.getServers());
+	std::vector<Server*>& servers = config.getServers();
 
 	FlagSharedPortIp();
 
