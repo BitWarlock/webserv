@@ -619,7 +619,7 @@ void    Response::StartForResponse(ParseRequest request, Server BlockServer, int
 		
 		return;
 	}
-ga
+
     if (getState() == Method_Not_Allowed)
         ResponseWithError(NONE);
 
