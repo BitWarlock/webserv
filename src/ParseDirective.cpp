@@ -1,6 +1,7 @@
 #include "../inc/ParseDirective.hpp"
 #include <clocale>
 #include <exception>
+#include <string>
 #include <utility>
 
 DirectiveParser::DirectiveParser(Lexer& lexer) : lexer(lexer) {}
@@ -394,7 +395,13 @@ void DirectiveParser::parseCgiInfo(Location* location, const std::vector<std::st
 	if (values.size() != 2)
 		throw ParseException("cgi_info directive requires exactly two values (extension and interpreter)", currentToken.line);
 
-	location->setCgiExtension(values[0], values[1]);
+	std::string	extension = values[0];
+	std::string	interpreter = values[1];
+
+	if (extension[0] != '.')
+		extension = "." + extension;
+
+	location->setCgiExtension(extension, interpreter);
 }
 
 void DirectiveParser::parseUploadStore(Location* location, const std::vector<std::string>& values)

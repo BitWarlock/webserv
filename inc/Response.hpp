@@ -28,6 +28,7 @@
 #include <dirent.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include "Cgi.hpp"
 
 #define GET "GET"
 #define POST "POST"
@@ -101,10 +102,18 @@ class Response{
         std::string         path;
         char                *env[7];
         std::string         Body;
+
+        bool            shouldExecuteCgi(ParseRequest& request, Server& server);
+        void           sendCgiResponse(const CgiResult& cgi_result);
+        Location*      findMatchingLocation(const std::string& uri, Server& server);
+        std::string     getScriptPath(const Location& location, const std::string& uri);
+        std::string    getFileExtension(const std::string& uri);
         
-        public:
+    public:
         Response();
         ~Response();
+
+        void    handleCgiRequest(ParseRequest& request, Server& server);
         
         // Setters
         
@@ -146,7 +155,7 @@ class Response{
         
         bool    GetFullPath(std::string& path);
         
-        bool    CheckForCGI(void);
+
         
         bool    CheckAutoIndex(void);
         
@@ -164,7 +173,7 @@ class Response{
 
         std::string DefaultForMatchError(void);
 
-        void    ChildProccess(std::string interpreter);
+
 
         bool    MultiPart(std::string body);
 

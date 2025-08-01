@@ -1,4 +1,5 @@
 #include "inc/WebServ.hpp"
+#include <iostream>
 
 bool	hasConfExt(const std::string &config_file)
 {

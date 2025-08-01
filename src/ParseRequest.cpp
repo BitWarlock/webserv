@@ -241,10 +241,14 @@ void ParseRequest::parseUrl(std::string &str){
 // check request verison and define the error number if its not valid ;
 bool ParseRequest::isValidVersion(){
 	if (HttpProtocolVersion == "HTTP/1.1" || HttpProtocolVersion == "HTTP/1.0")
+	{
 		return (true);
+	}
 	if (HttpProtocolVersion == "HTTP/0.9" || HttpProtocolVersion == "HTTP/2" \
 		|| HttpProtocolVersion == "HTTP/3")
+	{
 		return (setErrorNumber(505), false);
+	}
 	return (setErrorNumber(400), false);
 }
 

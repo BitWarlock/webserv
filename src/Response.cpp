@@ -299,76 +299,7 @@ bool    Response::ReturnDirective(void)
     return (false);
 }
 
-void    Response::ChildProccess(std::string interpreter)
-{
-    std::vector<std::string>    env_storage;
-    env_storage.clear();
 
-    env_storage.push_back("REQUEST_METHOD=" + Request.getMethod());
-    env_storage.push_back("SCRIPT_NAME=" + Request.getUri());
-    env_storage.push_back("SCRIPT_FILENAME=" + path);
-    env_storage.push_back("QUERY_STRING=" + Request.getQueryString());
-    env_storage.push_back("CONTENT_TYPE=" + Request.getHeaderValue("content-type"));
-    env_storage.push_back("SERVER_PROTOCOL=HTTP/1.1");
-
-    for (size_t i = 0; i < env_storage.size(); ++i)
-        env[i] = (char*) env_storage[i].c_str();
-    env[env_storage.size()] = NULL;
-
-    char    *argv[3];
-    argv[0] = (char*) interpreter.c_str();
-    argv[1] = (char*) path.c_str();
-    argv[2] = NULL;
-
-    if (execve (argv[0], argv, env) == -1)
-        std::cerr << "execve: failed\n";
-
-    exit(1);
-}
-
-bool    Response::CheckForCGI(void)
-{
-    size_t  pos = path.rfind('.');
-    if (pos == std::string::npos)
-        return true;
-
-    std::string extenstion = path.substr(pos + 1);
-    std::string interpreter = location.getCgiInfo(extenstion);
-
-    if (interpreter.empty() || access(interpreter.c_str(), F_OK | X_OK) == -1)
-        return (SetState(Internal_Server_Error), ResponseWithError(NONE), false);
-
-    int pipe_fd[2];
-    if (pipe(pipe_fd) == -1)
-        return (SetState(Internal_Server_Error), ResponseWithError(NONE), false);
-    int pid = fork();
-    if (pid == -1)
-        return (SetState(Internal_Server_Error), ResponseWithError(NONE), false);
-    else if (pid == 0)
-    {
-        close(pipe_fd[0]);
-        dup2(pipe_fd[1], 1);
-        close(pipe_fd[1]);
-        ChildProccess(interpreter);
-    }
-    int status(0);
-    waitpid(pid, &status, 0);
-    if (status == 1)
-        return (SetState(Internal_Server_Error), ResponseWithError(NONE), false);
-    close(pipe_fd[1]);
-
-    char buffer[4096];
-    ssize_t n(0);
-    std::string cgi;
-
-	while ((n = read(pipe_fd[0], buffer, sizeof(buffer))) > 0){
-        buffer[n] = 0;
-        cgi += buffer;
-    }
-
-    close(pipe_fd[0]);
-    return (true);
-}
 
 void    Response::GetPageResponse(void)
 {
@@ -652,14 +583,44 @@ void    Response::ResponseWithError(int serve)
     BuildGetResponse();
 }
 
+bool	Response::shouldExecuteCgi(ParseRequest& request, Server& server)
+{
+	Location* location = findMatchingLocation(request.getUri(), server);
+	if (!location) {
+		return false;
+	}
+
+	bool is_cgi = location->isCgiRequest(request.getUri());
+	
+	return is_cgi;
+}
+
 void    Response::StartForResponse(ParseRequest request, Server BlockServer, int fd_client)
 {
     SetRequest(request);
-    SetBlockServer(BlockServer);
-    SetState(request.getErrorNumber());
-    SetPath(request.getUri());
-    SetStatePath(NORMAL);
-    this->fd_client = fd_client;
+	SetBlockServer(BlockServer);
+	SetState(request.getErrorNumber());
+	SetPath(request.getUri());
+	SetStatePath(NORMAL);
+	this->fd_client = fd_client;
+	this->ServerBlock = BlockServer;
+
+	if (shouldExecuteCgi(Request, BlockServer))
+	{
+		std::cout.flush();
+		
+		try {
+			handleCgiRequest(Request, BlockServer);
+		} catch (const std::exception& e) {
+			ResponseWithError(500);
+		} catch (...) {
+			ResponseWithError(500);
+		}
+		
+		return;
+	}
+	else
+		std::cout << "[DEBUG] CGI should NOT be executed, proceeding with normal response" << std::endl;
 
     if (getState() == Method_Not_Allowed)
         ResponseWithError(NONE);
@@ -673,6 +634,129 @@ void    Response::StartForResponse(ParseRequest request, Server BlockServer, int
 
     else
         ResponseWithOk();
+}
+
+void	Response::handleCgiRequest(ParseRequest& request, Server& server)
+{
+	try
+	{
+		Location* location = findMatchingLocation(request.getUri(), server);
+		if (!location)
+		{
+			ResponseWithError(404);
+			return;
+		}
+
+		if (!location->isCgiRequest(request.getUri()))
+		{
+			ResponseWithError(404);
+			return;
+		}
+
+		std::string script_path = getScriptPath(*location, request.getUri());
+		
+		if (script_path.empty())
+		{
+			ResponseWithError(404);
+			return;
+		}
+
+		std::string file_extension = getFileExtension(request.getUri());
+		std::string interpreter = location->getCgiInterpreter(file_extension);
+		
+		if (interpreter.empty())
+		{
+			ResponseWithError(500);
+			return;
+		}
+
+		std::cout.flush();
+		
+		try {
+			try {
+				Cgi cgi(script_path, interpreter);
+				CgiResult result = cgi.execute(request);
+
+				if (result.success)
+				{
+					sendCgiResponse(result);
+				}
+				else
+				{
+					ResponseWithError(502);
+				}
+			} catch (const std::exception& e) {
+				ResponseWithError(500);
+			} catch (...) {
+				ResponseWithError(500);
+			}
+		} catch (const std::exception& e) {
+			ResponseWithError(500);
+		}
+
+	}
+	catch (const std::exception& e)
+	{
+		ResponseWithError(500);
+	}
+}
+
+void	Response::sendCgiResponse(const CgiResult& cgi_result)
+{
+    std::string response = "HTTP/1.1 " + intToString(cgi_result.status_code) + " OK\r\n";
+    response += cgi_result.headers;
+    response += "Content-Length: " + intToString(cgi_result.body.length()) + "\r\n";
+    response += "\r\n";
+    response += cgi_result.body;
+    
+    send(fd_client, response.c_str(), response.length(), 0);
+}
+
+Location*	Response::findMatchingLocation(const std::string& uri, Server& server)
+{
+	const std::vector<Location*>& locations = server.getLocations();
+
+	Location*	best_match = NULL;
+	size_t		best_length = 0;
+
+	for (std::vector<Location*>::const_iterator it = locations.begin(); it != locations.end(); ++it)
+	{
+		std::string location_path = (*it)->getPath();
+		
+		if (uri.substr(0, location_path.length()) == location_path && 
+				location_path.length() > best_length)
+		{
+			best_match = *it;
+			best_length = location_path.length();
+		}
+	}
+
+	return best_match;
+}
+
+std::string Response::getScriptPath(const Location& location, const std::string& uri)
+{
+	std::string root = location.getRoot();
+	std::string location_path = location.getPath();
+	
+	std::string relative_path = uri.substr(location_path.length());
+	if (relative_path.empty() || relative_path[0] != '/')
+		relative_path = "/" + relative_path;
+	
+	std::string script_path = root + relative_path;
+	
+	char abs_path[1024];
+	if (realpath(script_path.c_str(), abs_path) != NULL)
+		script_path = abs_path;
+	
+	return script_path;
+}
+
+std::string	Response::getFileExtension(const std::string& uri)
+{
+	size_t dot_pos = uri.find_last_of('.');
+	if (dot_pos == std::string::npos) return "";
+	return uri.substr(dot_pos);
 }
 
 int     Response::getState() const {return state;}
