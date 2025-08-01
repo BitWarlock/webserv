@@ -619,9 +619,7 @@ void    Response::StartForResponse(ParseRequest request, Server BlockServer, int
 		
 		return;
 	}
-	else
-		std::cout << "[DEBUG] CGI should NOT be executed, proceeding with normal response" << std::endl;
-
+ga
     if (getState() == Method_Not_Allowed)
         ResponseWithError(NONE);
 
