@@ -28,7 +28,6 @@ SetupServers::~SetupServers()
 {
 	for (size_t i(0); i < sock_number; i++)
 		close(fd_sockets[i]);
-	// delete &config;
 }
 
 void    SetupServers::CheckPortIp(const std::string& host, const std::string& port, size_t pos_server)

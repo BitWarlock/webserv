@@ -423,9 +423,8 @@ void ParseRequest::parseContentlengthBody(std::string &str){
 	if (static_cast<size_t> (contentLength) < BufferBody.size())
 		return (setErrorNumber(400));
 	if (static_cast<size_t> (contentLength) == BufferBody.size()){
-        if (ContentEncodingType == GZIP || ContentEncodingType == DEFLATE){
+        if (ContentEncodingType == GZIP || ContentEncodingType == DEFLATE)
 			DecompressBody();
-		}
 		if (getMethod() == "POST")
 			return SwitchState(READ_BOUNDARY);
         return (SwitchState(FINISH));
@@ -442,7 +441,6 @@ int ParseRequest::HexaStringToDecimalNum(std::string s){
 
 // parsing the chuncked body type ;
 void ParseRequest::parseChunkedBody(std::string &str){
-	// std::cout << "\n -- " << str << " -- " << getParseState() << "\n";
 	if (CurrntParsState == READCHUNKSIZE)
 	{
 		pos = str.find(CLRF);
@@ -455,7 +453,6 @@ void ParseRequest::parseChunkedBody(std::string &str){
 					return (setErrorNumber(400));
 			}
 			ChunkSize = HexaStringToDecimalNum(StringChunkSize);
-			std::cout << " -- " << ChunkSize << " --\n";
 			if (ChunkSize > S->getClientBodyLimit())
 				return (setErrorNumber(413));
 			str.erase(0, pos + 2);
@@ -668,9 +665,12 @@ void        ParseRequest::ParseMultiPartBufferBody(std::string& None){
 void	ParseRequest::ParseMultipartBodyBoundary(std::string& None){
 	(void ) None;
 	std::string ContentTypeValue = getHeaderValue("content-type");
-	if (ContentTypeValue.empty())
-		return SwitchState(FINISH);
 	pos = ContentTypeValue.find("multipart/");
+	if (ContentTypeValue.empty() || pos == std::string::npos)
+	{
+		std::cout << "\n-- " << BufferBody << " --\n"; 
+		return SwitchState(FINISH);
+	}
 	if (pos != std::string::npos){
 		if (ContentTypeValue.find(";") != std::string::npos){
 			pos = ContentTypeValue.find("boundary=");
@@ -698,9 +698,11 @@ void ParseRequest::startParse(int fd, Server server){
 			ssize_t bytes = recv(fd, str, 999, 0);
 			if (bytes <= 0 && (CurrntParsState == ERROR || CurrntParsState == FINISH || CurrntParsState == NONE))
 				return ;
-			str[bytes] = 0;
 			if (bytes > 0)
+			{
+				str[bytes] = 0;
 				buff.append(str, bytes);
+			}
 			std::cout << buff;
 		}
 		switch(CurrntParsState){
@@ -716,17 +718,4 @@ void ParseRequest::startParse(int fd, Server server){
 		if (CurrntParsState == FINISH || CurrntParsState == ERROR)
 			break ;
 	}
-	// std::cout << "\n here : "<< getMultipartBuferBody()[0] << " : here\n";
-	// ========  TEST ========//
-	/*________________________________________________________________*/
-
-	// std::vector<std::pair<std::string, std::string> > h = getHeaders();
-	// for (std::vector<std::pair<std::string, std::string> >::const_iterator it = h.begin(); it != h.end(); ++it) {
-    //     std::cout << it->first << ": " << it->second << std::endl;
-    // }
-	// std::cout << "here ++++> "<< getBufferBody() << std::endl;
-	// std::cout << "here toooo == .> "<< getBufferDecompressedBody() << std::endl;
-	// exit(0);
-
-	/*________________________________________________________________*/
 }

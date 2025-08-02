@@ -79,8 +79,10 @@ void    Response::CheckIndexAccess(std::vector<std::string> indexs)
 {
     for (size_t i(0); i < indexs.size(); i++)
     {
-        std::string join = path + indexs[i];
-
+        std::string join = path;
+        if (path[path.size() - 1] != '/')
+            join += "/";
+        join += indexs[i];
         if (access(join.c_str(), F_OK) == 0)
         {
             SetPath(join);
@@ -371,9 +373,6 @@ void    Response::GetPageResponse(void)
 {
     struct stat info;
 
-    if (ReturnDirective() == false)
-        return ;
-
     if (GetFullPath(path) == false)
         return ;
 
@@ -496,7 +495,6 @@ bool    Response::Chunked(void)
     struct stat info;
 
     Body = Request.getBufferBody();
-    std::cout << "-- " << Body << " --\n";
     if (path[path.size() - 1] == '/')
     {
         if (stat(path.c_str(), &info) == -1)
@@ -663,15 +661,11 @@ void    Response::StartForResponse(ParseRequest request, Server BlockServer, int
     SetStatePath(NORMAL);
     this->fd_client = fd_client;
 
-    if (getState() == Method_Not_Allowed)
-        ResponseWithError(NONE);
+    if (ReturnDirective() == false)
+        return ;
 
     else if (getState() != OK)
-    {
-        if (ReturnDirective() == false)
-            return ;
         ResponseWithError(NONE);
-    }
 
     else
         ResponseWithOk();
