@@ -35,12 +35,11 @@ void    Response::CheckLocations(std::string& path)
 		}
         else if (urlpath == "/") {
 			while (i < locations.size()){
-			if (locations[i]->getPath() == "/")
-				return (FromLocation = true, SetLocation(*(locations[i])));
+			    if (locations[i]->getPath() == "/")
+				    return (FromLocation = true, SetLocation(*(locations[i])));
 			}
-		}
-		else
 			break;
+		}
 	}
     FromLocation = false;
 }
@@ -65,7 +64,6 @@ bool    Response::GetFullPath(std::string& path)
     }
     else
         SetPath(ServerBlock.getRoot() + path.erase(0, 1));
-
     return (true);
 }
 
@@ -276,7 +274,6 @@ bool    Response::ReturnDirective(void)
     std::string         redirecturl;
 
     CheckLocations(path);
-
     if (ServerBlock.getReturnDirective().enabled == false && 
         location.getReturnDirective().enabled == false)
         return (true);
@@ -407,7 +404,7 @@ void    Response::BuildDeleteResponse(void)
 void    Response::DeleteContentResponse(void)
 {
     struct stat info;
-    std::cout << path << "\n";
+
     if (ReturnDirective() == false)
         return ;
 
@@ -444,8 +441,9 @@ bool    Response::MultiPart(std::string body)
 {
     struct stat info;
     std::string filename;
-
     size_t  pos = body.find("Content-Disposition:");
+    bool    f_lag(false);
+
     if (pos != std::string::npos)
     {
         size_t end = body.find('\n', pos);
@@ -458,35 +456,38 @@ bool    Response::MultiPart(std::string body)
                 size_t finish = line.find('"', start + 1);
                 if (start != std::string::npos && finish != std::string::npos)
                     filename = line.substr(start + 1, finish - (start + 1));
+                f_lag = true;
             }
         }
     }
     size_t  clrf = body.find("\r\n\r\n");
+
     if (clrf != std::string::npos)
         Body += body.substr(clrf + 4);
 
     if (path[path.size() - 1] == '/')
     {
-        if (stat(path.c_str(), &info) == -1)
+        if (stat(path.c_str(), &info) == -1 || !S_ISDIR(info.st_mode))
             return (SetState(Not_Found), ResponseWithError(NONE), false);
 
-        if (!S_ISDIR(info.st_mode))
-            return (SetState(Conflict), ResponseWithError(NONE), false);
+        else if (f_lag == false || filename.empty())
+            return (SetState(Bad_Request), ResponseWithError(NONE), false);
+        
+        else if (!filename.empty())
+            SetPath(path + "/" + filename);
     }
     else
     {
         if (stat(path.c_str(), &info) == -1)
             return (SetState(Created), true);
-
+        
         if (S_ISDIR(info.st_mode))
             return (SetState(Conflict), ResponseWithError(NONE), false);
+    
+        if (access(path.c_str(), W_OK) == -1)
+            return (SetState(Forbidden), ResponseWithError(NONE), false);
     }
 
-    if (access(path.c_str(), W_OK) == -1)
-        return (SetState(Forbidden), ResponseWithError(NONE), false);
-
-    if (!filename.empty())
-        SetPath(path + "/" + filename);
     return (true);
 }
 
@@ -494,6 +495,7 @@ bool    Response::Chunked(void)
 {
     struct stat info;
 
+    Body = Request.getBufferBody();
     if (path[path.size() - 1] == '/')
     {
         if (stat(path.c_str(), &info) == -1)
@@ -568,7 +570,7 @@ void    Response::PostContentResponse(void)
         return (close(fd_file), SetState(Internal_Server_Error), ResponseWithError(NONE));
     
     close(fd_file);
-    
+
     BuildPostResponse();
 }
 
@@ -593,7 +595,7 @@ std::string Response::DefaultForMatchError(void)
     if (error == Moved_Permanently)
         return "./error_pages/Moved_Permanently.html";
     else if (error == Bad_Request)
-        return "./error_pages/Bad_request.html";
+        return "./error_pages/Bad_Request.html";
     else if (error == Forbidden)
         return "./error_pages/Forbidden.html";
     else if (error == Not_Found)
@@ -622,7 +624,6 @@ std::string Response::DefaultForMatchError(void)
 
 void    Response::ResponseWithError(int serve)
 {
-    CheckLocations(path);
     if (serve == DEFAULT)
     {
         SetPath(DefaultForMatchError());

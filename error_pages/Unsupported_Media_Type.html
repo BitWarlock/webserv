@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>413 Payload Too Large</title>
+  <title>415 Unsupported Media Type</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background-color: #ffe6e6;
-      color: #cc0000;
+      background-color: #fff8e1;
+      color: #d9822b;
       text-align: center;
       padding: 50px;
     }
@@ -23,8 +23,8 @@
   </style>
 </head>
 <body>
-  <h1>413 Payload Too Large</h1>
-  <p>The request entity is larger than limits defined by the server.</p>
-  <p>Please reduce the size of your request and try again.</p>
+  <h1>415 Unsupported Media Type</h1>
+  <p>The server refuses to accept the request because the payload format is not supported.</p>
+  <p>Please check the <code>Content-Type</code> header and ensure you are sending a supported media type.</p>
 </body>
 </html>

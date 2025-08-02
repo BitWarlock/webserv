@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>413 Payload Too Large</title>
+  <title>411 Length Required</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background-color: #ffe6e6;
-      color: #cc0000;
+      background: #fff3f3;
+      color: #a94442;
       text-align: center;
       padding: 50px;
     }
@@ -23,8 +23,8 @@
   </style>
 </head>
 <body>
-  <h1>413 Payload Too Large</h1>
-  <p>The request entity is larger than limits defined by the server.</p>
-  <p>Please reduce the size of your request and try again.</p>
+  <h1>411 Length Required</h1>
+  <p>The server refuses to accept the request without a valid <code>Content-Length</code> header.</p>
+  <p>Please include a <code>Content-Length</code> header indicating the size of the request body.</p>
 </body>
 </html>

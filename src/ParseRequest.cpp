@@ -205,8 +205,6 @@ void ParseRequest::parseMethod(std::string &str){
 	Method += str.substr(0, pos);
 	str.erase(0, pos + 1);
 	ResetBuffPos();
-	if (!isSupportedMethod(Method))
-	    return (setErrorNumber(isKnownMethod()));
 	SwitchState(URL);
 }
 
@@ -235,6 +233,8 @@ void ParseRequest::parseUrl(std::string &str){
 		Url.erase(pos);
 	}
 	ResetBuffPos();
+	if (!isSupportedMethod(Method))
+	    return (setErrorNumber(isKnownMethod()));
 	SwitchState(HTTPVERSION);
 }
 
@@ -442,6 +442,7 @@ int ParseRequest::HexaStringToDecimalNum(std::string s){
 
 // parsing the chuncked body type ;
 void ParseRequest::parseChunkedBody(std::string &str){
+	// std::cout << "\n -- " << str << " -- " << getParseState() << "\n";
 	if (CurrntParsState == READCHUNKSIZE)
 	{
 		pos = str.find(CLRF);
@@ -593,12 +594,11 @@ const std::vector<std::string>&     ParseRequest::getMatchedLocationAllowedMetho
 		}
 		else if (urlpath == "/") {
 			while (i < locations.size()){
-			if (locations[i]->getPath() == "/")
-				return locations[i]->getAllowedMethods();
+				if (locations[i]->getPath() == "/")
+					return locations[i]->getAllowedMethods();
 			}
-		}
-		else
 			break;
+		}
 	}
 	return S->getAllowedMethods();
 }
@@ -624,9 +624,8 @@ int     ParseRequest::getMatchedLocationBodySizeMax(){
 			if (locations[i]->getPath() == "/")
 				return locations[i]->getClientBodyLimit();
 			}
-		}
-		else
 			break;
+		}
 	}
 	return S->getClientBodyLimit();
 }
