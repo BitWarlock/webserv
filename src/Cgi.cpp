@@ -180,18 +180,11 @@ std::string	Cgi::readCgiOutput(int pipe_fd, pid_t pid, int timeout_seconds)
 			buffer[bytes_read] = '\0';
 			output += buffer;
 			
-			if (output.size() > max_output_size) {
+			if (output.size() > max_output_size)
 				break;
-			}
 		}
 		else if (bytes_read == 0)
-		{
 			break;
-		}
-		else
-		{
-			break;
-		}
 	}
 	
 	return output;
