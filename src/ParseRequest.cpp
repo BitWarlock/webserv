@@ -455,6 +455,7 @@ void ParseRequest::parseChunkedBody(std::string &str){
 					return (setErrorNumber(400));
 			}
 			ChunkSize = HexaStringToDecimalNum(StringChunkSize);
+			std::cout << " -- " << ChunkSize << " --\n";
 			if (ChunkSize > S->getClientBodyLimit())
 				return (setErrorNumber(413));
 			str.erase(0, pos + 2);

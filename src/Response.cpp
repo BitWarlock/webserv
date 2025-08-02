@@ -496,6 +496,7 @@ bool    Response::Chunked(void)
     struct stat info;
 
     Body = Request.getBufferBody();
+    std::cout << "-- " << Body << " --\n";
     if (path[path.size() - 1] == '/')
     {
         if (stat(path.c_str(), &info) == -1)
