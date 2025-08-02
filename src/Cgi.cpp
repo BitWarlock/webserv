@@ -37,28 +37,36 @@ std::string	Cgi::replacePlaceholders(const std::string& cmd, const std::string& 
 
 CgiResult	Cgi::executeCompiled(ParseRequest& request)
 {
-	(void)request;
-    std::string output_path = generateTempName();
+    std::string output_path = script_path + ".out";
     std::string full_cmd = replacePlaceholders(interpreter, script_path, output_path);
     
     int pipe_out[2];
     pipe(pipe_out);
-    
+
     pid_t pid = fork();
     if (pid == 0)
 	{
         close(pipe_out[0]);
         dup2(pipe_out[1], STDOUT_FILENO);
         dup2(pipe_out[1], STDERR_FILENO);
-        execl("/bin/sh", "sh", "-c", full_cmd.c_str(), NULL);
+
+        char** env_array = getEnv(request);
+
+        char* argv[] = {
+            const_cast<char*>("/bin/sh"),
+            const_cast<char*>("-c"),
+            const_cast<char*>(full_cmd.c_str()),
+            NULL
+        };
+
+        execve("/bin/sh", argv, env_array);
         exit(1);
     }
-    
+
     close(pipe_out[1]);
     std::string output = readCgiOutput(pipe_out[0], pid);
     close(pipe_out[0]);
-    
-    unlink(output_path.c_str());
+
     return parseCgiOutput(output);
 }
 
@@ -285,6 +293,8 @@ void	Cgi::setBasicEnv(ParseRequest& request)
     env_vars["SCRIPT_NAME"] = request.getUri();
     env_vars["PATH_INFO"] = "";
     env_vars["PATH_TRANSLATED"] = script_path;
+	env_vars["PATH"] = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin";
+    env_vars["LIBRARY_PATH"] = "/usr/lib/x86_64-linux-gnu:/usr/lib";
 }
 
 void	Cgi::setRequestEnv(ParseRequest& request)
