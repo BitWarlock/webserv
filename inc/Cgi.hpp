@@ -54,9 +54,11 @@ class Cgi
 		void	setRequestEnv(ParseRequest& request);
 		void	setServerEnv();
 
+		CgiResult	executeCompiled(ParseRequest& request);
 		CgiResult	executePipes(ParseRequest& request);
 		CgiResult	parseCgiOutput(const std::string& raw_output);
 
+		std::string	replacePlaceholders(const std::string& cmd, const std::string& input, const std::string& output);
 		std::string	readCgiOutput(int pipe_fd, pid_t pid, int timeout_sec = 30);
 		std::string	urlDecode(const std::string& encoded) const;
 		std::string	intToString(int value) const;

@@ -670,28 +670,13 @@ void	Response::handleCgiRequest(ParseRequest& request, Server& server)
 
 		std::cout.flush();
 		
-		try {
-			try {
-				Cgi cgi(script_path, interpreter);
-				CgiResult result = cgi.execute(request);
+		Cgi cgi(script_path, interpreter);
+		CgiResult result = cgi.execute(request);
 
-				if (result.success)
-				{
-					sendCgiResponse(result);
-				}
-				else
-				{
-					ResponseWithError(502);
-				}
-			} catch (const std::exception& e) {
-				ResponseWithError(500);
-			} catch (...) {
-				ResponseWithError(500);
-			}
-		} catch (const std::exception& e) {
-			ResponseWithError(500);
-		}
-
+		if (result.success)
+			sendCgiResponse(result);
+		else
+			ResponseWithError(502);
 	}
 	catch (const std::exception& e)
 	{

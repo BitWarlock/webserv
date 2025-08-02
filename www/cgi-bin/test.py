@@ -3,7 +3,6 @@ import os
 import sys
 
 print("Content-Type: text/html")
-print()
 print("<html>")
 print("<head><title>Python CGI Test</title></head>")
 print("<body>")

@@ -1,1 +1,14 @@
-console.log("This is a test")
+console.log("Content-Type: text/html");
+console.log("<html>");
+console.log("<head><title>JavaScript CGI Test</title></head>");
+console.log("<body>");
+console.log("<h1>JavaScript CGI Test</h1>");
+console.log(`<p>Request Method: ${process.env.REQUEST_METHOD || 'N/A'}</p>`);
+console.log(`<p>Query String: ${process.env.QUERY_STRING || 'N/A'}</p>`);
+console.log(`<p>Script Name: ${process.env.SCRIPT_NAME || 'N/A'}</p>`);
+console.log(`<p>Content Length: ${process.env.CONTENT_LENGTH || 'N/A'}</p>`);
+console.log(`<p>Current Working Directory: ${process.cwd()}</p>`);
+console.log(`<p>Script Path: ${process.argv[1] || 'No script path'}</p>`);
+console.log(`<p>Node Path: ${process.execPath}</p>`);
+console.log("</body>");
+console.log("</html>");

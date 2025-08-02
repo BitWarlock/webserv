@@ -1,2 +1,16 @@
 #!/bin/bash
-echo "This is a test"
+
+echo "Content-Type: text/html"
+echo "<html>"
+echo "<head><title>Bash CGI Test</title></head>"
+echo "<body>"
+echo "<h1>Bash CGI Test</h1>"
+echo "<p>Request Method: ${REQUEST_METHOD:-N/A}</p>"
+echo "<p>Query String: ${QUERY_STRING:-N/A}</p>"
+echo "<p>Script Name: ${SCRIPT_NAME:-N/A}</p>"
+echo "<p>Content Length: ${CONTENT_LENGTH:-N/A}</p>"
+echo "<p>Current Working Directory: $(pwd)</p>"
+echo "<p>Script Path: ${0:-No script path}</p>"
+echo "<p>Bash Path: $(which bash)</p>"
+echo "</body>"
+echo "</html>"

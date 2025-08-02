@@ -1,4 +1,5 @@
 #include "../inc/Cgi.hpp"
+#include <ctime>
 
 Cgi::Cgi(const std::string& script_path, const std::string& interpreter)
 	: script_path(script_path), interpreter(interpreter)
@@ -12,16 +13,67 @@ Cgi::Cgi(const std::string& script_path, const std::string& interpreter)
 Cgi::~Cgi() {
 }
 
+std::string	generateTempName()
+{
+	std::stringstream ss;
+	ss << "/tmp/cgi_temp_" << getpid() << "_" << std::time(NULL);
+	return ss.str();
+}
+
+std::string	Cgi::replacePlaceholders(const std::string& cmd, const std::string& input, const std::string& output)
+{
+	std::string	result = cmd;
+	size_t		pos;
+
+	if ((pos = result.find("{INPUT}")) != std::string::npos)
+		result.replace(pos, 7, input);
+	if ((pos = result.find("{OUTPUT}")) != std::string::npos)
+		result.replace(pos, 8, output);
+	if ((pos = result.find("{OUTPUT}")) != std::string::npos)
+		result.replace(pos, 8, output);
+
+	return result;
+}
+
+CgiResult	Cgi::executeCompiled(ParseRequest& request)
+{
+	(void)request;
+    std::string output_path = generateTempName();
+    std::string full_cmd = replacePlaceholders(interpreter, script_path, output_path);
+    
+    int pipe_out[2];
+    pipe(pipe_out);
+    
+    pid_t pid = fork();
+    if (pid == 0)
+	{
+        close(pipe_out[0]);
+        dup2(pipe_out[1], STDOUT_FILENO);
+        dup2(pipe_out[1], STDERR_FILENO);
+        execl("/bin/sh", "sh", "-c", full_cmd.c_str(), NULL);
+        exit(1);
+    }
+    
+    close(pipe_out[1]);
+    std::string output = readCgiOutput(pipe_out[0], pid);
+    close(pipe_out[0]);
+    
+    unlink(output_path.c_str());
+    return parseCgiOutput(output);
+}
+
 CgiResult	Cgi::execute(ParseRequest& request)
 {
-	if (access(script_path.c_str(), F_OK | R_OK | X_OK) != 0)
-	{
+	if (access(script_path.c_str(), F_OK | R_OK) != 0)
 		return CgiResult(false, "Script not accessible: " + script_path);
-	}
-	
+
 	setupEnv(request);
-	
-	return executePipes(request);
+
+	if (interpreter.find("{INPUT}") != std::string::npos || 
+			interpreter.find("{OUTPUT}") != std::string::npos)
+		return executeCompiled(request);
+	else
+		return executePipes(request);
 }
 
 CgiResult Cgi::executePipes(ParseRequest& request)
