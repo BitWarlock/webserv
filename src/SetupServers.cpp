@@ -267,8 +267,9 @@ void    SetupServers::Run(void)
 			else if (events[i].events & EPOLLOUT)
 			{
 				Responses[fd].StartForResponse(Requests[fd], GetBlockServer(fd), fd);
-				AddSocketToEpoll(fd, EPOLLIN, EPOLL_CTL_MOD);
-				Requests[fd].ResetParserf();
+				EraseFd(fd);
+				Requests.erase(fd);
+				Responses.erase(fd);
 			}
 		}
 	}
