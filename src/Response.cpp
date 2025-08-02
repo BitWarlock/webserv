@@ -338,7 +338,7 @@ void    Response::BuildDeleteResponse(void)
 void    Response::DeleteContentResponse(void)
 {
 	struct stat info;
-	std::cout << path << "\n";
+	// std::cout << path << "\n";
 	if (ReturnDirective() == false)
 		return ;
 
@@ -628,8 +628,6 @@ void    Response::StartForResponse(ParseRequest request, Server BlockServer, int
 
 	if (shouldExecuteCgi(Request, BlockServer))
 	{
-		std::cout.flush();
-
 		try {
 			handleCgiRequest(Request, BlockServer);
 		} catch (const std::exception& e) {
@@ -688,8 +686,6 @@ void	Response::handleCgiRequest(ParseRequest& request, Server& server)
 			ResponseWithError(500);
 			return;
 		}
-
-		std::cout.flush();
 
 		Cgi cgi(script_path, interpreter);
 		CgiResult result = cgi.execute(request);

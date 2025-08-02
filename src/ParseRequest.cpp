@@ -705,7 +705,7 @@ void ParseRequest::startParse(int fd, Server server){
 			str[bytes] = 0;
 			if (bytes > 0)
 				buff.append(str, bytes);
-			std::cout << buff;
+			// std::cout << buff;
 		}
 		switch(CurrntParsState){
 			case FINISH:
