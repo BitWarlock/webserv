@@ -1,6 +1,6 @@
 [ ] Add error handling cgi (no interpreter, extension not supported)
 [x] Add support cgi for compiled languages
-[ ] Upload file test
+[x] Upload file test
 [ ] Log warnings/errors
 [ ] Cookies support
 [ ] Cookies test with login
