@@ -1,10 +1,101 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>415 Unsupported Media Type</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>415 Unsupported Media Type</title>
+  <style>
+    body {
+      background-color: #000;
+      color: #87ceeb;
+      font-family: 'Courier New', Courier, monospace;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      padding: 2rem;
+    }
+
+    .terminal {
+      background-color: #111;
+      border: 2px solid #87ceeb;
+      padding: 2rem;
+      max-width: 700px;
+      width: 100%;
+      box-shadow: 0 0 20px #87ceeb;
+    }
+
+    .error-code {
+      font-size: 6rem;
+      font-weight: bold;
+      color: #87ceeb;
+      text-align: center;
+      margin-bottom: 2rem;
+      letter-spacing: 0.5rem;
+      text-shadow: 0 0 10px #87ceeb;
+    }
+
+    .line {
+      white-space: nowrap;
+      overflow: hidden;
+      border-right: 3px solid #87ceeb;
+      font-size: 1.3rem;
+      margin-bottom: 1rem;
+      width: 0;
+      opacity: 0;
+    }
+
+    .line.show {
+      animation: typing 0.6s steps(50, end) forwards;
+    }
+
+    a {
+      color: #b0e0e6;
+      text-decoration: underline;
+      display: block;
+      margin-top: 2rem;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      text-align: center;
+      font-size: 1.2rem;
+    }
+
+    a.visible {
+      opacity: 1;
+    }
+
+    @keyframes typing {
+      from { width: 0; opacity: 1; }
+      to { width: 100%; opacity: 1; }
+    }
+  </style>
 </head>
 <body>
-    <h1>415 Unsupported Media Type</h1>
-    <p>The server does not support the media type of the request.</p>
+  <div class="terminal">
+    <div class="error-code">415</div>
+    <div class="line" id="line1">> Unsupported Media Type.</div>
+    <div class="line" id="line2">> The server does not support the media</div>
+    <div class="line" id="line3">> type of the requested data.</div>
+    <a href="/" id="link">[ Return to base ]</a>
+  </div>
+
+  <script>
+    const lines = [
+      document.getElementById('line1'),
+      document.getElementById('line2'),
+      document.getElementById('line3')
+    ];
+    const delay = 400;
+
+    lines.forEach((line, index) => {
+      setTimeout(() => {
+        line.classList.add('show');
+      }, delay * index);
+    });
+
+    setTimeout(() => {
+      document.getElementById('link').classList.add('visible');
+    }, delay * lines.length + 500);
+  </script>
 </body>
 </html> 

@@ -1,10 +1,101 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>409 Conflict</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>409 Conflict</title>
+  <style>
+    body {
+      background-color: #000;
+      color: #00ff00;
+      font-family: 'Courier New', Courier, monospace;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      padding: 2rem;
+    }
+
+    .terminal {
+      background-color: #111;
+      border: 2px solid #00ff00;
+      padding: 2rem;
+      max-width: 700px;
+      width: 100%;
+      box-shadow: 0 0 20px #00ff00;
+    }
+
+    .error-code {
+      font-size: 6rem;
+      font-weight: bold;
+      color: #00ff00;
+      text-align: center;
+      margin-bottom: 2rem;
+      letter-spacing: 0.5rem;
+      text-shadow: 0 0 10px #00ff00;
+    }
+
+    .line {
+      white-space: nowrap;
+      overflow: hidden;
+      border-right: 3px solid #00ff00;
+      font-size: 1.3rem;
+      margin-bottom: 1rem;
+      width: 0;
+      opacity: 0;
+    }
+
+    .line.show {
+      animation: typing 0.6s steps(50, end) forwards;
+    }
+
+    a {
+      color: #00ffcc;
+      text-decoration: underline;
+      display: block;
+      margin-top: 2rem;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      text-align: center;
+      font-size: 1.2rem;
+    }
+
+    a.visible {
+      opacity: 1;
+    }
+
+    @keyframes typing {
+      from { width: 0; opacity: 1; }
+      to { width: 100%; opacity: 1; }
+    }
+  </style>
 </head>
 <body>
-    <h1>409 Conflict</h1>
-    <p>The request could not be completed due to a conflict with the current state of the resource.</p>
+  <div class="terminal">
+    <div class="error-code">409</div>
+    <div class="line" id="line1">> Conflict detected in request operation.</div>
+    <div class="line" id="line2">> The request could not be completed due to a conflict</div>
+    <div class="line" id="line3">> with the current state of the resource.</div>
+    <a href="/" id="link">[ Return to base ]</a>
+  </div>
+
+  <script>
+    const lines = [
+      document.getElementById('line1'),
+      document.getElementById('line2'),
+      document.getElementById('line3')
+    ];
+    const delay = 400;
+
+    lines.forEach((line, index) => {
+      setTimeout(() => {
+        line.classList.add('show');
+      }, delay * index);
+    });
+
+    setTimeout(() => {
+      document.getElementById('link').classList.add('visible');
+    }, delay * lines.length + 500);
+  </script>
 </body>
-</html> 
+</html>
