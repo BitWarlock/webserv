@@ -3,32 +3,141 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Welcome to My Webserver</title>
+  <title>WebServ - Home</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #222;
-      color: #eee;
-      text-align: center;
-      padding: 50px;
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
     }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+      color: #ffffff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .container {
+      text-align: center;
+      max-width: 600px;
+      padding: 40px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 20px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+    
     h1 {
       color: #4caf50;
+      font-size: 2.5em;
+      margin-bottom: 20px;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
     }
-    p {
+    
+    .subtitle {
       font-size: 1.2em;
+      color: #cccccc;
+      margin-bottom: 40px;
+      line-height: 1.6;
     }
-    footer {
+    
+    .nav-buttons {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    
+    .nav-button {
+      background: linear-gradient(45deg, #4caf50, #45a049);
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      font-size: 1.1em;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      display: inline-block;
+      font-weight: 500;
+      box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+    }
+    
+    .nav-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+      background: linear-gradient(45deg, #45a049, #4caf50);
+    }
+    
+    .nav-button:active {
+      transform: translateY(0);
+    }
+    
+    .gallery-btn {
+      background: linear-gradient(45deg, #2196f3, #1976d2);
+      box-shadow: 0 4px 15px rgba(33, 150, 243, 0.3);
+    }
+    
+    .gallery-btn:hover {
+      box-shadow: 0 6px 20px rgba(33, 150, 243, 0.4);
+      background: linear-gradient(45deg, #1976d2, #2196f3);
+    }
+    
+    .cgi-btn {
+      background: linear-gradient(45deg, #ff9800, #f57c00);
+      box-shadow: 0 4px 15px rgba(255, 152, 0, 0.3);
+    }
+    
+    .cgi-btn:hover {
+      box-shadow: 0 6px 20px rgba(255, 152, 0, 0.4);
+      background: linear-gradient(45deg, #f57c00, #ff9800);
+    }
+    
+    .status {
       margin-top: 30px;
+      padding: 15px;
+      background: rgba(76, 175, 80, 0.1);
+      border-radius: 10px;
+      border-left: 4px solid #4caf50;
+    }
+    
+    .status-text {
+      color: #4caf50;
+      font-weight: 500;
+    }
+    
+    footer {
+      margin-top: 40px;
       font-size: 0.9em;
       color: #888;
+      opacity: 0.8;
     }
   </style>
 </head>
 <body>
-  <h1>Welcome to My Webserver!</h1>
-  <p>You're successfully connected to the server running on port <strong>1337</strong>.</p>
-  <p>Enjoy your stay!</p>
-  <footer>Powered by your custom webserv project</footer>
+  <div class="container">
+    <h1>WebServ</h1>
+    <p class="subtitle">
+      Welcome to your custom web server running on port 8003.<br>
+      Explore the features below to test different functionalities.
+    </p>
+    
+    <div class="nav-buttons">
+      <a href="/gallery/index.html" class="nav-button gallery-btn">Gallery</a>
+      <a href="/cgi-bin/cgi_test.html" class="nav-button cgi-btn">CGI Testing</a>
+    </div>
+    
+    <div class="status">
+      <p class="status-text">Server Status: Online</p>
+    </div>
+  </div>
+  
+  <footer>Made by Team LM9wdin - Hael-ghd && Mthamir && Mrezki</footer>
 </body>
 </html>

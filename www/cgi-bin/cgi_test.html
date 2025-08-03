@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CGI Testing - WebServ</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+      color: #ffffff;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    
+    h1 {
+      color: #4caf50;
+      font-size: 2.5em;
+      margin-bottom: 10px;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+    
+    .subtitle {
+      color: #cccccc;
+      font-size: 1.1em;
+      margin-bottom: 20px;
+    }
+    
+    .back-btn {
+      background: linear-gradient(45deg, #666, #444);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 1em;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      display: inline-block;
+      margin-bottom: 30px;
+    }
+    
+    .back-btn:hover {
+      background: linear-gradient(45deg, #555, #333);
+      transform: translateY(-1px);
+    }
+    
+    .cgi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+    
+    .cgi-card {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 15px;
+      padding: 25px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      transition: transform 0.3s ease;
+    }
+    
+    .cgi-card:hover {
+      transform: translateY(-5px);
+    }
+    
+    .cgi-title {
+      font-size: 1.5em;
+      margin-bottom: 15px;
+      color: #4caf50;
+      font-weight: 600;
+    }
+    
+    .cgi-description {
+      color: #cccccc;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+    
+    .cgi-button {
+      background: linear-gradient(45deg, #2196f3, #1976d2);
+      color: white;
+      border: none;
+      padding: 12px 25px;
+      font-size: 1em;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      display: inline-block;
+      font-weight: 500;
+      box-shadow: 0 4px 15px rgba(33, 150, 243, 0.3);
+    }
+    
+    .cgi-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(33, 150, 243, 0.4);
+      background: linear-gradient(45deg, #1976d2, #2196f3);
+    }
+    
+    .cgi-button.c {
+      background: linear-gradient(45deg, #ff9800, #f57c00);
+      box-shadow: 0 4px 15px rgba(255, 152, 0, 0.3);
+    }
+    
+    .cgi-button.c:hover {
+      box-shadow: 0 6px 20px rgba(255, 152, 0, 0.4);
+      background: linear-gradient(45deg, #f57c00, #ff9800);
+    }
+    
+    .cgi-button.cpp {
+      background: linear-gradient(45deg, #9c27b0, #7b1fa2);
+      box-shadow: 0 4px 15px rgba(156, 39, 176, 0.3);
+    }
+    
+    .cgi-button.cpp:hover {
+      box-shadow: 0 6px 20px rgba(156, 39, 176, 0.4);
+      background: linear-gradient(45deg, #7b1fa2, #9c27b0);
+    }
+    
+    .cgi-button.js {
+      background: linear-gradient(45deg, #ffd700, #ffb300);
+      box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+      color: #333;
+    }
+    
+    .cgi-button.js:hover {
+      box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4);
+      background: linear-gradient(45deg, #ffb300, #ffd700);
+    }
+    
+    .cgi-button.php {
+      background: linear-gradient(45deg, #607d8b, #455a64);
+      box-shadow: 0 4px 15px rgba(96, 125, 139, 0.3);
+    }
+    
+    .cgi-button.php:hover {
+      box-shadow: 0 6px 20px rgba(96, 125, 139, 0.4);
+      background: linear-gradient(45deg, #455a64, #607d8b);
+    }
+    
+    .cgi-button.sh {
+      background: linear-gradient(45deg, #4caf50, #388e3c);
+      box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+    }
+    
+    .cgi-button.sh:hover {
+      box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+      background: linear-gradient(45deg, #388e3c, #4caf50);
+    }
+    
+    .cgi-button.py {
+      background: linear-gradient(45deg, #ff5722, #e64a19);
+      box-shadow: 0 4px 15px rgba(255, 87, 34, 0.3);
+    }
+    
+    .cgi-button.py:hover {
+      box-shadow: 0 6px 20px rgba(255, 87, 34, 0.4);
+      background: linear-gradient(45deg, #e64a19, #ff5722);
+    }
+    
+    .info-section {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 15px;
+      padding: 25px;
+      margin-top: 30px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .info-title {
+      color: #4caf50;
+      font-size: 1.3em;
+      margin-bottom: 15px;
+    }
+    
+    .info-text {
+      color: #cccccc;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>CGI Testing</h1>
+      <p class="subtitle">Test various programming languages and their CGI capabilities</p>
+      <a href="/" class="back-btn">Back to Home</a>
+    </div>
+    
+    <div class="cgi-grid">
+      <div class="cgi-card">
+        <div class="cgi-title">C Language</div>
+        <div class="cgi-description">System information and environment variables display with memory usage statistics.</div>
+        <a href="system_info.c" class="cgi-button c">Run C Script</a>
+      </div>
+      
+      <div class="cgi-card">
+        <div class="cgi-title">C++</div>
+        <div class="cgi-description">File system operations and directory listing with file size calculations.</div>
+        <a href="file_ops.cpp" class="cgi-button cpp">Run C++ Script</a>
+      </div>
+      
+      <div class="cgi-card">
+        <div class="cgi-title">JavaScript</div>
+        <div class="cgi-description">JSON data processing and HTTP request analysis with response formatting.</div>
+        <a href="json_processor.js" class="cgi-button js">Run JS Script</a>
+      </div>
+      
+      <div class="cgi-card">
+        <div class="cgi-title">PHP</div>
+        <div class="cgi-description">Database simulation and user session management with data validation.</div>
+        <a href="session_manager.php" class="cgi-button php">Run PHP Script</a>
+      </div>
+      
+      <div class="cgi-card">
+        <div class="cgi-title">Shell Script</div>
+        <div class="cgi-description">System monitoring and process management with real-time statistics.</div>
+        <a href="system_monitor.sh" class="cgi-button sh">Run Shell Script</a>
+      </div>
+      
+      <div class="cgi-card">
+        <div class="cgi-title">Python</div>
+        <div class="cgi-description">Data analysis and text processing with pattern matching and statistics.</div>
+        <a href="data_analyzer.py" class="cgi-button py">Run Python Script</a>
+      </div>
+    </div>
+    
+    <div class="info-section">
+      <div class="info-title">About CGI Testing</div>
+      <div class="info-text">
+        Each script demonstrates different capabilities and returns useful output. The scripts test environment variables, 
+        system operations, data processing, and web-specific functionalities. All scripts are configured to work with 
+        the WebServ CGI system and return properly formatted HTML responses.
+      </div>
+    </div>
+  </div>
+</body>
+</html> 

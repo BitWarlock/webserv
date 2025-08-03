@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y \
     curl \
     zlib1g-dev \
 	nodejs \
+	php \
     && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p /var/run/sshd && \
