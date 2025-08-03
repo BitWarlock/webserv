@@ -70,6 +70,7 @@ class ParseRequest{
         std::string                                         Host;
         std::string                                         Port;
         std::string                                         QueryString;
+        std::map<std::string, std::string>					cookies;
         typedef void                                        (ParseRequest::*ParseFuncPtr)(std::string& buffer);
         static  const ParseFuncPtr                          ParseTable[];
 
@@ -139,6 +140,9 @@ class ParseRequest{
         void        Reset();
         void        ResetBuffPos();
         void        setContentEncodingType(int Type);
+        void        parseCookies();
+        std::string getCookie(const std::string& name) const;
+        const std::map<std::string, std::string>& getCookies() const;
 };
 
 #endif

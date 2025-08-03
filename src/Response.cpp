@@ -12,7 +12,7 @@
 
 #include "../inc/Response.hpp"
 
-Response::Response(){}
+Response::Response() : sessionManager(NULL) {}
 
 Response::~Response(){}   
 
@@ -254,12 +254,13 @@ void    Response::BuildGetResponse(void)
 	std::ostringstream  os;
 	os << info.st_size;
 
-	std::string header = "HTTP/1.1 " + oss.str() + " " + getStrState() + "\r\n";
-	header += "Content-Type: " + MIME_Type() + "\r\n";
-	header += "Content-Length: " + os.str() + "\r\n";
-	header += "Connection: close\r\n\r\n";
+	res = "HTTP/1.1 " + oss.str() + " " + getStrState() + "\r\n";
+	res += "Content-Type: " + MIME_Type() + "\r\n";
+	res += "Content-Length: " + os.str() + "\r\n";
+	addCookiesToHeaders();
+	res += "Connection: close\r\n\r\n";
 
-	send(fd_client, header.c_str(), strlen(header.c_str()), MSG_NOSIGNAL);
+	send(fd_client, res.c_str(), strlen(res.c_str()), MSG_NOSIGNAL);
 
 	char buffer[4096];
 	ssize_t n(0);
@@ -687,6 +688,7 @@ void	Response::handleCgiRequest(ParseRequest& request, Server& server)
 			return;
 		}
 
+		// Execute CGI synchronously but with timeout to prevent hanging
 		Cgi cgi(script_path, interpreter);
 		CgiResult result = cgi.execute(request);
 
@@ -704,7 +706,12 @@ void	Response::handleCgiRequest(ParseRequest& request, Server& server)
 void	Response::sendCgiResponse(const CgiResult& cgi_result)
 {
 	std::string response = "HTTP/1.1 " + intToString(cgi_result.status_code) + " OK\r\n";
+	
 	response += cgi_result.headers;
+	
+	for (std::vector<std::string>::iterator it = cookies_to_set.begin(); it != cookies_to_set.end(); ++it)
+		response += *it + "\r\n";
+	
 	response += "Content-Length: " + intToString(cgi_result.body.length()) + "\r\n";
 	response += "\r\n";
 	response += cgi_result.body;
@@ -774,3 +781,28 @@ void    Response::SetState(int state){this->state = state;}
 void    Response::SetStatePath(int state_path){this->state_path = state_path;}
 
 void    Response::SetPath(std::string path){this->path = path;}
+
+void	Response::setCookie(const std::string& name, const std::string& value, 
+						  const std::string& path, const std::string& expires, bool http_only)
+{
+	std::string cookie = "Set-Cookie: " + name + "=" + value;
+	if (!path.empty())
+		cookie += "; Path=" + path;
+	if (!expires.empty())
+		cookie += "; Expires=" + expires;
+	if (http_only)
+		cookie += "; HttpOnly";
+	cookie += "; SameSite=Strict";
+	cookies_to_set.push_back(cookie);
+}
+
+void	Response::addCookiesToHeaders()
+{
+	for (std::vector<std::string>::iterator it = cookies_to_set.begin(); it != cookies_to_set.end(); ++it)
+		res += *it + "\r\n";
+}
+
+void	Response::setSessionManager(SessionManager* sm)
+{
+	sessionManager = sm;
+}

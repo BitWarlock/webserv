@@ -23,15 +23,21 @@ std::string	generateTempName()
 std::string	Cgi::replacePlaceholders(const std::string& cmd, const std::string& input, const std::string& output)
 {
 	std::string	result = cmd;
-	size_t		pos;
+	size_t		pos = 0;
 
-	if ((pos = result.find("{INPUT}")) != std::string::npos)
+	while ((pos = result.find("{INPUT}")) != std::string::npos)
+	{
 		result.replace(pos, 7, input);
-	if ((pos = result.find("{OUTPUT}")) != std::string::npos)
-		result.replace(pos, 8, output);
-	if ((pos = result.find("{OUTPUT}")) != std::string::npos)
-		result.replace(pos, 8, output);
+		pos += input.length();
+	}
 
+	pos = 0;
+
+	while ((pos = result.find("{OUTPUT}")) != std::string::npos)
+	{
+		result.replace(pos, 8, output);
+		pos += output.length();
+	}
 	return result;
 }
 
@@ -217,11 +223,28 @@ CgiResult	Cgi::parseCgiOutput(const std::string& raw_output)
 	{
 		header_end = raw_output.find("\n\n");
 	}
+	if (header_end == std::string::npos)
+	{
+		header_end = raw_output.find("\n\r\n");
+	}
+	if (header_end == std::string::npos)
+	{
+		header_end = raw_output.find("\n");
+	}
 	
 	if (header_end != std::string::npos)
 	{
 		std::string headers_str = raw_output.substr(0, header_end);
-		result.body = raw_output.substr(header_end + 4);
+		size_t body_start = header_end;
+		if (raw_output.substr(header_end, 4) == "\r\n\r\n")
+			body_start += 4;
+		else if (raw_output.substr(header_end, 2) == "\n\n")
+			body_start += 2;
+		else if (raw_output.substr(header_end, 3) == "\n\r\n")
+			body_start += 3;
+		else if (raw_output.substr(header_end, 1) == "\n")
+			body_start += 1;
+		result.body = raw_output.substr(body_start);
 		
 		std::istringstream	header_stream(headers_str);
 		std::string			line;

@@ -2,7 +2,7 @@ CC      = c++
 NAME    = webserv
 CFLAGS  = -Wall -Wextra -Werror -std=c++98 -MMD -MP -g -lz
 
-SRCS    = webserv.cpp src/Lexer.cpp src/ParseDirective.cpp src/Config.cpp src/Server.cpp src/Location.cpp src/SetupServers.cpp src/ParseRequest.cpp src/Response.cpp src/Cgi.cpp
+SRCS    = webserv.cpp src/Lexer.cpp src/ParseDirective.cpp src/Config.cpp src/Server.cpp src/Location.cpp src/SetupServers.cpp src/ParseRequest.cpp src/Response.cpp src/Cgi.cpp src/SessionManager.cpp
 OBJS    = $(SRCS:%.cpp=objs/%.o)
 DEPS    = $(OBJS:.o=.d)
 

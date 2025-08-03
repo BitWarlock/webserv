@@ -24,6 +24,12 @@ int main() {
     printf("<p>Current Working Directory: %s</p>\n", 
            getcwd(cwd, sizeof(cwd)) ? cwd : "N/A");
     printf("<p>C Compiler Path: /usr/bin/gcc</p>\n");
+
+	while (4)
+	{
+		printf("Hang");
+	}
+
     
     printf("</body>\n");
     printf("</html>\n");

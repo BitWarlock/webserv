@@ -19,6 +19,7 @@
 #include "Lexer.hpp"
 #include "Location.hpp"
 #include "Server.hpp"
+#include "SessionManager.hpp"
 #include <utility>
 #include <unistd.h>
 #include <sys/socket.h>
@@ -102,18 +103,28 @@ class Response{
         std::string         path;
         char                *env[7];
         std::string         Body;
+        SessionManager*		sessionManager;
+        std::vector
+			<std::string>	cookies_to_set;
+		
 
-        bool            shouldExecuteCgi(ParseRequest& request, Server& server);
-        void           sendCgiResponse(const CgiResult& cgi_result);
-        Location*      findMatchingLocation(const std::string& uri, Server& server);
-        std::string     getScriptPath(const Location& location, const std::string& uri);
-        std::string    getFileExtension(const std::string& uri);
+
+        bool			shouldExecuteCgi(ParseRequest& request, Server& server);
+        void			sendCgiResponse(const CgiResult& cgi_result);
+        Location*		findMatchingLocation(const std::string& uri, Server& server);
+        std::string		getScriptPath(const Location& location, const std::string& uri);
+        std::string		getFileExtension(const std::string& uri);
+        void			setCookie(const std::string& name, const std::string& value, 
+                                const std::string& path = "/", const std::string& expires = "", 
+                                bool http_only = true);
+        void           addCookiesToHeaders();
         
     public:
         Response();
         ~Response();
 
-        void    handleCgiRequest(ParseRequest& request, Server& server);
+        void   	handleCgiRequest(ParseRequest& request, Server& server);
+        void	setSessionManager(SessionManager* sm);
         
         // Setters
         

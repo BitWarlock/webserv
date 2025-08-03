@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Persistent Cookie Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+            font-size: 16px;
+        }
+        .button:hover {
+            background: #0056b3;
+        }
+        .success { background: #28a745; }
+        .warning { background: #ffc107; color: black; }
+        .danger { background: #dc3545; }
+        .info { background: #17a2b8; }
+        
+        .cookie-display {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-family: monospace;
+            border-left: 4px solid #007bff;
+        }
+        .instructions {
+            background: #e3f2fd;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🍪 Persistent Cookie Demo</h1>
+        <p>This demo shows how server-side cookies persist across browser sessions.</p>
+        
+        <div class="instructions">
+            <h3>How to Test:</h3>
+            <ol>
+                <li>Click "Open Session Manager" to see persistent server-side sessions</li>
+                <li>Check F12 → Application → Cookies (you'll see session_id)</li>
+                <li>Delete the cookie in F12 → Application → Cookies</li>
+                <li>Refresh the Session Manager - cookie will reappear!</li>
+                <li>Close browser completely and reopen</li>
+                <li>Visit Session Manager again - session continues!</li>
+            </ol>
+        </div>
+
+        <div>
+            <button class="button" onclick="setServerCookie()">Set Server Cookie</button>
+            <button class="button success" onclick="openSessionManager()">Open Session Manager</button>
+            <button class="button warning" onclick="checkCookies()">Check Client Cookies</button>
+            <button class="button danger" onclick="clearCookies()">Clear All Cookies</button>
+            <button class="button info" onclick="refreshPage()">Refresh Page</button>
+        </div>
+
+        <div id="cookieDisplay" class="cookie-display">
+            <strong>Client-Side Cookies (JavaScript accessible):</strong><br>
+            <span id="cookieList">No cookies found</span>
+        </div>
+
+        <div id="status"></div>
+    </div>
+
+    <script>
+        // Check cookies on page load
+        window.onload = function() {
+            checkCookies();
+            showStatus('Page loaded. Check cookies below.', 'info');
+        };
+
+        function setServerCookie() {
+            const sessionId = 'persistent_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            
+            // Make request to CGI script to set server-side cookie
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', `/cgi-bin/persistent_cookie.py?session_id=${sessionId}`, true);
+            xhr.withCredentials = true;
+            
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        showStatus('Server cookie set successfully! Check F12 → Application → Cookies', 'success');
+                        setTimeout(checkCookies, 1000);
+                    } else {
+                        showStatus('Failed to set server cookie', 'danger');
+                    }
+                }
+            };
+            
+            xhr.send();
+        }
+
+        function checkCookies() {
+            const cookies = document.cookie;
+            const cookieList = document.getElementById('cookieList');
+            
+            if (cookies) {
+                cookieList.innerHTML = cookies.split(';').map(cookie => 
+                    cookie.trim().replace('=', ': ')
+                ).join('<br>');
+            } else {
+                cookieList.innerHTML = 'No client-side cookies found<br><em>Note: Server-side HttpOnly cookies are not visible to JavaScript</em>';
+            }
+        }
+
+        function clearCookies() {
+            // Clear all cookies
+            const cookies = document.cookie.split(';');
+            for (let cookie of cookies) {
+                const eqPos = cookie.indexOf('=');
+                const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
+                document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
+            }
+            
+            showStatus('All cookies cleared!', 'warning');
+            setTimeout(checkCookies, 100);
+        }
+
+        function refreshPage() {
+            location.reload();
+        }
+
+        function openSessionManager() {
+            window.open('/cgi-bin/session_manager.py', '_blank', 'width=800,height=600');
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = `<div class="status" style="background: ${getColor(type)}">${message}</div>`;
+            
+            setTimeout(() => {
+                statusDiv.innerHTML = '';
+            }, 3000);
+        }
+
+        function getColor(type) {
+            switch(type) {
+                case 'success': return '#d4edda';
+                case 'warning': return '#fff3cd';
+                case 'danger': return '#f8d7da';
+                case 'info': return '#d1ecf1';
+                default: return '#e2e3e5';
+            }
+        }
+    </script>
+</body>
+</html> 

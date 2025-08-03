@@ -15,6 +15,8 @@
 
 #include "WebServ.hpp"
 #include "Config.hpp"
+#include "SessionManager.hpp"
+#include "ParseRequest.hpp"
 #include <sys/epoll.h>
 
 #define MAX_SOCKET  1024
@@ -44,6 +46,7 @@ class SetupServers
         void                Run(void);
         void                Advance(void);
         void                Retreat(void);
+        void                handleSessionManagement(ParseRequest& request);
 
         Server              GetBlockServer(int block);
         
@@ -56,6 +59,7 @@ class SetupServers
         int                     number_events;
         struct epoll_event      events[MAX_EVENTS];
         size_t                  endpoints;
+        SessionManager          sessionManager;
 };
 
 #endif

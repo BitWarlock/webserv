@@ -2,7 +2,7 @@
 [x] Add support cgi for compiled languages
 [x] Upload file test
 [ ] Log warnings/errors
-[ ] Cookies support
-[ ] Cookies test with login
+[x] Cookies support
+[x] Cookies test with login
 [ ] 
 [ ] 

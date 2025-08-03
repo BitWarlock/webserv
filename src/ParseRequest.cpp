@@ -733,4 +733,48 @@ void ParseRequest::startParse(int fd, Server server){
 	// exit(0);
 
 	/*________________________________________________________________*/
+	parseCookies();
+}
+
+void	ParseRequest::parseCookies()
+{
+	std::string cookie_header = getHeaderValue("Cookie");
+	if (cookie_header.empty())
+		return;
+	
+	std::istringstream	iss(cookie_header);
+	std::string			cookie;
+	
+	while (std::getline(iss, cookie, ';'))
+	{
+		size_t pos = cookie.find('=');
+		if (pos != std::string::npos)
+		{
+			std::string name = cookie.substr(0, pos);
+			std::string value = cookie.substr(pos + 1);
+			
+			while (name.length() > 0 && (name[0] == ' ' || name[0] == '\t'))
+				name.erase(0, 1);
+			while (name.length() > 0 && (name[name.length() - 1] == ' ' || name[name.length() - 1] == '\t'))
+				name.erase(name.length() - 1, 1);
+			
+			while (value.length() > 0 && (value[0] == ' ' || value[0] == '\t'))
+				value.erase(0, 1);
+			while (value.length() > 0 && (value[value.length() - 1] == ' ' || value[value.length() - 1] == '\t'))
+				value.erase(value.length() - 1, 1);
+			
+			cookies[name] = value;
+		}
+	}
+}
+
+std::string	ParseRequest::getCookie(const std::string& name) const
+{
+	std::map<std::string, std::string>::const_iterator it = cookies.find(name);
+	return (it != cookies.end()) ? it->second : "";
+}
+
+const std::map<std::string, std::string>&	ParseRequest::getCookies() const
+{
+	return cookies;
 }
