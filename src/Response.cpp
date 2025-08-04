@@ -92,11 +92,6 @@ void    Response::CheckIndexAccess(std::vector<std::string> indexs)
 			return (SetState(Forbidden), ResponseWithError(NONE));
 	}
 
-	fd = open(path.c_str(), O_RDONLY);
-
-	if (fd == -1)
-		return (SetState(Internal_Server_Error), ResponseWithError(NONE));
-
 	BuildGetResponse();
 }
 
@@ -700,7 +695,6 @@ void	Response::handleCgiRequest(ParseRequest& request, Server& server)
 			return;
 		}
 
-		// Execute CGI synchronously but with timeout to prevent hanging
 		Cgi cgi(script_path, interpreter);
 		CgiResult result = cgi.execute(request);
 

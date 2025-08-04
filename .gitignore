@@ -10,6 +10,7 @@ objs/
 *.lo
 *.o
 *.obj
+webserv
 
 # Precompiled Headers
 *.gch
