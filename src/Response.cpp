@@ -255,7 +255,7 @@ void    Response::BuildGetResponse(void)
 	addCookiesToHeaders();
 	res += "Connection: close\r\n\r\n";
 
-	send(fd_client, res.c_str(), strlen(res.c_str()), MSG_NOSIGNAL);
+	send(fd_client, res.c_str(), std::strlen(res.c_str()), MSG_NOSIGNAL);
 
 	char buffer[4096];
 	ssize_t n(0);
@@ -291,7 +291,7 @@ bool    Response::ReturnDirective(void)
 	response += "Location: " + redirecturl + "\r\n";
 	response += "Content-Length: 0\r\n";
 	response += "Connection: close\r\n\r\n";
-	send(fd_client, response.c_str(), strlen(response.c_str()), MSG_NOSIGNAL);
+	send(fd_client, response.c_str(), std::strlen(response.c_str()), MSG_NOSIGNAL);
 	return (false);
 }
 
@@ -328,7 +328,7 @@ void    Response::BuildDeleteResponse(void)
 	headers += "Content-Length: 0\r\n";
 	headers += "Connection: close\r\n\r\n";
 
-	send(fd_client, headers.c_str(), strlen(headers.c_str()), MSG_NOSIGNAL);
+	send(fd_client, headers.c_str(), std::strlen(headers.c_str()), MSG_NOSIGNAL);
 }
 
 void    Response::DeleteContentResponse(void)

@@ -133,7 +133,7 @@ int ParseRequest::isKnownMethod()
 }
 
 // checking a character if its valid hexa decimal ;
-bool ParseRequest::isHexa(char characetre)      { return (isxdigit(characetre)); }
+bool ParseRequest::isHexa(char characetre)      { return (std::isxdigit(characetre)); }
 
 // checking the unreserved charcter in the querie string in url ;
 bool ParseRequest::Unresreved(char c){
@@ -191,7 +191,7 @@ void ParseRequest::trimBuff(std::string &str){
 
 // read and parse  the method ;
 void ParseRequest::parseMethod(std::string &str){
-	if (isspace(str[0]))
+	if (std::isspace(str[0]))
 		return (setErrorNumber(400));
 	pos = str.find(SPACE);
 	if (pos == std::string::npos)
@@ -262,7 +262,7 @@ void ParseRequest::parseHttpVersion(std::string &str){
 		str.erase(0);
 		return (ResetBuffPos());
 	}
-	if (isspace(str[pos - 1]))
+	if (std::isspace(str[pos - 1]))
 		return (setErrorNumber(400));
 	HttpProtocolVersion.append(str.substr(0, pos));
 	str.erase(0, pos + 2);
@@ -276,7 +276,7 @@ void ParseRequest::parseHttpVersion(std::string &str){
 bool ParseRequest::isAllSpaces(std::string &str){
 	for (size_t i(0); i < str.size(); i++)
 	{
-		if (!isspace(str[i]))
+		if (!std::isspace(str[i]))
 			return (false);
 	}
 	return (true);
@@ -287,7 +287,7 @@ bool ParseRequest::validKey(std::string &key){
 	std::string visbleChar = "!#$%&'*+-.^_|~`";
 	for (size_t i(0); i < key.size(); i++)
 	{
-		if (!isalnum(key[i]) && visbleChar.find(key[i]) == std::string::npos)
+		if (!std::isalnum(key[i]) && visbleChar.find(key[i]) == std::string::npos)
 			return false;
 	}
 	return true;
@@ -326,7 +326,7 @@ void ParseRequest::parseHeaders(std::string &str){
 		if (Current_header_line.size() >= 8192)
 			return (setErrorNumber(431));
 		pos = Current_header_line.find(':');
-		if (pos == std::string::npos || isspace(Current_header_line[pos - 1]))
+		if (pos == std::string::npos || std::isspace(Current_header_line[pos - 1]))
 			return (setErrorNumber(400));    
 		Current_key = Current_header_line.substr(0, pos);
 		toLowerCase(Current_key);
@@ -525,7 +525,7 @@ void ParseRequest::StartNewRequest(std::string& buff){
 
 void        ParseRequest::DecompressBody(){
 	z_stream	Strm;
-	memset(&Strm,0,sizeof(Strm));
+	std::memset(&Strm,0,sizeof(Strm));
 	int			Bits = 15;
 	if (ContentEncodingType == GZIP)
 		Bits += 16;
@@ -698,7 +698,7 @@ void ParseRequest::startParse(int fd, Server server){
 	{
 		char        str[1000];
 		if (buff.empty()){
-			memset(str, 0, sizeof(str));
+			std::memset(str, 0, sizeof(str));
 			ssize_t bytes = recv(fd, str, 999, 0);
 			if (bytes <= 0 && (CurrntParsState == ERROR || CurrntParsState == FINISH || CurrntParsState == NONE))
 				return ;

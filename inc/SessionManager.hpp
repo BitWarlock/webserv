@@ -33,7 +33,7 @@ struct SessionData
 	std::string							user_agent;
 	std::string							ip_address;
 	
-	SessionData() : created_at(time(NULL)), last_accessed(time(NULL)) {}
+	SessionData() : created_at(std::time(NULL)), last_accessed(std::time(NULL)) {}
 };
 
 class SessionManager

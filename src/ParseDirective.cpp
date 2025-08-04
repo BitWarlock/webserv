@@ -313,7 +313,7 @@ void DirectiveParser::parseReturnLoc(Location *location, const std::vector<std::
 	if (values.size() < 1 || values.size() > 2)
 		throw ParseException("return directive must have 1 or 2 values", currentToken.line);
 
-	int code = atoi(values[0].c_str());
+	int code = std::atoi(values[0].c_str());
 	if (code != 301 && code != 302 && code != 307)
 		throw ParseException("Invalid HTTP status code", currentToken.line);
 
@@ -330,7 +330,7 @@ void DirectiveParser::parseReturn(Server* server, const std::vector<std::string>
 	if (values.size() < 1 || values.size() > 2)
 		throw ParseException("return directive must have 1 or 2 values", currentToken.line);
 
-	int code = atoi(values[0].c_str());
+	int code = std::atoi(values[0].c_str());
 	if (code < 100 || code > 599)
 		throw ParseException("Invalid HTTP status code", currentToken.line);
 
@@ -347,7 +347,7 @@ void DirectiveParser::parseErrorPage(Server* server, const std::vector<std::stri
 	if (values.size() < 2)
 		throw ParseException("error_page directive requires at least two values", currentToken.line);
 
-	int code = atoi(values[0].c_str());
+	int code = std::atoi(values[0].c_str());
 	if (code < 400 || code > 599)
 		throw ParseException("Invalid error code (must be 4xx or 5xx)", currentToken.line);
 

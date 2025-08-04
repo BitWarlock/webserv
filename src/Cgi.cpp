@@ -16,7 +16,7 @@ Cgi::~Cgi() {
 std::string	generateTempName()
 {
 	std::stringstream ss;
-	ss << "/tmp/cgi_temp_" << getpid() << "_" << std::time(NULL);
+	ss << "/tmp/cgi_temp_" << "_" << std::time(NULL);
 	return ss.str();
 }
 

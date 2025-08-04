@@ -33,8 +33,8 @@ SessionManager::~SessionManager()
 std::string	SessionManager::generateSessionId()
 {
 	std::stringstream ss;
-	time_t now = time(NULL);
-	ss << "sess_" << now << "_" << rand();
+	time_t now = std::time(NULL);
+	ss << "sess_" << now << "_" << std::rand();
 	return ss.str();
 }
 
@@ -55,8 +55,8 @@ std::string	SessionManager::createSession(const std::string& user_agent, const s
 	SessionData session;
 	session.user_agent = user_agent;
 	session.ip_address = ip;
-	session.created_at = time(NULL);
-	session.last_accessed = time(NULL);
+	session.created_at = std::time(NULL);
+	session.last_accessed = std::time(NULL);
 	
 	sessions[session_id] = session;
 	saveSession(session_id);
@@ -69,7 +69,7 @@ SessionData*	SessionManager::getSession(const std::string& session_id)
 	std::map<std::string, SessionData>::iterator it = sessions.find(session_id);
 	if (it != sessions.end())
 	{
-		time_t now = time(NULL);
+		time_t now = std::time(NULL);
 		if (now - it->second.last_accessed < session_timeout)
 		{
 			it->second.last_accessed = now;
@@ -94,7 +94,7 @@ void	SessionManager::updateSessionAccess(const std::string& session_id)
 	std::map<std::string, SessionData>::iterator it = sessions.find(session_id);
 	if (it != sessions.end())
 	{
-		it->second.last_accessed = time(NULL);
+		it->second.last_accessed = std::time(NULL);
 		saveSession(session_id);
 	}
 }
@@ -105,7 +105,7 @@ void	SessionManager::setSessionData(const std::string& session_id, const std::st
 	if (it != sessions.end())
 	{
 		it->second.data[key] = value;
-		it->second.last_accessed = time(NULL);
+		it->second.last_accessed = std::time(NULL);
 		saveSession(session_id);
 	}
 }
@@ -118,7 +118,7 @@ std::string	SessionManager::getSessionData(const std::string& session_id, const 
 		std::map<std::string, std::string>::iterator data_it = it->second.data.find(key);
 		if (data_it != it->second.data.end())
 		{
-			it->second.last_accessed = time(NULL);
+			it->second.last_accessed = std::time(NULL);
 			return data_it->second;
 		}
 	}
@@ -140,7 +140,7 @@ void	SessionManager::cleanup()
 
 void	SessionManager::cleanupExpiredSessions()
 {
-	time_t now = time(NULL);
+	time_t now = std::time(NULL);
 	std::map<std::string, SessionData>::iterator it = sessions.begin();
 	while (it != sessions.end())
 	{

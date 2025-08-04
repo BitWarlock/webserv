@@ -98,7 +98,7 @@ void    SetupServers::CreateSocket(Server& server)
 void    SetupServers::setAddrForBound(std::string& host, std::string& port, struct sockaddr_in& add_server)
 {
 
-	uint16_t            port_number = atoi(port.c_str());
+	uint16_t            port_number = std::atoi(port.c_str());
 
 	std::memset(&add_server, 0, sizeof(add_server));
 	add_server.sin_family = AF_INET;
