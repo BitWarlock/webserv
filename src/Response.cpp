@@ -298,77 +298,6 @@ bool    Response::ReturnDirective(void)
     return (false);
 }
 
-void    Response::ChildProccess(std::string interpreter)
-{
-    std::vector<std::string>    env_storage;
-    env_storage.clear();
-
-    env_storage.push_back("REQUEST_METHOD=" + Request.getMethod());
-    env_storage.push_back("SCRIPT_NAME=" + Request.getUri());
-    env_storage.push_back("SCRIPT_FILENAME=" + path);
-    env_storage.push_back("QUERY_STRING=" + Request.getQueryString());
-    env_storage.push_back("CONTENT_TYPE=" + Request.getHeaderValue("content-type"));
-    env_storage.push_back("SERVER_PROTOCOL=HTTP/1.1");
-
-    for (size_t i = 0; i < env_storage.size(); ++i)
-        env[i] = (char*) env_storage[i].c_str();
-    env[env_storage.size()] = NULL;
-
-    char    *argv[3];
-    argv[0] = (char*) interpreter.c_str();
-    argv[1] = (char*) path.c_str();
-    argv[2] = NULL;
-
-    if (execve (argv[0], argv, env) == -1)
-        std::cerr << "execve: failed\n";
-
-    exit(1);
-}
-
-bool    Response::CheckForCGI(void)
-{
-    size_t  pos = path.rfind('.');
-    if (pos == std::string::npos)
-        return true;
-
-    std::string extenstion = path.substr(pos + 1);
-    std::string interpreter = location.getCgiInfo(extenstion);
-
-    if (interpreter.empty() || access(interpreter.c_str(), F_OK | X_OK) == -1)
-        return (SetState(Internal_Server_Error), ResponseWithError(NONE), false);
-
-    int pipe_fd[2];
-    if (pipe(pipe_fd) == -1)
-        return (SetState(Internal_Server_Error), ResponseWithError(NONE), false);
-    int pid = fork();
-    if (pid == -1)
-        return (SetState(Internal_Server_Error), ResponseWithError(NONE), false);
-    else if (pid == 0)
-    {
-        close(pipe_fd[0]);
-        dup2(pipe_fd[1], 1);
-        close(pipe_fd[1]);
-        ChildProccess(interpreter);
-    }
-    int status(0);
-    waitpid(pid, &status, 0);
-    if (status == 1)
-        return (SetState(Internal_Server_Error), ResponseWithError(NONE), false);
-    close(pipe_fd[1]);
-
-    char buffer[4096];
-    ssize_t n(0);
-    std::string cgi;
-
-	while ((n = read(pipe_fd[0], buffer, sizeof(buffer))) > 0){
-        buffer[n] = 0;
-        cgi += buffer;
-    }
-
-    close(pipe_fd[0]);
-    return (true);
-}
-
 void    Response::GetPageResponse(void)
 {
     struct stat info;
@@ -403,9 +332,6 @@ void    Response::BuildDeleteResponse(void)
 void    Response::DeleteContentResponse(void)
 {
     struct stat info;
-
-    if (ReturnDirective() == false)
-        return ;
 
     if (GetFullPath(path) == false)
         return ;
@@ -522,9 +448,6 @@ void    Response::PostContentResponse(void)
 {
     std::string ContentType = Request.getHeaderValue("content-type");
     size_t      multipart = ContentType.find("multipart/form-data");
-
-    if (ReturnDirective() == false)
-        return ;
 
     if (GetFullPath(path) == false)
         return ;
