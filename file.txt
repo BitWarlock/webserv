@@ -648,3 +648,11 @@ private:
 8. **Write exception-safe code from the beginning**
 
 Exception handling in C++98 requires careful attention to resource management and object lifetimes, but when done correctly, it provides a robust error-handling mechanism that separates error handling from normal program logic.
+
+
+
+GET / HTTP/1.1
+dfjdkfd
+
+
+GET / HTTP/1.1
