@@ -13,10 +13,14 @@
 #include "Server.hpp"
 #define CLRF "\r\n"
 #define SPACE ' '
+#define RED "\033[1;31m"
+#define YLW "\033[1;33m"
+#define RESET "\033[0m"
+#define GRN "\e[0;32m"
 
 enum RequestParser
 {
-    NONE,
+    PARSER_NONE,
     METHOD,
     URL,
     HTTPVERSION,
@@ -134,7 +138,7 @@ class ParseRequest{
         void        setUri(std::string u);
         void        setVersion(std::string v);
         void        SwitchState(int Next_State);
-        void        setErrorNumber(int Number);
+        void        setErrorNumber(int Number, std::string ErrorMsg);
         void        setQueryString(std::string qurieInUrl);
         void        Reset();
         void        ResetBuffPos();
