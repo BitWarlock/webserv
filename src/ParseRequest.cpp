@@ -447,7 +447,7 @@ void ParseRequest::parseChunkedBody(std::string &str){
 		if (pos != std::string::npos)
 		{
 			std::string StringChunkSize = str.substr(0, pos);
-			lastChunkSize = StringChunkSize.size();
+			std::cout <<"here is the size of the string chunk size and the size itself  " << StringChunkSize << "  " <<StringChunkSize.size() <<"\n";
 			for (size_t i(0); i < StringChunkSize.size(); i++)
 			{
 				if (!isHexa(StringChunkSize[i]))
@@ -472,7 +472,7 @@ void ParseRequest::parseChunkedBody(std::string &str){
 	{
 		if (str.size() >= ChunkSize + 2)
 		{
-			BufferBody.append(str.substr(lastChunkSize, ChunkSize));
+			BufferBody.append(str.substr(0, ChunkSize));
 			str.erase(0, ChunkSize + 2);
 			ChunkSize = 0;
 			ResetBuffPos();
@@ -704,7 +704,7 @@ void ParseRequest::startParse(int fd, Server server){
 				str[bytes] = 0;
 				buff.append(str, bytes);
 			}
-			std::cout << buff;
+			std::cout << buff<< "end of request \n\n";
 		}
 		switch(CurrntParsState){
 			case FINISH:
@@ -719,4 +719,5 @@ void ParseRequest::startParse(int fd, Server server){
 		if (CurrntParsState == FINISH || CurrntParsState == ERROR)
 			break ;
 	}
+	std::cout << BufferBody << "\n";
 }
