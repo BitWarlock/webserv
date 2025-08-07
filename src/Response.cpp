@@ -575,10 +575,10 @@ void    Response::ResponseWithError(int serve)
     BuildGetResponse();
 }
 
-void    Response::StartForResponse(ParseRequest request, Server BlockServer, int fd_client)
+void    Response::StartForResponse(ParseRequest request, int fd_client)
 {
     SetRequest(request);
-    SetBlockServer(BlockServer);
+    SetBlockServer(Request.getBlockServer());
     SetState(request.getErrorNumber());
     SetPath(request.getUri());
     SetStatePath(NORMAL);

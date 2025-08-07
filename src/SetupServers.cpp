@@ -45,11 +45,11 @@ void    SetupServers::CheckPortIp(const std::string& host, const std::string& po
 			std::string& _host_ = const_cast<std::string&> (servers[i]->getListen()[s].first);
 			std::string&    _port = const_cast<std::string&> (port);
 
-			if (_port_ == port || _host_ == _port + "T")
+			if (_port_ == port || _port_ == _port + "T")
 			{
-				if (host == "0.0.0.0" && _host_[_host_.size() - 1] != 'T' && _host_ != "0.0.0.0")
+				if (host == "0.0.0.0" && _port_[_port_.size() - 1] != 'T' && _host_ != "0.0.0.0")
 					_port_ += "T";
-				else if (_host_ == host)
+				else if (_host_ == host || _host_ == "0.0.0.0")
 				{
 					_port += "T";
 					return ;
@@ -71,16 +71,6 @@ void    SetupServers::FlagSharedPortIp(void)
 			const std::string &port = servers[i]->getListen()[s].second;
 
 			CheckPortIp(host, port, i, s);
-		}
-	}
-	for (size_t i(0); i < servers.size(); i++)
-	{
-		for (size_t s(0); s < servers[i]->getListen().size(); s++)
-		{
-			std::cout << "size = " << servers[i]->getListen().size() << "\n";
-			const std::string &host = servers[i]->getListen()[s].first;
-			const std::string &port = servers[i]->getListen()[s].second;
-			std::cout << "server_pos : " << i << " -- listen_pos : " << s << " -- port : " << port << " -- host : " << host << "\n";
 		}
 	}
 }
@@ -242,13 +232,6 @@ void    SetupServers::EraseFd(int fd)
 	Retreat();
 }
 
-Server	SetupServers::GetBlockServer(int block)
-{
-	std::map<int, Server>::iterator	it = servers.find(block);
-
-	return (it->second);
-}
-
 void    SetupServers::Run(void)
 {
 	std::map<int, ParseRequest> Requests;
@@ -276,14 +259,14 @@ void    SetupServers::Run(void)
 				}
 				else
 				{
-					Requests[fd].startParse(fd, GetBlockServer(fd));
+					Requests[fd].startParse(fd, config);
 					if (Requests[fd].getParseState() == FINISH || Requests[fd].getParseState() == ERROR)
 						AddSocketToEpoll(fd, EPOLLOUT, EPOLL_CTL_MOD);
 				}
 			}
 			else if (events[i].events & EPOLLOUT)
 			{
-				Responses[fd].StartForResponse(Requests[fd], GetBlockServer(fd), fd);
+				Responses[fd].StartForResponse(Requests[fd], fd);
 				AddSocketToEpoll(fd, EPOLLIN, EPOLL_CTL_MOD);
 				Requests[fd].ResetParserf();
 			}

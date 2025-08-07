@@ -85,6 +85,7 @@ std::string&										ParseRequest::getBufferBody()					{ return (BufferBody);}
 size_t												ParseRequest::getContentLength()				{ return (contentLength);}
 std::string&                                        ParseRequest::getBufferDecompressedBody()		{ return (DecompressedBufferBody);}
 std::vector<std::string >&							ParseRequest::getMultipartBuferBody()			{ return (MultipartBufferBody);}
+Server												ParseRequest::getBlockServer() { return *S; }
 
 // setters
 
@@ -668,10 +669,7 @@ void	ParseRequest::ParseMultipartBodyBoundary(std::string& None){
 	std::string ContentTypeValue = getHeaderValue("content-type");
 	pos = ContentTypeValue.find("multipart/");
 	if (ContentTypeValue.empty() || pos == std::string::npos)
-	{
-		std::cout << "\n-- " << BufferBody << " --\n"; 
 		return SwitchState(FINISH);
-	}
 	if (pos != std::string::npos){
 		if (ContentTypeValue.find(";") != std::string::npos){
 			pos = ContentTypeValue.find("boundary=");
@@ -686,11 +684,44 @@ void	ParseRequest::ParseMultipartBodyBoundary(std::string& None){
 	}
 }
 
+Server*	ParseRequest::findBlockServer(const Config& config, std::string buff)
+{
+	size_t	pos_start = buff.find("Host: ");
+	
+	if (pos_start == std::string::npos)
+		return NULL;
+	
+	pos_start += 6;
+	// std::cout << " -- " << buff[pos_start] << "\n";
+
+	size_t	pos_end = buff.find_first_of("\r\n", pos_start);
+	// std::cout << " -- last : " << buff[pos_end - 1] << "\n";
+	if (pos_end == std::string::npos)
+		return NULL;
+
+	std::string host_port = buff.substr(pos_start, pos_end - pos_start);
+	// std::cout << "host_port = " << host_port << "\n";
+	size_t pos = host_port.find(":");
+
+	if (pos == std::string::npos)
+		return NULL;
+
+	std::string host = host_port.substr(0, pos);
+	std::string port = host_port.substr(pos + 1, host_port.size());
+
+	// std::cout << "host : " << host << " -- host size = " << host.size() << "\n";
+	// std::cout << "port : " << port << " -- port size = " << port.size() << "\n";
+	Server* match_block = const_cast<Server*> (config.getServer(host, port));
+
+	if (match_block != NULL)
+		return (match_block);
+
+	return (const_cast<Server*> (config.getServer(host, port)));
+}
+
 // start reading and parsing ;
-void ParseRequest::startParse(int fd, Server server){
+void ParseRequest::startParse(int fd, const Config& config){
 	std::string buff;
-	if (CurrntParsState == NONE)
-		S = &server;
 	while(true)
 	{
 		char        str[1000];
@@ -704,6 +735,8 @@ void ParseRequest::startParse(int fd, Server server){
 				str[bytes] = 0;
 				buff.append(str, bytes);
 			}
+			if (CurrntParsState == NONE)
+				S = findBlockServer(config, buff);
 			std::cout << buff;
 		}
 		switch(CurrntParsState){

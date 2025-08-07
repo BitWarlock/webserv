@@ -44,8 +44,6 @@ class SetupServers
         void                Run(void);
         void                Advance(void);
         void                Retreat(void);
-
-        Server              GetBlockServer(int block);
         
     private:
         const Config&           config;

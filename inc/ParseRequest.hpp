@@ -11,6 +11,7 @@
 #include <zlib.h>
 //#include <brotli/decode.h>
 #include "Server.hpp"
+#include "Config.hpp"
 #define CLRF "\r\n"
 #define SPACE ' '
 
@@ -77,7 +78,7 @@ class ParseRequest{
 
     public:
         // parse input
-        void        startParse(int fd, Server server);
+        void        startParse(int fd, const Config& config);
         void        StartNewRequest(std::string& buff);
         void        parseMethod(std::string& str);
         void        parseUrl(std::string& str);
@@ -121,7 +122,7 @@ class ParseRequest{
         std::string&                                        getHost();
         std::string&                                        getPort();
         int                                                 getContentEncodingType(int Type);
-
+        Server*                                             findBlockServer(const Config& config, std::string buff);
         std::string&                                        getQueryString(void);
         std::string&                                        getBufferBody(void);
         size_t                                              getContentLength(void);
@@ -129,6 +130,7 @@ class ParseRequest{
         const std::vector<std::string>&                     getMatchedLocationAllowedMethods();
         std::vector<std::string >&							getMultipartBuferBody();
         int                                                 getMatchedLocationBodySizeMax();
+        Server                                              getBlockServer();
 
         // setters
         void        setMethod(std::string m);
