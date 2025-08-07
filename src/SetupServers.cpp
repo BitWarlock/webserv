@@ -30,20 +30,30 @@ SetupServers::~SetupServers()
 		close(fd_sockets[i]);
 }
 
-void    SetupServers::CheckPortIp(const std::string& host, const std::string& port, size_t pos_server)
+void    SetupServers::CheckPortIp(const std::string& host, const std::string& port, size_t pos_server, size_t pos_listen)
 {
 	std::vector<Server*>& servers = const_cast<std::vector<Server*>&> (config.getServers());
 
-	for (size_t i(0); i < pos_server; i++)
+	for (size_t i(0); i <= pos_server; i++)
 	{
 		for (size_t s(0); s < servers[i]->getListen().size(); s++)
 		{
-			if ((servers[i]->getListen()[s].first == host || host == "0.0.0.0")
-					&& servers[i]->getListen()[s].second == port)
-			{
-				std::string&    _port = const_cast<std::string&> (port);
-				_port += "T";
+			if (i == pos_server && s == pos_listen)
 				return ;
+
+			std::string& _port_ = const_cast<std::string&> (servers[i]->getListen()[s].second);
+			std::string& _host_ = const_cast<std::string&> (servers[i]->getListen()[s].first);
+			std::string&    _port = const_cast<std::string&> (port);
+
+			if (_port_ == port || _host_ == _port + "T")
+			{
+				if (host == "0.0.0.0" && _host_[_host_.size() - 1] != 'T' && _host_ != "0.0.0.0")
+					_port_ += "T";
+				else if (_host_ == host)
+				{
+					_port += "T";
+					return ;
+				}
 			}
 		}
 	}
@@ -60,7 +70,17 @@ void    SetupServers::FlagSharedPortIp(void)
 			const std::string &host = servers[i]->getListen()[s].first;
 			const std::string &port = servers[i]->getListen()[s].second;
 
-			CheckPortIp(host, port, i);
+			CheckPortIp(host, port, i, s);
+		}
+	}
+	for (size_t i(0); i < servers.size(); i++)
+	{
+		for (size_t s(0); s < servers[i]->getListen().size(); s++)
+		{
+			std::cout << "size = " << servers[i]->getListen().size() << "\n";
+			const std::string &host = servers[i]->getListen()[s].first;
+			const std::string &port = servers[i]->getListen()[s].second;
+			std::cout << "server_pos : " << i << " -- listen_pos : " << s << " -- port : " << port << " -- host : " << host << "\n";
 		}
 	}
 }

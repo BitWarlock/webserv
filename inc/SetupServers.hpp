@@ -28,7 +28,7 @@ class SetupServers
         SetupServers(Config& config);
         ~SetupServers();
 
-        void                CheckPortIp(const std::string& host, const std::string& port, size_t pos_server);
+        void                CheckPortIp(const std::string& host, const std::string& port, size_t pos_server, size_t pos_listen);
         void                FlagSharedPortIp();
         void                CreateSocket(Server& server);
         void                setAddrForBound(std::string& host, std::string& port, struct sockaddr_in &add_server);
