@@ -453,6 +453,7 @@ int ParseRequest::HexaStringToDecimalNum(std::string s){
 
 // parsing the chuncked body type ;
 void ParseRequest::parseChunkedBody(std::string &str){
+	size_t lastChunksize;
 	if (CurrntParsState == READCHUNKSIZE)
 	{
 		pos = str.find(CLRF);
@@ -730,41 +731,6 @@ Server*	ParseRequest::findBlockServer(const Config& config, std::string buff)
 	return (const_cast<Server*> (config.getServer(host, port)));
 }
 
-Server*	ParseRequest::findBlockServer(const Config& config, std::string buff)
-{
-	size_t	pos_start = buff.find("Host: ");
-	
-	if (pos_start == std::string::npos)
-		return NULL;
-	
-	pos_start += 6;
-	// std::cout << " -- " << buff[pos_start] << "\n";
-
-	size_t	pos_end = buff.find_first_of("\r\n", pos_start);
-	// std::cout << " -- last : " << buff[pos_end - 1] << "\n";
-	if (pos_end == std::string::npos)
-		return NULL;
-
-	std::string host_port = buff.substr(pos_start, pos_end - pos_start);
-	// std::cout << "host_port = " << host_port << "\n";
-	size_t pos = host_port.find(":");
-
-	if (pos == std::string::npos)
-		return NULL;
-
-	std::string host = host_port.substr(0, pos);
-	std::string port = host_port.substr(pos + 1, host_port.size());
-
-	// std::cout << "host : " << host << " -- host size = " << host.size() << "\n";
-	// std::cout << "port : " << port << " -- port size = " << port.size() << "\n";
-	Server* match_block = const_cast<Server*> (config.getServer(host, port));
-
-	if (match_block != NULL)
-		return (match_block);
-
-	return (const_cast<Server*> (config.getServer(host, port)));
-}
-
 // start reading and parsing ;
 void ParseRequest::startParse(int fd, const Config& config){
 	std::string buff;
@@ -775,8 +741,6 @@ void ParseRequest::startParse(int fd, const Config& config){
 			memset(str, 0, sizeof(str));
 			ssize_t bytes = recv(fd, str, 999, 0);
 			if (bytes <= 0 && (CurrntParsState == ERROR || CurrntParsState == FINISH || CurrntParsState == PARSER_NONE)){
-				if (bytes == 0)
-					std::cout << RED << "Connection closed by client." << RESET << std::endl;
 				if (CurrntParsState == FINISH)
 					std::cout << GRN << "OK " << YLW << "- HTTP request parsed and validated successfully" << RESET << std::endl;
 				return ;
@@ -786,7 +750,7 @@ void ParseRequest::startParse(int fd, const Config& config){
 				str[bytes] = 0;
 				buff.append(str, bytes);
 			}
-			if (CurrntParsState == NONE)
+			if (CurrntParsState == PARSER_NONE)
 				S = findBlockServer(config, buff);
 			std::cout << buff;
 		}
