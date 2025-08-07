@@ -709,6 +709,8 @@ void ParseRequest::startParse(int fd, Server server){
 			memset(str, 0, sizeof(str));
 			ssize_t bytes = recv(fd, str, 999, 0);
 			if (bytes <= 0 && (CurrntParsState == ERROR || CurrntParsState == FINISH || CurrntParsState == PARSER_NONE)){
+				if (bytes == 0)
+					std::cout << RED << "Connection closed by client." << RESET << std::endl;
 				if (CurrntParsState == FINISH)
 					std::cout << GRN << "OK " << YLW << "- HTTP request parsed and validated successfully" << RESET << std::endl;
 				return ;
