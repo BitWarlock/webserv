@@ -453,14 +453,12 @@ int ParseRequest::HexaStringToDecimalNum(std::string s){
 
 // parsing the chuncked body type ;
 void ParseRequest::parseChunkedBody(std::string &str){
-	size_t lastChunksize;
 	if (CurrntParsState == READCHUNKSIZE)
 	{
 		pos = str.find(CLRF);
 		if (pos != std::string::npos)
 		{
 			std::string StringChunkSize = str.substr(0, pos);
-			lastChunksize = StringChunkSize.size();
 			for (size_t i(0); i < StringChunkSize.size(); i++)
 			{
 				if (!isHexa(StringChunkSize[i]))
@@ -485,7 +483,7 @@ void ParseRequest::parseChunkedBody(std::string &str){
 	{
 		if (str.size() >= ChunkSize + 2)
 		{
-			BufferBody.append(str.substr(lastChunksize, ChunkSize));
+			BufferBody.append(str.substr(0, ChunkSize));
 			str.erase(0, ChunkSize + 2);
 			ChunkSize = 0;
 			ResetBuffPos();
