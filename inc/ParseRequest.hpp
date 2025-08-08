@@ -58,7 +58,7 @@ class ParseRequest{
         Server                                              *S;
         bool                                                chunkedEncoding;
         int                                                 contentLength;
-		int													lastChunksize;
+		size_t												lastChunksize;
         int                                                 ContentEncodingType;
         std::vector<std::pair<std::string, std::string> >   Headers;
         bool                                                hasValidHost;
