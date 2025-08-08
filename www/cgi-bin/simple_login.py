@@ -53,6 +53,9 @@ def create_session_id():
 query_string = os.environ.get('QUERY_STRING', '')
 params = parse_qs(query_string)
 
+# JSON mode for AJAX integration
+is_json = params.get('format', [''])[0] == 'json'
+
 # Get or create session ID
 session_id = get_cookie('session_id')
 if not session_id:
@@ -92,22 +95,50 @@ elif action == 'theme':
         # Save session and set theme cookie
         save_session_data(session_id, session_data)
         set_cookie('theme', new_theme)
+        theme = new_theme
         
-        # 303 Redirect to prevent refresh replay
+        # In JSON mode, return JSON instead of redirecting
+        if is_json:
+            print("Content-Type: application/json")
+            set_cookie('session_id', session_id)
+            set_cookie('theme', theme)
+            print()
+            print(json.dumps({
+                "login_status": session_data["login_status"],
+                "username": session_data["username"],
+                "visit_count": session_data["visit_count"],
+                "theme": theme
+            }))
+            sys.exit(0)
+        
+        # 303 Redirect to prevent refresh replay for HTML mode
         print("Status: 303 See Other")
         print("Location: /cgi-bin/simple_login.py")
         print()
-        sys.exit(0)  # Stop here after redirect
+        sys.exit(0)
 
 # If no redirect, save session normally (login/logout already saved)
 if action not in ['login', 'logout', 'theme']:
     save_session_data(session_id, session_data)
 
 # === Output HTTP Headers ===
-print("Content-Type: text/html")
-set_cookie('session_id', session_id)
-set_cookie('theme', theme)  # Ensure theme cookie is always set
-print()
+if is_json:
+    print("Content-Type: application/json")
+    set_cookie('session_id', session_id)
+    set_cookie('theme', theme)  # Ensure theme cookie is always set
+    print()
+    print(json.dumps({
+        "login_status": session_data["login_status"],
+        "username": session_data["username"],
+        "visit_count": session_data["visit_count"],
+        "theme": theme
+    }))
+    sys.exit(0)
+else:
+    print("Content-Type: text/html")
+    set_cookie('session_id', session_id)
+    set_cookie('theme', theme)  # Ensure theme cookie is always set
+    print()
 
 # Generate page based on login status
 if session_data["login_status"]:
@@ -146,16 +177,16 @@ if session_data["login_status"]:
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class=\"container\">
         <h1>Welcome, {session_data['username']}!</h1>
         <p><strong>Visit Count:</strong> {session_data['visit_count']}</p>
         <p><strong>Theme:</strong> {theme}</p>
         
         <div>
-            <a href="/cgi-bin/simple_login.py?action=theme&toggle=1" class="button">
+            <a href=\"/cgi-bin/simple_login.py?action=theme&toggle=1\" class=\"button\">
                 Switch to {'Light' if theme == 'dark' else 'Dark'} Mode
             </a>
-            <a href="/cgi-bin/simple_login.py?action=logout" class="button warning">
+            <a href=\"/cgi-bin/simple_login.py?action=logout\" class=\"button warning\">
                 Logout
             </a>
         </div>
@@ -219,19 +250,19 @@ else:
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class=\"container\">
         <h1>Login</h1>
         <p><strong>Visit Count:</strong> {session_data['visit_count']}</p>
         <p><strong>Theme:</strong> {theme}</p>
         
-        <a href="/cgi-bin/simple_login.py?action=theme&toggle=1" class="theme-toggle">
+        <a href=\"/cgi-bin/simple_login.py?action=theme&toggle=1\" class=\"theme-toggle\">
             Switch to {'Light' if theme == 'dark' else 'Dark'} Mode
         </a>
         
-        <form action="/cgi-bin/simple_login.py" method="get">
-            <input type="text" name="username" placeholder="Enter username" required>
-            <input type="hidden" name="action" value="login">
-            <button type="submit" class="button">Login</button>
+        <form action=\"/cgi-bin/simple_login.py\" method=\"get\">
+            <input type=\"text\" name=\"username\" placeholder=\"Enter username\" required>
+            <input type=\"hidden\" name=\"action\" value=\"login\">
+            <button type=\"submit\" class=\"button\">Login</button>
         </form>
         
         <p><small>Session ID: {session_id}</small></p>

@@ -1,143 +1,847 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>WebServ - Home</title>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-      color: #ffffff;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-    }
-    
-    .container {
-      text-align: center;
-      max-width: 600px;
-      padding: 40px;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 20px;
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    }
-    
-    h1 {
-      color: #4caf50;
-      font-size: 2.5em;
-      margin-bottom: 20px;
-      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-    }
-    
-    .subtitle {
-      font-size: 1.2em;
-      color: #cccccc;
-      margin-bottom: 40px;
-      line-height: 1.6;
-    }
-    
-    .nav-buttons {
-      display: flex;
-      gap: 20px;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-    
-    .nav-button {
-      background: linear-gradient(45deg, #4caf50, #45a049);
-      color: white;
-      border: none;
-      padding: 15px 30px;
-      font-size: 1.1em;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      text-decoration: none;
-      display: inline-block;
-      font-weight: 500;
-      box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
-    }
-    
-    .nav-button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
-      background: linear-gradient(45deg, #45a049, #4caf50);
-    }
-    
-    .nav-button:active {
-      transform: translateY(0);
-    }
-    
-    .gallery-btn {
-      background: linear-gradient(45deg, #2196f3, #1976d2);
-      box-shadow: 0 4px 15px rgba(33, 150, 243, 0.3);
-    }
-    
-    .gallery-btn:hover {
-      box-shadow: 0 6px 20px rgba(33, 150, 243, 0.4);
-      background: linear-gradient(45deg, #1976d2, #2196f3);
-    }
-    
-    .cgi-btn {
-      background: linear-gradient(45deg, #ff9800, #f57c00);
-      box-shadow: 0 4px 15px rgba(255, 152, 0, 0.3);
-    }
-    
-    .cgi-btn:hover {
-      box-shadow: 0 6px 20px rgba(255, 152, 0, 0.4);
-      background: linear-gradient(45deg, #f57c00, #ff9800);
-    }
-    
-    .status {
-      margin-top: 30px;
-      padding: 15px;
-      background: rgba(76, 175, 80, 0.1);
-      border-radius: 10px;
-      border-left: 4px solid #4caf50;
-    }
-    
-    .status-text {
-      color: #4caf50;
-      font-weight: 500;
-    }
-    
-    footer {
-      margin-top: 40px;
-      font-size: 0.9em;
-      color: #888;
-      opacity: 0.8;
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>WebServ - Modern Dashboard</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --bg-primary: #0a0e14;
+  --bg-secondary: #0f1419;
+  --bg-tertiary: #151a21;
+  --surface: rgba(0, 255, 136, 0.03);
+  --surface-hover: rgba(0, 255, 136, 0.08);
+  --border: rgba(0, 255, 136, 0.08);
+  --border-hover: rgba(0, 255, 136, 0.2);
+  --text-primary: #ffffff;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent-primary: #2e8b57;
+  --accent-secondary: #00b4d8;
+  --accent-warning: #ffc107;
+  --accent-danger: #ef4444;
+  --gradient-1: linear-gradient(135deg, #2e8b57 0%, #00b4d8 100%);
+  --gradient-2: linear-gradient(135deg, #0077b6 0%, #023e8a 100%);
+  --gradient-3: linear-gradient(135deg, #00b4d8 0%, #0077b6 100%);
+  --gradient-4: linear-gradient(135deg, #2e8b57 0%, #00cc6a 100%);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.15);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+  --shadow-glow: 0 0 20px rgba(0, 255, 136, 0.3);
+}
+
+.light-theme {
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f1f5f9;
+  --surface: rgba(0, 180, 216, 0.03);
+  --surface-hover: rgba(0, 180, 216, 0.08);
+  --border: rgba(0, 180, 216, 0.1);
+  --border-hover: rgba(0, 180, 216, 0.2);
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --shadow-glow: 0 0 20px rgba(0, 180, 216, 0.2);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+  transition: all 0.3s ease;
+}
+
+/* Animated background */
+.bg-animation {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  opacity: 0.4;
+}
+
+.floating-shapes {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
+.shape {
+  position: absolute;
+  border-radius: 50%;
+  background: var(--gradient-1);
+  animation: float 6s ease-in-out infinite;
+  opacity: 0.1;
+}
+
+.shape:nth-child(1) {
+  width: 80px;
+  height: 80px;
+  top: 20%;
+  left: 10%;
+  animation-delay: 0s;
+}
+
+.shape:nth-child(2) {
+  width: 60px;
+  height: 60px;
+  top: 60%;
+  right: 10%;
+  animation-delay: 2s;
+  background: var(--gradient-2);
+}
+
+.shape:nth-child(3) {
+  width: 40px;
+  height: 40px;
+  top: 80%;
+  left: 20%;
+  animation-delay: 4s;
+  background: var(--gradient-3);
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-20px) rotate(180deg); }
+}
+
+/* Header */
+.header {
+  position: relative;
+  padding: 2rem;
+  text-align: center;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(10px);
+}
+
+.header-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.logo-icon {
+  width: 48px;
+  height: 48px;
+  background: var(--gradient-1);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  font-size: 1.5rem;
+}
+
+.logo-text {
+  font-size: 2rem;
+  font-weight: 700;
+  background: var(--gradient-1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.header-actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.theme-toggle {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: var(--text-secondary);
+}
+
+.theme-toggle:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-hover);
+  transform: scale(1.05);
+}
+
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-secondary);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+/* Main content */
+.main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.section {
+  margin-bottom: 3rem;
+}
+
+.section-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  color: var(--text-primary);
+  opacity: 0;
+  transform: translateY(20px);
+  animation: slideUp 0.6s ease forwards;
+}
+
+/* Auth section */
+.auth-card {
+  max-width: 400px;
+  margin: 0 auto;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 2.5rem;
+  text-align: center;
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(10px);
+  opacity: 0;
+  transform: translateY(30px);
+  animation: slideUp 0.8s ease 0.2s forwards;
+}
+
+.auth-title {
+  font-size: 1.75rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  background: var(--gradient-1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.auth-subtitle {
+  color: var(--text-secondary);
+  margin-bottom: 2rem;
+  font-size: 0.95rem;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+  text-align: left;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.form-input {
+  width: 100%;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text-primary);
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: var(--shadow-glow);
+}
+
+.form-input::placeholder {
+  color: var(--text-muted);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 2rem;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  justify-content: center;
+}
+
+.btn-primary {
+  background: var(--gradient-1);
+  color: white;
+  width: 100%;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg), var(--shadow-glow);
+}
+
+.btn-secondary {
+  background: var(--surface);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-hover);
+}
+
+/* Welcome section */
+.welcome-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 2rem;
+  text-align: center;
+  backdrop-filter: blur(10px);
+  opacity: 0;
+  transform: translateY(30px);
+  animation: slideUp 0.8s ease forwards;
+}
+
+.welcome-title {
+  font-size: 2rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.welcome-subtitle {
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+}
+
+/* Dashboard grid */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.dashboard-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(30px);
+}
+
+.dashboard-card:nth-child(1) { animation: slideUp 0.8s ease 0.1s forwards; }
+.dashboard-card:nth-child(2) { animation: slideUp 0.8s ease 0.2s forwards; }
+.dashboard-card:nth-child(3) { animation: slideUp 0.8s ease 0.3s forwards; }
+.dashboard-card:nth-child(4) { animation: slideUp 0.8s ease 0.4s forwards; }
+
+.dashboard-card:hover {
+  transform: translateY(-5px);
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-lg);
+}
+
+.dashboard-card::before {
+  display: none;
+}
+
+.card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+  color: white;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.card-gallery { background: var(--gradient-2); }
+.card-cgi { background: var(--gradient-3); }
+.card-counter { background: var(--gradient-4); }
+.card-logout { background: linear-gradient(135deg, #6c757d 0%, #495057 100%); }
+
+.card-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+}
+
+.card-description {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.counter-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--accent-secondary);
+  margin-top: 0.5rem;
+}
+
+/* Footer */
+.footer {
+  margin-top: 4rem;
+  padding: 2rem;
+  text-align: center;
+  border-top: 1px solid var(--border);
+  background: var(--bg-secondary);
+}
+
+.footer-content {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.footer-text {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.team-link {
+  color: var(--accent-primary);
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.team-link:hover {
+  color: var(--accent-secondary);
+}
+
+/* Animations */
+@keyframes slideUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Loading spinner */
+.loading {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: currentColor;
+  animation: spin 0.8s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .header-content {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .logo-text {
+    font-size: 1.5rem;
+  }
+  
+  .main {
+    padding: 1rem;
+  }
+  
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .auth-card {
+    margin: 0 1rem;
+    padding: 1.5rem;
+  }
+}
+
+/* Hidden utility */
+.hidden {
+  display: none !important;
+}
+</style>
 </head>
 <body>
-  <div class="container">
-    <h1>WebServ</h1>
-    <p class="subtitle">
-      Welcome to your custom web server running on port 8003.<br>
-      Explore the features below to test different functionalities.
-    </p>
-    
-    <div class="nav-buttons">
-      <a href="/gallery/index.html" class="nav-button gallery-btn">Gallery</a>
-      <a href="/cgi-bin/cgi_test.html" class="nav-button cgi-btn">CGI Testing</a>
+
+<div class="bg-animation">
+  <div class="floating-shapes">
+    <div class="shape"></div>
+    <div class="shape"></div>
+    <div class="shape"></div>
+  </div>
+</div>
+
+<header class="header">
+  <div class="header-content">
+    <div class="logo">
+      <div class="logo-icon">W</div>
+      <div class="logo-text">WebServ</div>
     </div>
     
-    <div class="status">
-      <p class="status-text">Server Status: Online</p>
+    <div class="header-actions">
+      <div class="status-badge">
+        <div class="status-dot"></div>
+        <span id="serverStatus">Server Online</span>
+      </div>
+      <button class="theme-toggle" id="themeBtn" title="Toggle theme">
+        <svg id="themeIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      </button>
     </div>
   </div>
+</header>
+
+<main class="main">
+  <!-- Authentication Section -->
+  <section class="section" id="authSection">
+    <div class="auth-card">
+      <h1 class="auth-title">Welcome Back</h1>
+      <p class="auth-subtitle">Sign in to access your WebServ dashboard</p>
+      
+      <form id="loginForm">
+        <div class="form-group">
+          <label class="form-label" for="username">Username</label>
+          <input 
+            class="form-input" 
+            id="username" 
+            name="username" 
+            type="text" 
+            placeholder="Enter your username"
+            required
+          >
+        </div>
+        
+        <button class="btn btn-primary" type="submit">
+          <span id="loginText">Sign In</span>
+          <div class="loading hidden" id="loginLoading"></div>
+        </button>
+      </form>
+    </div>
+  </section>
+
+  <!-- Welcome Section -->
+  <section class="section hidden" id="welcomeSection">
+    <div class="welcome-card">
+      <h1 class="welcome-title" id="userGreeting">Welcome back!</h1>
+      <p class="welcome-subtitle">Here's your personalized dashboard</p>
+    </div>
+  </section>
+
+  <!-- Dashboard Grid -->
+  <section class="section hidden" id="dashboardSection">
+    <div class="dashboard-grid">
+      <a href="/gallery/index.html" class="dashboard-card">
+        <div class="card-icon card-gallery">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+            <circle cx="9" cy="9" r="2"/>
+            <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+          </svg>
+        </div>
+        <h3 class="card-title">Gallery</h3>
+        <p class="card-description">Image collections</p>
+      </a>
+      
+      <a href="/cgi-bin/cgi_test.html" class="dashboard-card">
+        <div class="card-icon card-cgi">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="16 18 22 12 16 6"/>
+            <polyline points="8 6 2 12 8 18"/>
+          </svg>
+        </div>
+        <h3 class="card-title">CGI Scripts</h3>
+        <p class="card-description">Execute scripts</p>
+      </a>
+      
+      <div class="dashboard-card">
+        <div class="card-icon card-counter">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 3v5h5"/>
+            <path d="M3 8c0-8 8-8 8 0s8 8 8 0"/>
+            <path d="M21 21v-5h-5"/>
+            <path d="M21 16c0 8-8 8-8 0s-8-8-8 0"/>
+          </svg>
+        </div>
+        <h3 class="card-title">Visit Counter</h3>
+        <p class="card-description">Session stats</p>
+        <div class="counter-value" id="visitCount">-</div>
+      </div>
+      
+      <div class="dashboard-card" id="logoutBtn">
+        <div class="card-icon card-logout">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+        </div>
+        <h3 class="card-title">Sign Out</h3>
+        <p class="card-description">End session</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Counter for non-logged users -->
+  <section class="section" id="counterSection">
+    <div class="dashboard-grid">
+      <div class="dashboard-card">
+        <div class="card-icon card-counter">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 3v5h5"/>
+            <path d="M3 8c0-8 8-8 8 0s8 8 8 0"/>
+            <path d="M21 21v-5h-5"/>
+            <path d="M21 16c0 8-8 8-8 0s-8-8-8 0"/>
+          </svg>
+        </div>
+        <h3 class="card-title">Visit Counter</h3>
+        <p class="card-description">Page visits</p>
+        <div class="counter-value" id="visitNotLogged">-</div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="footer-content">
+    <p class="footer-text">
+      Made by Team LM9wdin<br>
+      <a href="https://profile.intra.42.fr/users/hael-ghd" class="team-link">Hael-ghd</a> • 
+      <a href="https://profile.intra.42.fr/users/mthamir" class="team-link">Mthamir</a> • 
+      <a href="https://profile.intra.42.fr/users/mrezki" class="team-link">Mrezki</a>
+    </p>
+  </div>
+</footer>
+
+<script>
+// DOM Elements
+const authSection = document.getElementById('authSection');
+const welcomeSection = document.getElementById('welcomeSection');
+const dashboardSection = document.getElementById('dashboardSection');
+const counterSection = document.getElementById('counterSection');
+const userGreeting = document.getElementById('userGreeting');
+const visitCount = document.getElementById('visitCount');
+const visitNotLogged = document.getElementById('visitNotLogged');
+const loginForm = document.getElementById('loginForm');
+const loginText = document.getElementById('loginText');
+const loginLoading = document.getElementById('loginLoading');
+const logoutBtn = document.getElementById('logoutBtn');
+const themeBtn = document.getElementById('themeBtn');
+const themeIcon = document.getElementById('themeIcon');
+const serverStatus = document.getElementById('serverStatus');
+
+// Theme management
+function updateTheme(theme) {
+  const isLight = theme === 'light';
+  document.body.classList.toggle('light-theme', isLight);
   
-  <footer>Made by Team LM9wdin - Hael-ghd && Mthamir && Mrezki</footer>
+  themeIcon.innerHTML = isLight
+    ? '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>'
+    : '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+}
+
+// API communication
+async function api(params = {}) {
+  try {
+    const qs = new URLSearchParams({ format: 'json', ...params }).toString();
+    const res = await fetch(`/cgi-bin/simple_login.py?${qs}`, { 
+      credentials: 'include',
+      cache: 'no-cache'
+    });
+    
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    }
+    
+    return await res.json();
+  } catch (error) {
+    console.error('API Error:', error);
+    serverStatus.textContent = 'Server Offline';
+    serverStatus.parentElement.querySelector('.status-dot').style.background = 'var(--accent-danger)';
+    throw error;
+  }
+}
+
+// UI state management
+function render(state) {
+  updateTheme(state.theme || 'dark');
+  
+  if (state.login_status) {
+    // Logged in state
+    authSection.classList.add('hidden');
+    welcomeSection.classList.remove('hidden');
+    dashboardSection.classList.remove('hidden');
+    counterSection.classList.add('hidden');
+    
+    userGreeting.textContent = `Welcome back, ${state.username}!`;
+    visitCount.textContent = state.visit_count || '0';
+    
+    // Add entrance animations
+    setTimeout(() => {
+      welcomeSection.style.opacity = '1';
+      dashboardSection.style.opacity = '1';
+    }, 100);
+  } else {
+    // Logged out state
+    authSection.classList.remove('hidden');
+    welcomeSection.classList.add('hidden');
+    dashboardSection.classList.add('hidden');
+    counterSection.classList.remove('hidden');
+    
+    visitNotLogged.textContent = state.visit_count || '0';
+    
+    // Reset login form
+    document.getElementById('username').value = '';
+    loginText.classList.remove('hidden');
+    loginLoading.classList.add('hidden');
+  }
+  
+  // Update server status
+  serverStatus.textContent = 'Server Online';
+  serverStatus.parentElement.querySelector('.status-dot').style.background = 'var(--accent-secondary)';
+}
+
+// Initialize application
+async function bootstrap() {
+  try {
+    const state = await api();
+    render(state);
+  } catch (error) {
+    console.error('Bootstrap failed:', error);
+    // Show error state but keep UI functional
+    render({ login_status: false, visit_count: 0, theme: 'dark' });
+  }
+}
+
+// Event listeners
+loginForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  
+  const username = document.getElementById('username').value.trim() || 'User';
+  
+  // Show loading state
+  loginText.classList.add('hidden');
+  loginLoading.classList.remove('hidden');
+  
+  try {
+    const state = await api({ action: 'login', username });
+    render(state);
+  } catch (error) {
+    console.error('Login failed:', error);
+    // Reset button state on error
+    loginText.classList.remove('hidden');
+    loginLoading.classList.add('hidden');
+  }
+});
+
+logoutBtn.addEventListener('click', async () => {
+  try {
+    const state = await api({ action: 'logout' });
+    render(state);
+  } catch (error) {
+    console.error('Logout failed:', error);
+  }
+});
+
+themeBtn.addEventListener('click', async () => {
+  try {
+    const state = await api({ action: 'theme', toggle: '1' });
+    render(state);
+  } catch (error) {
+    console.error('Theme toggle failed:', error);
+    // Fallback: toggle theme locally
+    const currentTheme = document.body.classList.contains('light-theme') ? 'light' : 'dark';
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    updateTheme(newTheme);
+  }
+});
+
+// Add smooth hover effects to interactive elements
+document.querySelectorAll('.dashboard-card, .btn, .theme-toggle').forEach(element => {
+  element.addEventListener('mouseenter', function() {
+    this.style.transform = this.style.transform + ' scale(1.02)';
+  });
+  
+  element.addEventListener('mouseleave', function() {
+    this.style.transform = this.style.transform.replace(' scale(1.02)', '');
+  });
+});
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', bootstrap);
+
+// Add some interactive polish
+document.addEventListener('mousemove', (e) => {
+  const shapes = document.querySelectorAll('.shape');
+  shapes.forEach((shape, index) => {
+    const speed = (index + 1) * 0.02;
+    const x = (e.clientX * speed) / 100;
+    const y = (e.clientY * speed) / 100;
+    shape.style.transform += ` translate(${x}px, ${y}px)`;
+  });
+});
+</script>
+
 </body>
 </html>
