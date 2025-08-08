@@ -530,6 +530,7 @@ void ParseRequest::StartNewRequest(std::string& buff){
 	SwitchState(METHOD);
 }
 
+// decompress the body if its compressed by gzip deflate ;
 void        ParseRequest::DecompressBody(){
 	z_stream	Strm;
 	memset(&Strm,0,sizeof(Strm));
@@ -613,6 +614,7 @@ const std::vector<std::string>&     ParseRequest::getMatchedLocationAllowedMetho
 	return S->getAllowedMethods();
 }
 
+// get the matched location max body size 
 int     ParseRequest::getMatchedLocationBodySizeMax(){
 	std::string urlpath = Url;
 	const std::vector<Location*>& locations = S->getLocations();
@@ -640,6 +642,7 @@ int     ParseRequest::getMatchedLocationBodySizeMax(){
 	return S->getClientBodyLimit();
 }
 
+// parse the multiparte buffer body 
 void        ParseRequest::ParseMultiPartBufferBody(std::string& None){
 	(void) None;
 	std::string Delimiter = "--" + MultipartBoundary;
@@ -674,6 +677,7 @@ void        ParseRequest::ParseMultiPartBufferBody(std::string& None){
 	SwitchState(FINISH);
 }
 
+// parse the boundary of the multiparte post method
 void	ParseRequest::ParseMultipartBodyBoundary(std::string& None){
 	(void ) None;
 	std::string ContentTypeValue = getHeaderValue("content-type");
