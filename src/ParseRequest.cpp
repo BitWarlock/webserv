@@ -439,7 +439,6 @@ void ParseRequest::parseContentlengthBody(std::string &str){
 	if (static_cast<size_t> (contentLength) == BufferBody.size()){
         if (ContentEncodingType == GZIP || ContentEncodingType == DEFLATE)
 			DecompressBody();
-		}
 
         std::string contentType = getHeaderValue("Content-Type");
         if (getMethod() == "POST" && contentType.find("multipart/form-data") != std::string::npos) {

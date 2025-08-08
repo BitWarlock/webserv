@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/16 16:32:33 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/06/23 21:41:00 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/08/08 22:45:54 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -35,13 +35,8 @@ void    Response::CheckLocations(std::string& path)
 		}
 		else if (urlpath == "/") {
 			while (i < locations.size()){
-<<<<<<< HEAD
 				if (locations[i]->getPath() == "/")
 					return (FromLocation = true, SetLocation(*(locations[i])));
-=======
-			    if (locations[i]->getPath() == "/")
-				    return (FromLocation = true, SetLocation(*(locations[i])));
->>>>>>> origin/hamza
 			}
 			break;
 		}
@@ -51,7 +46,6 @@ void    Response::CheckLocations(std::string& path)
 
 bool    Response::GetFullPath(std::string& path)
 {
-<<<<<<< HEAD
 	if (FromLocation == true)
 	{    
 		if (!location.getRoot().empty())
@@ -72,27 +66,6 @@ bool    Response::GetFullPath(std::string& path)
 		SetPath(ServerBlock.getRoot() + path.erase(0, 1));
 
 	return (true);
-=======
-    if (FromLocation == true)
-    {    
-        if (!location.getRoot().empty())
-        {
-            if (state_path == NORMAL)
-                path.erase(0, location.getPath().size());
-            if (path[0] == '/')
-                path.erase(0, 1);
-            SetPath(location.getRoot() + path);
-        }
-        else if (!ServerBlock.getRoot().empty())
-            SetPath(ServerBlock.getRoot() + path.erase(0, 1));
-        else
-            return (SetState(Internal_Server_Error),
-                ResponseWithError(DEFAULT), false);
-    }
-    else
-        SetPath(ServerBlock.getRoot() + path.erase(0, 1));
-    return (true);
->>>>>>> origin/hamza
 }
 
 bool    Response::CheckAutoIndex(void)
@@ -105,7 +78,6 @@ bool    Response::CheckAutoIndex(void)
 
 void    Response::CheckIndexAccess(std::vector<std::string> indexs)
 {
-<<<<<<< HEAD
 	for (size_t i(0); i < indexs.size(); i++)
 	{
 		std::string join = path + indexs[i];
@@ -118,22 +90,6 @@ void    Response::CheckIndexAccess(std::vector<std::string> indexs)
 		else if (i + 1 == indexs.size())
 			return (SetState(Forbidden), ResponseWithError(NONE));
 	}
-=======
-    for (size_t i(0); i < indexs.size(); i++)
-    {
-        std::string join = path;
-        if (path[path.size() - 1] != '/')
-            join += "/";
-        join += indexs[i];
-        if (access(join.c_str(), F_OK) == 0)
-        {
-            SetPath(join);
-            break ;
-        }
-        else if (i + 1 == indexs.size())
-            return (SetState(Forbidden), ResponseWithError(NONE));
-    }
->>>>>>> origin/hamza
 
 	BuildGetResponse();
 }
@@ -314,7 +270,6 @@ bool    Response::ReturnDirective(void)
 	std::ostringstream   statuscode;
 	std::string         redirecturl;
 
-<<<<<<< HEAD
 	CheckLocations(path);
 
 	if (ServerBlock.getReturnDirective().enabled == false && 
@@ -330,22 +285,6 @@ bool    Response::ReturnDirective(void)
 		statuscode << ServerBlock.getReturnDirective().status_code;
 		redirecturl = ServerBlock.getReturnDirective().target;
 	}
-=======
-    CheckLocations(path);
-    if (ServerBlock.getReturnDirective().enabled == false && 
-        location.getReturnDirective().enabled == false)
-        return (true);
-    else if (FromLocation == true)
-    {
-        statuscode << location.getReturnDirective().status_code;
-        redirecturl = location.getReturnDirective().target;
-    }
-    else
-    {
-        statuscode << ServerBlock.getReturnDirective().status_code;
-        redirecturl = ServerBlock.getReturnDirective().target;
-    }
->>>>>>> origin/hamza
 
 	std::string response = "HTTP/1.1 " + statuscode.str() + " Redirect\r\n";
 	response += "Location: " + redirecturl + "\r\n";
@@ -355,25 +294,12 @@ bool    Response::ReturnDirective(void)
 	return (false);
 }
 
-<<<<<<< HEAD
-
-
-=======
->>>>>>> origin/hamza
 void    Response::GetPageResponse(void)
 {
 	struct stat info;
 
-<<<<<<< HEAD
-	if (ReturnDirective() == false)
-		return ;
-
 	if (GetFullPath(path) == false)
 		return ;
-=======
-    if (GetFullPath(path) == false)
-        return ;
->>>>>>> origin/hamza
 
 	if (stat(path.c_str(), &info) == -1)
 		return (SetState(Not_Found), ResponseWithError(NONE));
@@ -401,14 +327,7 @@ void    Response::BuildDeleteResponse(void)
 
 void    Response::DeleteContentResponse(void)
 {
-<<<<<<< HEAD
 	struct stat info;
-	// std::cout << path << "\n";
-	if (ReturnDirective() == false)
-		return ;
-=======
-    struct stat info;
->>>>>>> origin/hamza
 
 	if (GetFullPath(path) == false)
 		return ;
@@ -442,7 +361,6 @@ void    Response::BuildPostResponse(void)
 
 bool	Response::MultiPart(std::string body)
 {
-<<<<<<< HEAD
 	struct stat	info;
 	std::string	filename;
 
@@ -483,11 +401,11 @@ bool	Response::MultiPart(std::string body)
 			if (mkdir(upload_path.c_str(), 0755) == -1)
 				return (SetState(Internal_Server_Error), ResponseWithError(NONE), false);
 			if (stat(upload_path.c_str(), &info) == -1)
-				return (SetState(Internal_Server_Error), ResponseWithError(NONE), false);
+				return (SetState(Not_Found), ResponseWithError(NONE), false);
 		}
 
 		if (!S_ISDIR(info.st_mode))
-			return (SetState(Conflict), ResponseWithError(NONE), false);
+			return (SetState(Not_Found), ResponseWithError(NONE), false);
 	}
 	else
 	{
@@ -508,77 +426,20 @@ bool	Response::MultiPart(std::string body)
 		else
 			SetPath(upload_path + "/" + filename);
 	}
+	else
+		return (SetState(Bad_Request), ResponseWithError(NONE), false);
 	return true;
-=======
-    struct stat info;
-    std::string filename;
-    size_t  pos = body.find("Content-Disposition:");
-    bool    f_lag(false);
-
-    if (pos != std::string::npos)
-    {
-        size_t end = body.find('\n', pos);
-        if (end != std::string::npos)
-        {
-            std::string line = body.substr(pos, end - pos);
-            if ((pos = line.find("filename=")) != std::string::npos)
-            {
-                size_t start = line.find('"', pos);
-                size_t finish = line.find('"', start + 1);
-                if (start != std::string::npos && finish != std::string::npos)
-                    filename = line.substr(start + 1, finish - (start + 1));
-                f_lag = true;
-            }
-        }
-    }
-    size_t  clrf = body.find("\r\n\r\n");
-
-    if (clrf != std::string::npos)
-        Body += body.substr(clrf + 4);
-
-    if (path[path.size() - 1] == '/')
-    {
-        if (stat(path.c_str(), &info) == -1 || !S_ISDIR(info.st_mode))
-            return (SetState(Not_Found), ResponseWithError(NONE), false);
-
-        else if (f_lag == false || filename.empty())
-            return (SetState(Bad_Request), ResponseWithError(NONE), false);
-        
-        else if (!filename.empty())
-            SetPath(path + "/" + filename);
-    }
-    else
-    {
-        if (stat(path.c_str(), &info) == -1)
-            return (SetState(Created), true);
-        
-        if (S_ISDIR(info.st_mode))
-            return (SetState(Conflict), ResponseWithError(NONE), false);
-    
-        if (access(path.c_str(), W_OK) == -1)
-            return (SetState(Forbidden), ResponseWithError(NONE), false);
-    }
-
-    return (true);
->>>>>>> origin/hamza
 }
 
 bool    Response::Chunked(void)
 {
 	struct stat info;
 
-<<<<<<< HEAD
+	Body = Request.getBufferBody();
 	if (path[path.size() - 1] == '/')
 	{
 		if (stat(path.c_str(), &info) == -1)
 			return (SetState(Not_Found), ResponseWithError(NONE), false);
-=======
-    Body = Request.getBufferBody();
-    if (path[path.size() - 1] == '/')
-    {
-        if (stat(path.c_str(), &info) == -1)
-            return (SetState(Not_Found), ResponseWithError(NONE), false);
->>>>>>> origin/hamza
 
 		if (S_ISDIR(info.st_mode))
 			return (SetState(Conflict), ResponseWithError(NONE), false);
@@ -603,16 +464,8 @@ void    Response::PostContentResponse(void)
 	std::string ContentType = Request.getHeaderValue("content-type");
 	size_t      multipart = ContentType.find("multipart/form-data");
 
-<<<<<<< HEAD
-	if (ReturnDirective() == false)
-		return ;
-
 	if (GetFullPath(path) == false)
 		return ;
-=======
-    if (GetFullPath(path) == false)
-        return ;
->>>>>>> origin/hamza
 
 	if (multipart != std::string::npos)
 	{
@@ -645,7 +498,6 @@ void    Response::PostContentResponse(void)
 			return ;
 	}
 
-<<<<<<< HEAD
 	int fd_file(0);
 
 	if ((fd_file = open(path.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644)) == -1)
@@ -657,14 +509,6 @@ void    Response::PostContentResponse(void)
 	close(fd_file);
 
 	BuildPostResponse();
-=======
-    if (write(fd_file, Body.c_str(), Body.size()) == -1)
-        return (close(fd_file), SetState(Internal_Server_Error), ResponseWithError(NONE));
-    
-    close(fd_file);
-
-    BuildPostResponse();
->>>>>>> origin/hamza
 }
 
 void    Response::ResponseWithOk(void)
@@ -683,7 +527,6 @@ void    Response::ResponseWithOk(void)
 
 std::string Response::DefaultForMatchError(void)
 {
-<<<<<<< HEAD
 	int error = getState();
 
 	if (error == Moved_Permanently)
@@ -714,58 +557,16 @@ std::string Response::DefaultForMatchError(void)
 		return "./error_pages/Not_Implemented.html";
 	else
 		return "./error_pages/HTTP_Version_Not_Supported.html";
-=======
-    int error = getState();
-    
-    if (error == Moved_Permanently)
-        return "./error_pages/Moved_Permanently.html";
-    else if (error == Bad_Request)
-        return "./error_pages/Bad_Request.html";
-    else if (error == Forbidden)
-        return "./error_pages/Forbidden.html";
-    else if (error == Not_Found)
-        return "./error_pages/Not_Found.html";
-    else if (error == Method_Not_Allowed)
-        return "./error_pages/Method_Not_Allowed.html";
-    else if (error == Conflict)
-        return "./error_pages/Conflict.html";
-    else if (error == Length_Required)
-        return "./error_pages/Length_Required.html";
-    else if (error == Content_Too_Large)
-        return "./error_pages/Content_Too_Large.html";
-    else if (error == URI_Too_Long)
-        return "./error_pages/URI_Too_Long.html";
-    else if (error == Unsupported_Media_Type)
-        return "./error_pages/Unsupported_Media_Type.html";
-    else if (error == Request_Header_Fields_Too_Large)
-        return "./error_pages/Request_Header_Fields_Too_Large.html";
-    else if (error == Internal_Server_Error)
-        return "./error_pages/Internal_Server_Error.html";
-    else if (error == Not_Implemented)
-        return "./error_pages/Not_Implemented.html";
-    else
-        return "./error_pages/HTTP_Version_Not_Supported.html";
->>>>>>> origin/hamza
 }
 
 void    Response::ResponseWithError(int serve)
 {
-<<<<<<< HEAD
-	CheckLocations(path);
 	if (serve == DEFAULT)
 	{
 		SetPath(DefaultForMatchError());
 		BuildGetResponse();
 		return ;
 	}
-=======
-    if (serve == DEFAULT)
-    {
-        SetPath(DefaultForMatchError());
-        BuildGetResponse();
-        return ;
-    }
->>>>>>> origin/hamza
 
 	struct stat info;
 	std::string error_page = ServerBlock.getErrorPage(getState());
@@ -803,59 +604,30 @@ bool	Response::shouldExecuteCgi(ParseRequest& request, Server& server)
 
 void    Response::StartForResponse(ParseRequest request, int fd_client)
 {
-<<<<<<< HEAD
 	SetRequest(request);
-	SetBlockServer(BlockServer);
+	SetBlockServer(request.getBlockServer());
 	SetState(request.getErrorNumber());
 	SetPath(request.getUri());
 	SetStatePath(NORMAL);
 	this->fd_client = fd_client;
-	this->ServerBlock = BlockServer;
 
-	// Location* location = findMatchingLocation(Request.getUri(), BlockServer);
-	// if (location && location->isCgiRequest(Request.getUri()) && 
-	// 	(Request.getMethod() == POST || Request.getMethod() == DELETE)) {
-	// 	SetState(Method_Not_Allowed);
-	// 	ResponseWithError(NONE);
-	// 	return;
-	// }
+	if (ReturnDirective() == false)
+		return ;
 
-	if (shouldExecuteCgi(Request, BlockServer))
+	if (shouldExecuteCgi(Request, ServerBlock))
 	{
 		try {
-			handleCgiRequest(Request, BlockServer);
+			handleCgiRequest(Request, ServerBlock);
 		} catch (const std::exception& e) {
 			ResponseWithError(500);
 		} catch (...) {
 			ResponseWithError(500);
 		}
-=======
-    SetRequest(request);
-    SetBlockServer(Request.getBlockServer());
-    SetState(request.getErrorNumber());
-    SetPath(request.getUri());
-    SetStatePath(NORMAL);
-    this->fd_client = fd_client;
-
-    if (ReturnDirective() == false)
-        return ;
-
-    else if (getState() != OK)
-        ResponseWithError(NONE);
->>>>>>> origin/hamza
-
 		return;
 	}
 
-	if (getState() == Method_Not_Allowed)
-		ResponseWithError(NONE);
-
 	else if (getState() != OK)
-	{
-		if (ReturnDirective() == false)
-			return ;
 		ResponseWithError(NONE);
-	}
 
 	else
 		ResponseWithOk();

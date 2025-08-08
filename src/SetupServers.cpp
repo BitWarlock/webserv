@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/21 20:57:28 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/08/08 22:13:29 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/08/08 22:17:27 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -40,11 +40,7 @@ void    SetupServers::CheckPortIp(const std::string& host, const std::string& po
 	{
 		for (size_t s(0); s < servers[i]->getListen().size(); s++)
 		{
-			if ((servers[i]->getListen()[s].first == host || host == "0.0.0.0")
-					&& servers[i]->getListen()[s].second == port)
-			{
-				std::vector<std::pair<std::string, std::string> >& listen_vec = servers[i]->getListen();
-				listen_vec[s].second += "T";
+			if (i == pos_server && s == pos_listen)
 				return ;
 
 			std::string& _port_ = const_cast<std::string&> (servers[i]->getListen()[s].second);
@@ -280,7 +276,7 @@ void    SetupServers::Run(void)
 			{
 				handleSessionManagement(Requests[fd]);
 				Responses[fd].setSessionManager(&sessionManager);
-				Responses[fd].StartForResponse(Requests[fd], GetBlockServer(fd), fd);
+				Responses[fd].StartForResponse(Requests[fd], fd);
 				EraseFd(fd);
 				Requests.erase(fd);
 				Responses.erase(fd);
