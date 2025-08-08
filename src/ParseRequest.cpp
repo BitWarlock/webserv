@@ -430,8 +430,12 @@ void ParseRequest::parseContentlengthBody(std::string &str){
         if (ContentEncodingType == GZIP || ContentEncodingType == DEFLATE){
 			DecompressBody();
 		}
-		if (getMethod() == "POST")
-			return SwitchState(READ_BOUNDARY);
+
+        std::string contentType = getHeaderValue("Content-Type");
+        if (getMethod() == "POST" && contentType.find("multipart/form-data") != std::string::npos) {
+            return SwitchState(READ_BOUNDARY);
+        }
+        
         return (SwitchState(FINISH));
     }
 }
@@ -487,6 +491,7 @@ void ParseRequest::parseChunkedBody(std::string &str){
 
 // a header value fron the readeed request headers ;
 std::string ParseRequest::getHeaderValue(std::string key){
+	toLowerCase(key);
 	std::vector<std::pair<std::string , std::string> >::iterator i;
 	for (i = Headers.begin(); i != Headers.end();i++){
 		if (i->first == key)

@@ -603,16 +603,12 @@ void    Response::ResponseWithError(int serve)
 bool	Response::shouldExecuteCgi(ParseRequest& request, Server& server)
 {
 	Location* location = findMatchingLocation(request.getUri(), server);
-	if (!location) {
+	if (!location)
 		return false;
-	}
 
 	bool is_cgi = location->isCgiRequest(request.getUri());
-
-	if (is_cgi && (request.getMethod() == POST || request.getMethod() == DELETE)) {
+	if (is_cgi && request.getMethod() == "DELETE")
 		return false;
-	}
-
 	return is_cgi;
 }
 
@@ -626,13 +622,13 @@ void    Response::StartForResponse(ParseRequest request, Server BlockServer, int
 	this->fd_client = fd_client;
 	this->ServerBlock = BlockServer;
 
-	Location* location = findMatchingLocation(Request.getUri(), BlockServer);
-	if (location && location->isCgiRequest(Request.getUri()) && 
-		(Request.getMethod() == POST || Request.getMethod() == DELETE)) {
-		SetState(Method_Not_Allowed);
-		ResponseWithError(NONE);
-		return;
-	}
+	// Location* location = findMatchingLocation(Request.getUri(), BlockServer);
+	// if (location && location->isCgiRequest(Request.getUri()) && 
+	// 	(Request.getMethod() == POST || Request.getMethod() == DELETE)) {
+	// 	SetState(Method_Not_Allowed);
+	// 	ResponseWithError(NONE);
+	// 	return;
+	// }
 
 	if (shouldExecuteCgi(Request, BlockServer))
 	{

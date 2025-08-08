@@ -114,6 +114,7 @@ CgiResult Cgi::executePipes(ParseRequest& request)
 		
 		dup2(pipe_in[0], STDIN_FILENO);
 		dup2(pipe_out[1], STDOUT_FILENO);
+		dup2(pipe_out[1], STDERR_FILENO);
 		
 		close(pipe_in[0]);
 		close(pipe_out[1]);
@@ -126,30 +127,38 @@ CgiResult Cgi::executePipes(ParseRequest& request)
 		cleanEnv(env_array);
 		exit(1);
 	}
+
 	close(pipe_in[0]);
 	close(pipe_out[1]);
-	
-	writeCgiInput(request, pipe_in[1]);
+
+	if (request.getMethod() == "POST") {
+		writeCgiInput(request, pipe_in[1]);
+	}
 	close(pipe_in[1]);
 	
 	std::string output = readCgiOutput(pipe_out[0], pid);
 	close(pipe_out[0]);
 	
 	int status;
-	int wait_result = waitpid(pid, &status, WNOHANG);
+	int wait_result;
 	int timeout_count = 0;
 	const int max_timeout = 30;
 	
-	while (wait_result == 0 && timeout_count < max_timeout) {
-		sleep(1);
+	do {
 		wait_result = waitpid(pid, &status, WNOHANG);
-		timeout_count++;
-	}
+		if (wait_result == 0) {
+			if (timeout_count >= max_timeout) {
+				killProcess(pid);
+				waitpid(pid, &status, 0);
+				return CgiResult(false, "CGI script execution timed out");
+			}
+			sleep(1);
+			timeout_count++;
+		}
+	} while (wait_result == 0);
 	
-	if (wait_result == 0) {
-		killProcess(pid);
-		waitpid(pid, &status, 0);
-		return CgiResult(false, "CGI script execution timed out");
+	if (wait_result == -1) {
+		return CgiResult(false, "Error waiting for CGI script");
 	}
 	
 	if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
@@ -198,10 +207,27 @@ std::string	Cgi::readCgiOutput(int pipe_fd, pid_t pid, int timeout_seconds)
 
 void	Cgi::writeCgiInput(ParseRequest& request, int pipe_fd)
 {
-	std::string body = request.getBufferBody();
-	if (!body.empty())
-	{
-		write(pipe_fd, body.c_str(), body.length());
+	if (request.getMethod() == "POST") {
+		std::string body = request.getBufferBody();
+		if (!body.empty()) {
+			const char* data = body.c_str();
+			size_t remaining = body.length();
+			size_t total_written = 0;
+			
+			while (remaining > 0) {
+				ssize_t written = write(pipe_fd, data + total_written, remaining);
+				
+				if (written < 0) {
+					if (errno == EINTR) {
+						continue;
+					}
+					throw std::runtime_error("Failed to write POST data to CGI script");
+				}
+				
+				total_written += written;
+				remaining -= written;
+			}
+		}
 	}
 }
 
@@ -303,14 +329,25 @@ void	Cgi::setupEnv(ParseRequest& request)
 void	Cgi::setBasicEnv(ParseRequest& request)
 {
 	env_vars["REQUEST_METHOD"] = request.getMethod();
-    env_vars["QUERY_STRING"] = request.getQueryString();
-    env_vars["CONTENT_LENGTH"] = intToString(request.getContentLength());
-    env_vars["CONTENT_TYPE"] = request.getHeaderValue("Content-Type");
-    env_vars["SCRIPT_NAME"] = request.getUri();
-    env_vars["PATH_INFO"] = "";
-    env_vars["PATH_TRANSLATED"] = script_path;
+	env_vars["QUERY_STRING"] = request.getQueryString();
+	env_vars["CONTENT_LENGTH"] = intToString(request.getContentLength());
+	env_vars["CONTENT_TYPE"] = request.getHeaderValue("Content-Type");
+	env_vars["SCRIPT_NAME"] = request.getUri();
+	env_vars["PATH_INFO"] = "";
+	env_vars["PATH_TRANSLATED"] = script_path;
+	env_vars["SCRIPT_FILENAME"] = script_path;
+	env_vars["REQUEST_URI"] = request.getUri();
 	env_vars["PATH"] = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin";
-    env_vars["LIBRARY_PATH"] = "/usr/lib/x86_64-linux-gnu:/usr/lib";
+	env_vars["LIBRARY_PATH"] = "/usr/lib/x86_64-linux-gnu:/usr/lib";
+
+	if (request.getMethod() == "POST") {
+		if (env_vars["CONTENT_TYPE"].empty()) {
+			env_vars["CONTENT_TYPE"] = "application/x-www-form-urlencoded";
+		}
+		if (env_vars["CONTENT_LENGTH"].empty()) {
+			env_vars["CONTENT_LENGTH"] = "0";
+		}
+	}
 }
 
 void	Cgi::setRequestEnv(ParseRequest& request)
