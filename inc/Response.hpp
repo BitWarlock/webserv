@@ -146,7 +146,7 @@ class Response{
         
         // Startresponse
         
-        void    StartForResponse(ParseRequest Request, Server BlockServer, int fd_client);
+        void    StartForResponse(ParseRequest Request, int fd_client);
         
         void    ResponseWithError(int serve);
         

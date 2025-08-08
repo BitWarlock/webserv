@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/21 20:57:28 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/06/22 22:36:44 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/08/08 22:13:29 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,24 +30,36 @@ SetupServers::~SetupServers()
 {
 	for (size_t i(0); i < sock_number; i++)
 		close(fd_sockets[i]);
-	// delete &config;
 }
 
-void    SetupServers::CheckPortIp(const std::string& host, const std::string& port, size_t pos_server)
+void    SetupServers::CheckPortIp(const std::string& host, const std::string& port, size_t pos_server, size_t pos_listen)
 {
 	std::vector<Server*>& servers = config.getServers();
 
-	for (size_t i(0); i < pos_server; i++)
+	for (size_t i(0); i <= pos_server; i++)
 	{
 		for (size_t s(0); s < servers[i]->getListen().size(); s++)
 		{
 			if ((servers[i]->getListen()[s].first == host || host == "0.0.0.0")
 					&& servers[i]->getListen()[s].second == port)
 			{
-				// Mark this port as taken by modifying the server's listen vector
 				std::vector<std::pair<std::string, std::string> >& listen_vec = servers[i]->getListen();
 				listen_vec[s].second += "T";
 				return ;
+
+			std::string& _port_ = const_cast<std::string&> (servers[i]->getListen()[s].second);
+			std::string& _host_ = const_cast<std::string&> (servers[i]->getListen()[s].first);
+			std::string&    _port = const_cast<std::string&> (port);
+
+			if (_port_ == port || _port_ == _port + "T")
+			{
+				if (host == "0.0.0.0" && _port_[_port_.size() - 1] != 'T' && _host_ != "0.0.0.0")
+					_port_ += "T";
+				else if (_host_ == host || _host_ == "0.0.0.0")
+				{
+					_port += "T";
+					return ;
+				}
 			}
 		}
 	}
@@ -64,7 +76,7 @@ void    SetupServers::FlagSharedPortIp(void)
 			const std::string &host = servers[i]->getListen()[s].first;
 			const std::string &port = servers[i]->getListen()[s].second;
 
-			CheckPortIp(host, port, i);
+			CheckPortIp(host, port, i, s);
 		}
 	}
 }
@@ -232,13 +244,6 @@ void    SetupServers::EraseFd(int fd)
 	Retreat();
 }
 
-Server	SetupServers::GetBlockServer(int block)
-{
-	std::map<int, Server>::iterator	it = servers.find(block);
-
-	return (it->second);
-}
-
 void    SetupServers::Run(void)
 {
 	std::map<int, ParseRequest> Requests;
@@ -266,7 +271,7 @@ void    SetupServers::Run(void)
 				}
 				else
 				{
-					Requests[fd].startParse(fd, GetBlockServer(fd));
+					Requests[fd].startParse(fd, config);
 					if (Requests[fd].getParseState() == FINISH || Requests[fd].getParseState() == ERROR)
 						AddSocketToEpoll(fd, EPOLLOUT, EPOLL_CTL_MOD);
 				}

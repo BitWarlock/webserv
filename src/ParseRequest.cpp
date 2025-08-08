@@ -21,7 +21,7 @@ const ParseRequest::ParseFuncPtr ParseRequest::ParseTable[] = {
 
 // construct
 ParseRequest::ParseRequest() : errorNumber(200), pos(0), 
-    CurrntParsState(NONE), Method(""), Url(""),
+    CurrntParsState(PARSER_NONE), Method(""), Url(""),
 	HttpProtocolVersion(""),
     chunkedEncoding(false), contentLength(0){
 	BufferBody.clear();
@@ -47,7 +47,7 @@ ParseRequest::ParseRequest() : errorNumber(200), pos(0),
 // }
 // construct with params
 ParseRequest::ParseRequest(Server *server) : errorNumber(200), pos(0), 
-    CurrntParsState(NONE), Method(""), Url(""),
+    CurrntParsState(PARSER_NONE), Method(""), Url(""),
 	HttpProtocolVersion(""),
     S(server), chunkedEncoding(false), contentLength(0){
 	BufferBody.clear();
@@ -85,6 +85,7 @@ std::string&										ParseRequest::getBufferBody()					{ return (BufferBody);}
 size_t												ParseRequest::getContentLength()				{ return (contentLength);}
 std::string&                                        ParseRequest::getBufferDecompressedBody()		{ return (DecompressedBufferBody);}
 std::vector<std::string >&							ParseRequest::getMultipartBuferBody()			{ return (MultipartBufferBody);}
+Server												ParseRequest::getBlockServer() { return *S; }
 
 // setters
 
@@ -93,8 +94,12 @@ void ParseRequest::setMethod(std::string m)     	{ Method = m; }
 void ParseRequest::SwitchState(int Next_State)  	{ CurrntParsState = Next_State; }
 void ParseRequest::setUri(std::string u)        	{ Url = u; }
 void ParseRequest::setVersion(std::string v)    	{ HttpProtocolVersion = v; }
-void ParseRequest::Reset()                      	{ SwitchState(NONE); }
-void ParseRequest::setErrorNumber(int Number)   	{ errorNumber = Number;  SwitchState(ERROR);}
+void ParseRequest::Reset()                      	{ SwitchState(PARSER_NONE); }
+void ParseRequest::setErrorNumber(int Number, std::string ErrorMsg)   	{ 
+	errorNumber = Number;
+	SwitchState(ERROR);
+	std::cerr << RED << "ERROR: " << errorNumber << "  " << ErrorMsg << RESET << std::endl;
+}
 void ParseRequest::ResetBuffPos()               	{ pos = 0; }
 void ParseRequest::setContentEncodingType(int Type)	{ 
 	ContentEncodingType = Type;
@@ -158,13 +163,13 @@ bool ParseRequest::PercentEncoded(size_t &i){
 // checking if the url is valid and define the error number if its not ;
 bool ParseRequest::isValidUrl(){
 	if (Url.size() >= 8192)
-		return (setErrorNumber(414), false);
+		return (setErrorNumber(414, "URI Too Long – Request-URI exceeds maximum length (8192 bytes)"), false);
 	if (Url.empty() || Url[0] != '/')
-		return (setErrorNumber(400), false);
+		return (setErrorNumber(400, "Bad Request – URL is empty or does not start with '/'\n"), false);
 	for (size_t i(0); i < Url.size(); i++)
 	{
 		if ((Url[i] == '%' && !PercentEncoded(i)) || (!Unresreved(Url[i]) && !Reserved(Url[i])))
-			return (setErrorNumber(400), false);
+			return (setErrorNumber(400, "Bad Request – URL contains invalid or incorrectly encoded characters"), false);
 	}
 	return (true);
 }
@@ -192,12 +197,12 @@ void ParseRequest::trimBuff(std::string &str){
 // read and parse  the method ;
 void ParseRequest::parseMethod(std::string &str){
 	if (std::isspace(str[0]))
-		return (setErrorNumber(400));
+		return (setErrorNumber(400, "Bad Request – HTTP method cannot start with whitespace"));
 	pos = str.find(SPACE);
 	if (pos == std::string::npos)
 	{
 		if ((str.find('\r') != std::string::npos) || str.find('\n') != std::string::npos)
-			return (setErrorNumber(400));
+			return (setErrorNumber(400, "Bad Request – Malformed request line or missing URI"));
 		Method += str;
 		str.clear();
 		return (ResetBuffPos());
@@ -205,8 +210,6 @@ void ParseRequest::parseMethod(std::string &str){
 	Method += str.substr(0, pos);
 	str.erase(0, pos + 1);
 	ResetBuffPos();
-	if (!isSupportedMethod(Method))
-	    return (setErrorNumber(isKnownMethod()));
 	SwitchState(URL);
 }
 
@@ -220,7 +223,7 @@ void ParseRequest::parseUrl(std::string &str){
 	if (pos == std::string::npos)
 	{
 		if ((str.find('\r') != std::string::npos) || str.find('\n') != std::string::npos)
-			return (setErrorNumber(400));
+			return (setErrorNumber(400, "Bad Request – Malformed URL or missing HTTP version"));
 		Url.append(str);
 		str.erase(0);
 		return (ResetBuffPos());
@@ -235,6 +238,13 @@ void ParseRequest::parseUrl(std::string &str){
 		Url.erase(pos);
 	}
 	ResetBuffPos();
+	if (!isSupportedMethod(Method)){
+		int numberErr = isKnownMethod();
+		if (numberErr == 501)
+			return (setErrorNumber(numberErr, "Method Not Implemented – Method '" + Method + "' is not supported"));
+		else if (numberErr == 405)
+	    	return (setErrorNumber(numberErr, "Method Not Allowed – Method '" + Method + "' is not allowed for the requested URL"));
+	}
 	SwitchState(HTTPVERSION);
 }
 
@@ -246,10 +256,8 @@ bool ParseRequest::isValidVersion(){
 	}
 	if (HttpProtocolVersion == "HTTP/0.9" || HttpProtocolVersion == "HTTP/2" \
 		|| HttpProtocolVersion == "HTTP/3")
-	{
-		return (setErrorNumber(505), false);
-	}
-	return (setErrorNumber(400), false);
+		return (setErrorNumber(505, "HTTP Version Not Supported – '" + HttpProtocolVersion + "' is not supported by the server"), false);
+	return (setErrorNumber(400, "Bad Request – Malformed or invalid HTTP version: '" + HttpProtocolVersion + "'"), false);
 }
 
 // read and parse the http request  version ;
@@ -263,7 +271,7 @@ void ParseRequest::parseHttpVersion(std::string &str){
 		return (ResetBuffPos());
 	}
 	if (std::isspace(str[pos - 1]))
-		return (setErrorNumber(400));
+		return (setErrorNumber(400, "Bad Request – Unexpected whitespace before CRLF in HTTP version"));
 	HttpProtocolVersion.append(str.substr(0, pos));
 	str.erase(0, pos + 2);
 	if (!isValidVersion())
@@ -296,6 +304,8 @@ bool ParseRequest::validKey(std::string &key){
 // checking for host (a mandatory header that should be in the request headers ) ;
 bool ParseRequest::checkIsThereaHost(){
 	std::string hoststring;
+	if (HttpProtocolVersion == "HTTP/1.0")
+		return true;
 	for (size_t i(0); i < Headers.size(); i++)
 	{
 		if (Headers[i].first == "host" && !Headers[i].second.empty())
@@ -312,7 +322,7 @@ bool ParseRequest::checkIsThereaHost(){
 			return (true);
 		}
 	}
-	return (setErrorNumber(400), false);
+	return (false);
 }
 
 // read and parse the request headers once at a time ;
@@ -324,10 +334,10 @@ void ParseRequest::parseHeaders(std::string &str){
 		Current_header_line = str.substr(0, pos);
 		str.erase(0, pos + 2);
 		if (Current_header_line.size() >= 8192)
-			return (setErrorNumber(431));
+			return (setErrorNumber(431, "Request Header Fields Too Large – Header line exceeds 8192 bytes limit"));
 		pos = Current_header_line.find(':');
 		if (pos == std::string::npos || std::isspace(Current_header_line[pos - 1]))
-			return (setErrorNumber(400));    
+			return (setErrorNumber(400, "Bad Request – Invalid header format (missing colon separator or whitespace before colon)"));    
 		Current_key = Current_header_line.substr(0, pos);
 		toLowerCase(Current_key);
 		SwitchState(HEADER_VALUE);
@@ -337,7 +347,7 @@ void ParseRequest::parseHeaders(std::string &str){
 		trimBuff(Current_value);
 		if (!validKey(Current_key) || Current_key.empty() || \
             isAllSpaces(Current_key) || Current_value.empty()){
-			return (setErrorNumber(400));
+			return (setErrorNumber(400, "Bad Request – Invalid header field (empty name, invalid characters, or missing value)"));
         }
         SwitchState(ADD_HEADER);
 	}
@@ -346,7 +356,7 @@ void ParseRequest::parseHeaders(std::string &str){
 		if (it != NonRepeatablesHeaders.end())
 		{
 			if (it->second)
-				return (setErrorNumber(400));
+				return (setErrorNumber(400, "Bad Request – Duplicate header field (header cannot appear multiple times)"));
 			it->second++;
 		}
 		Headers.push_back(std::make_pair(Current_key, Current_value));
@@ -359,7 +369,7 @@ void ParseRequest::parseHeaders(std::string &str){
 	{
 		str.erase(0, 2);
 		if (!checkIsThereaHost())
-			return (setErrorNumber(400));
+			return (setErrorNumber(400, "Bad Request – Missing or empty 'Host' header (required in HTTP/1.1)"));
 		CheckingForBody();
 		return;
 	}
@@ -392,24 +402,24 @@ void ParseRequest::CheckingForBody(){
 			if (tmp == "chunked")
 				chunkedEncoding = true;
 			else
-				return (setErrorNumber(501));
+				return (setErrorNumber(501, "Not Implemented – Unsupported transfer-encoding (only 'chunked' is supported)"));
 		}
 		if (Headersit->first == "content-length")
 		{
 			contentLengthPresent = true;
 			if (!isNumber(Headersit->second))
-				return (setErrorNumber(400));
+				return (setErrorNumber(400, "Bad Request – Invalid 'Content-Length' header (must be a non-negative integer)"));
 			contentLength = std::atoi(Headersit->second.c_str());
 			if (contentLength < 0)
-			    return (setErrorNumber(400));
+			    return (setErrorNumber(400, "Bad Request – Invalid 'Content-Length' header (cannot be negative)"));
 			if (contentLength > getMatchedLocationBodySizeMax())
-				return setErrorNumber(413);
+				return setErrorNumber(413, "Payload Too Large – Request body exceeds maximum allowed size");
 		}
 	}
 	if (TransferEncodingPresent && contentLengthPresent)
-		return (setErrorNumber(400));
+		return (setErrorNumber(400, "Bad Request – Cannot have both 'Transfer-Encoding' and 'Content-Length' headers"));
 	if (!chunkedEncoding && !contentLengthPresent)
-		return (setErrorNumber(411));
+		return (setErrorNumber(411, "Length Required – Request must include 'Content-Length' or 'Transfer-Encoding: chunked'"));
 	if (chunkedEncoding)
 		return SwitchState(READCHUNKSIZE);
 	SwitchState(CONTENTLENGTHBODY);
@@ -425,9 +435,9 @@ void ParseRequest::parseContentlengthBody(std::string &str){
 	if (static_cast<size_t> (contentLength) > BufferBody.size())
 		return ;
 	if (static_cast<size_t> (contentLength) < BufferBody.size())
-		return (setErrorNumber(400));
+		return (setErrorNumber(400, "Bad Request – Request body exceeds declared 'Content-Length' value"));
 	if (static_cast<size_t> (contentLength) == BufferBody.size()){
-        if (ContentEncodingType == GZIP || ContentEncodingType == DEFLATE){
+        if (ContentEncodingType == GZIP || ContentEncodingType == DEFLATE)
 			DecompressBody();
 		}
 
@@ -459,11 +469,11 @@ void ParseRequest::parseChunkedBody(std::string &str){
 			for (size_t i(0); i < StringChunkSize.size(); i++)
 			{
 				if (!isHexa(StringChunkSize[i]))
-					return (setErrorNumber(400));
+					return (setErrorNumber(400, "Bad Request – Invalid chunk size format (must be hexadecimal)"));
 			}
 			ChunkSize = HexaStringToDecimalNum(StringChunkSize);
 			if (ChunkSize > S->getClientBodyLimit())
-				return (setErrorNumber(413));
+				return (setErrorNumber(413, "Payload Too Large – Chunk size exceeds maximum allowed limit"));
 			str.erase(0, pos + 2);
 			ResetBuffPos();
 			if (ChunkSize == 0){
@@ -504,7 +514,7 @@ std::string ParseRequest::getHeaderValue(std::string key){
 void        ParseRequest::ResetParserf(){
 	errorNumber = 200;
 	ResetBuffPos();
-	CurrntParsState = NONE;
+	CurrntParsState = PARSER_NONE;
 	Current_key.clear();
 	Current_value.clear();
 	Current_header_line.clear();
@@ -572,14 +582,14 @@ void         ParseRequest::CheckContentEncoding(){
 	ResetBuffPos();
 	std::string &valueRefrence = Value;
 	toLowerCase(valueRefrence);
-	if (Value.compare("identity"))
+	if (Value == "identity")
 		return ;
-	else if (Value.compare("deflate"))
+	else if (Value == "deflate")
 		return (setContentEncodingType((DEFLATE)));
-	else if (Value.compare("gzip"))
+	else if (Value == "gzip")
 		return (setContentEncodingType((GZIP)));
 	else
-		return (setErrorNumber(415));
+		return (setErrorNumber(415, "Unsupported Media Type – Unsupported 'Content-Encoding' type (only 'identity', 'gzip', and 'deflate' are supported)"));
 }
 
 // check if the url match a location block on the server to get its allowed methods
@@ -602,12 +612,11 @@ const std::vector<std::string>&     ParseRequest::getMatchedLocationAllowedMetho
 		}
 		else if (urlpath == "/") {
 			while (i < locations.size()){
-			if (locations[i]->getPath() == "/")
-				return locations[i]->getAllowedMethods();
+				if (locations[i]->getPath() == "/")
+					return locations[i]->getAllowedMethods();
 			}
-		}
-		else
 			break;
+		}
 	}
 	return S->getAllowedMethods();
 }
@@ -633,9 +642,8 @@ int     ParseRequest::getMatchedLocationBodySizeMax(){
 			if (locations[i]->getPath() == "/")
 				return locations[i]->getClientBodyLimit();
 			}
-		}
-		else
 			break;
+		}
 	}
 	return S->getClientBodyLimit();
 }
@@ -677,9 +685,9 @@ void        ParseRequest::ParseMultiPartBufferBody(std::string& None){
 void	ParseRequest::ParseMultipartBodyBoundary(std::string& None){
 	(void ) None;
 	std::string ContentTypeValue = getHeaderValue("content-type");
-	if (ContentTypeValue.empty())
-		return SwitchState(FINISH);
 	pos = ContentTypeValue.find("multipart/");
+	if (ContentTypeValue.empty() || pos == std::string::npos)
+		return SwitchState(FINISH);
 	if (pos != std::string::npos){
 		if (ContentTypeValue.find(";") != std::string::npos){
 			pos = ContentTypeValue.find("boundary=");
@@ -690,27 +698,62 @@ void	ParseRequest::ParseMultipartBodyBoundary(std::string& None){
 				}
 			}
 		}
-		return setErrorNumber(400);
+		return setErrorNumber(400, "Bad Request – Invalid or missing boundary parameter in multipart 'Content-Type' header");
 	}
 }
 
+Server*	ParseRequest::findBlockServer(const Config& config, std::string buff)
+{
+	size_t	pos_start = buff.find("Host: ");
+	
+	if (pos_start == std::string::npos)
+		return NULL;
+	
+	pos_start += 6;
+
+	size_t	pos_end = buff.find_first_of("\r\n", pos_start);
+	if (pos_end == std::string::npos)
+		return NULL;
+
+	std::string host_port = buff.substr(pos_start, pos_end - pos_start);
+	size_t pos = host_port.find(":");
+
+	if (pos == std::string::npos)
+		return NULL;
+
+	std::string host = host_port.substr(0, pos);
+	std::string port = host_port.substr(pos + 1, host_port.size());
+
+	Server* match_block = const_cast<Server*> (config.getServer(host, port));
+
+	if (match_block != NULL)
+		return (match_block);
+
+	return (const_cast<Server*> (config.getServer(host, port)));
+}
+
 // start reading and parsing ;
-void ParseRequest::startParse(int fd, Server server){
+void ParseRequest::startParse(int fd, const Config& config){
 	std::string buff;
-	if (CurrntParsState == NONE)
-		S = &server;
 	while(true)
 	{
 		char        str[1000];
 		if (buff.empty()){
 			std::memset(str, 0, sizeof(str));
 			ssize_t bytes = recv(fd, str, 999, 0);
-			if (bytes <= 0 && (CurrntParsState == ERROR || CurrntParsState == FINISH || CurrntParsState == NONE))
+			if (bytes <= 0 && (CurrntParsState == ERROR || CurrntParsState == FINISH || CurrntParsState == PARSER_NONE)){
+				if (CurrntParsState == FINISH)
+					std::cout << GRN << "OK " << YLW << "- HTTP request parsed and validated successfully" << RESET << std::endl;
 				return ;
-			str[bytes] = 0;
+			}
 			if (bytes > 0)
+			{
+				str[bytes] = 0;
 				buff.append(str, bytes);
-			// std::cout << buff;
+			}
+			if (CurrntParsState == PARSER_NONE)
+				S = findBlockServer(config, buff);
+			std::cout << buff;
 		}
 		switch(CurrntParsState){
 			case FINISH:
@@ -725,19 +768,6 @@ void ParseRequest::startParse(int fd, Server server){
 		if (CurrntParsState == FINISH || CurrntParsState == ERROR)
 			break ;
 	}
-	// std::cout << "\n here : "<< getMultipartBuferBody()[0] << " : here\n";
-	// ========  TEST ========//
-	/*________________________________________________________________*/
-
-	// std::vector<std::pair<std::string, std::string> > h = getHeaders();
-	// for (std::vector<std::pair<std::string, std::string> >::const_iterator it = h.begin(); it != h.end(); ++it) {
-    //     std::cout << it->first << ": " << it->second << std::endl;
-    // }
-	// std::cout << "here ++++> "<< getBufferBody() << std::endl;
-	// std::cout << "here toooo == .> "<< getBufferDecompressedBody() << std::endl;
-	// exit(0);
-
-	/*________________________________________________________________*/
 	parseCookies();
 }
 

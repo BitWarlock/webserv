@@ -11,12 +11,17 @@
 #include <zlib.h>
 //#include <brotli/decode.h>
 #include "Server.hpp"
+#include "Config.hpp"
 #define CLRF "\r\n"
 #define SPACE ' '
+#define RED "\033[1;31m"
+#define YLW "\033[1;33m"
+#define RESET "\033[0m"
+#define GRN "\e[0;32m"
 
 enum RequestParser
 {
-    NONE,
+    PARSER_NONE,
     METHOD,
     URL,
     HTTPVERSION,
@@ -77,7 +82,7 @@ class ParseRequest{
 
     public:
         // parse input
-        void        startParse(int fd, Server server);
+        void        startParse(int fd, const Config& config);
         void        StartNewRequest(std::string& buff);
         void        parseMethod(std::string& str);
         void        parseUrl(std::string& str);
@@ -121,7 +126,7 @@ class ParseRequest{
         std::string&                                        getHost();
         std::string&                                        getPort();
         int                                                 getContentEncodingType(int Type);
-
+        Server*                                             findBlockServer(const Config& config, std::string buff);
         std::string&                                        getQueryString(void);
         std::string&                                        getBufferBody(void);
         size_t                                              getContentLength(void);
@@ -129,13 +134,14 @@ class ParseRequest{
         const std::vector<std::string>&                     getMatchedLocationAllowedMethods();
         std::vector<std::string >&							getMultipartBuferBody();
         int                                                 getMatchedLocationBodySizeMax();
+        Server                                              getBlockServer();
 
         // setters
         void        setMethod(std::string m);
         void        setUri(std::string u);
         void        setVersion(std::string v);
         void        SwitchState(int Next_State);
-        void        setErrorNumber(int Number);
+        void        setErrorNumber(int Number, std::string ErrorMsg);
         void        setQueryString(std::string qurieInUrl);
         void        Reset();
         void        ResetBuffPos();

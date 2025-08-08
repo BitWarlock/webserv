@@ -1,0 +1,658 @@
+# C++98 Exception Handling - Complete Guide
+
+## 1. What Are Exceptions?
+
+Exceptions are a mechanism for handling runtime errors in C++. They allow you to separate error-handling code from normal program logic.
+
+### Traditional Error Handling vs Exceptions
+```cpp
+// Traditional approach (error codes)
+int divide(int a, int b, int& result) {
+    if (b == 0) return -1;  // Error code
+    result = a / b;
+    return 0;  // Success
+}
+
+// Exception approach
+int divide(int a, int b) {
+    if (b == 0) throw "Division by zero";
+    return a / b;
+}
+```
+
+---
+
+## 2. Basic Exception Syntax
+
+### The Three Keywords
+
+#### `throw` - Throwing an Exception
+```cpp
+throw expression;
+```
+
+#### `try` - Protected Code Block
+```cpp
+try {
+    // Code that might throw exceptions
+}
+```
+
+#### `catch` - Exception Handler
+```cpp
+catch (exception_type parameter) {
+    // Handle the exception
+}
+```
+
+### Complete Example
+```cpp
+#include <iostream>
+
+int main() {
+    try {
+        int x = 10;
+        int y = 0;
+        
+        if (y == 0) {
+            throw "Cannot divide by zero!";
+        }
+        
+        int result = x / y;
+        std::cout << "Result: " << result << std::endl;
+    }
+    catch (const char* msg) {
+        std::cout << "Error: " << msg << std::endl;
+    }
+    
+    return 0;
+}
+```
+
+---
+
+## 3. Exception Types in C++98
+
+### Built-in Types as Exceptions
+```cpp
+try {
+    throw 42;           // int
+    throw 3.14;         // double
+    throw 'x';          // char
+    throw "Error msg";  // const char*
+}
+catch (int e) {
+    std::cout << "Integer exception: " << e << std::endl;
+}
+catch (double e) {
+    std::cout << "Double exception: " << e << std::endl;
+}
+catch (char e) {
+    std::cout << "Char exception: " << e << std::endl;
+}
+catch (const char* e) {
+    std::cout << "String exception: " << e << std::endl;
+}
+```
+
+### Custom Exception Classes
+```cpp
+class MyException {
+public:
+    const char* message;
+    int code;
+    
+    MyException(const char* msg, int c) : message(msg), code(c) {}
+    
+    const char* what() const { return message; }
+    int getCode() const { return code; }
+};
+
+// Usage
+try {
+    throw MyException("Custom error occurred", 100);
+}
+catch (const MyException& e) {
+    std::cout << "Error: " << e.what() << " (Code: " << e.getCode() << ")" << std::endl;
+}
+```
+
+---
+
+## 4. Standard Exception Classes (C++98)
+
+### Exception Hierarchy
+```
+std::exception
+├── std::logic_error
+│   ├── std::domain_error
+│   ├── std::invalid_argument
+│   ├── std::length_error
+│   └── std::out_of_range
+├── std::runtime_error
+│   ├── std::range_error
+│   ├── std::overflow_error
+│   └── std::underflow_error
+└── std::bad_alloc
+```
+
+### Using Standard Exceptions
+```cpp
+#include <iostream>
+#include <stdexcept>
+#include <string>
+
+void testFunction(int value) {
+    if (value < 0) {
+        throw std::invalid_argument("Value cannot be negative");
+    }
+    if (value > 100) {
+        throw std::out_of_range("Value exceeds maximum limit");
+    }
+}
+
+int main() {
+    try {
+        testFunction(-5);
+    }
+    catch (const std::invalid_argument& e) {
+        std::cout << "Invalid argument: " << e.what() << std::endl;
+    }
+    catch (const std::out_of_range& e) {
+        std::cout << "Out of range: " << e.what() << std::endl;
+    }
+    catch (const std::exception& e) {
+        std::cout << "Standard exception: " << e.what() << std::endl;
+    }
+    
+    return 0;
+}
+```
+
+---
+
+## 5. Multiple Catch Blocks
+
+### Order Matters!
+```cpp
+try {
+    // Some code that throws
+}
+catch (const std::invalid_argument& e) {
+    // Handle specific exception first
+    std::cout << "Invalid argument: " << e.what() << std::endl;
+}
+catch (const std::logic_error& e) {
+    // Handle base class second
+    std::cout << "Logic error: " << e.what() << std::endl;
+}
+catch (const std::exception& e) {
+    // Handle most general last
+    std::cout << "General exception: " << e.what() << std::endl;
+}
+catch (...) {
+    // Catch all other exceptions
+    std::cout << "Unknown exception occurred" << std::endl;
+}
+```
+
+### Catch-All Handler
+```cpp
+try {
+    // Code that might throw anything
+}
+catch (...) {
+    std::cout << "Caught an unknown exception" << std::endl;
+    // Cannot access the exception object here
+}
+```
+
+---
+
+## 6. Exception Specifications (C++98)
+
+### Function Exception Specifications
+```cpp
+// Function that throws no exceptions
+void safeFunction() throw() {
+    // This function promises not to throw
+}
+
+// Function that can throw specific exceptions
+void riskyFunction() throw(int, const char*) {
+    // Can only throw int or const char*
+    if (someCondition) throw 42;
+    if (otherCondition) throw "Error message";
+}
+
+// Function with no specification (can throw anything)
+void anyFunction() {
+    // Can throw any type of exception
+}
+```
+
+**Note**: Exception specifications were deprecated and are rarely used in practice.
+
+---
+
+## 7. Stack Unwinding
+
+### How It Works
+When an exception is thrown, the stack is "unwound":
+1. Local objects are destroyed in reverse order of construction
+2. Destructors are called automatically
+3. The search for a matching catch block continues up the call stack
+
+```cpp
+class Resource {
+public:
+    Resource(const char* name) : name_(name) {
+        std::cout << "Acquiring " << name_ << std::endl;
+    }
+    
+    ~Resource() {
+        std::cout << "Releasing " << name_ << std::endl;
+    }
+    
+private:
+    const char* name_;
+};
+
+void level3() {
+    Resource r3("Resource 3");
+    throw std::runtime_error("Error in level 3");
+}
+
+void level2() {
+    Resource r2("Resource 2");
+    level3();
+}
+
+void level1() {
+    Resource r1("Resource 1");
+    level2();
+}
+
+int main() {
+    try {
+        level1();
+    }
+    catch (const std::exception& e) {
+        std::cout << "Caught: " << e.what() << std::endl;
+    }
+    
+    return 0;
+}
+
+// Output:
+// Acquiring Resource 1
+// Acquiring Resource 2
+// Acquiring Resource 3
+// Releasing Resource 3
+// Releasing Resource 2
+// Releasing Resource 1
+// Caught: Error in level 3
+```
+
+---
+
+## 8. Exception Safety
+
+### The Three Guarantees
+
+#### 1. Basic Exception Safety
+- No resource leaks
+- Object remains in valid state
+```cpp
+class SafeClass {
+    int* data;
+public:
+    SafeClass() : data(new int[100]) {}
+    
+    ~SafeClass() { delete[] data; }
+    
+    void riskyOperation() {
+        // Even if this throws, destructor will clean up
+        someRiskyFunction();
+    }
+};
+```
+
+#### 2. Strong Exception Safety
+- Either succeeds completely or leaves unchanged
+```cpp
+class Container {
+    std::vector<int> data;
+public:
+    void push_back_safe(int value) {
+        std::vector<int> temp = data;  // Copy current state
+        temp.push_back(value);         // Modify copy
+        data = temp;                   // Commit changes (no-throw)
+    }
+};
+```
+
+#### 3. No-throw Guarantee
+- Function never throws exceptions
+```cpp
+class NoThrowClass {
+public:
+    // Destructors should never throw
+    ~NoThrowClass() throw() {
+        // Cleanup code that cannot fail
+    }
+    
+    // Swap operations should be no-throw
+    void swap(NoThrowClass& other) throw() {
+        // Simple pointer/reference swaps
+    }
+};
+```
+
+---
+
+## 9. RAII (Resource Acquisition Is Initialization)
+
+### The RAII Pattern
+```cpp
+class FileHandler {
+private:
+    FILE* file;
+    
+public:
+    FileHandler(const char* filename) {
+        file = fopen(filename, "r");
+        if (!file) {
+            throw std::runtime_error("Cannot open file");
+        }
+    }
+    
+    ~FileHandler() {
+        if (file) {
+            fclose(file);
+        }
+    }
+    
+    // Prevent copying to avoid double-close
+    FileHandler(const FileHandler&);            // Not implemented
+    FileHandler& operator=(const FileHandler&); // Not implemented
+    
+    FILE* get() { return file; }
+};
+
+// Usage
+void processFile() {
+    FileHandler fh("data.txt");  // Automatically opens
+    
+    // Use file through fh.get()
+    // File is automatically closed when fh goes out of scope
+    // Even if an exception is thrown!
+}
+```
+
+---
+
+## 10. Best Practices
+
+### DO's
+```cpp
+// 1. Throw by value, catch by reference
+try {
+    throw MyException("Error");  // Throw by value
+}
+catch (const MyException& e) {   // Catch by const reference
+    // Handle exception
+}
+
+// 2. Use standard exceptions when possible
+if (index >= size) {
+    throw std::out_of_range("Index out of bounds");
+}
+
+// 3. Create exception hierarchies
+class NetworkException : public std::runtime_error {
+public:
+    NetworkException(const std::string& msg) : std::runtime_error(msg) {}
+};
+
+class ConnectionException : public NetworkException {
+public:
+    ConnectionException(const std::string& msg) : NetworkException(msg) {}
+};
+```
+
+### DON'Ts
+```cpp
+// 1. Don't throw in destructors
+class BadClass {
+public:
+    ~BadClass() {
+        // NEVER do this!
+        // throw std::runtime_error("Error in destructor");
+    }
+};
+
+// 2. Don't catch and ignore
+try {
+    riskyOperation();
+}
+catch (...) {
+    // DON'T do this - silently ignoring exceptions
+}
+
+// 3. Don't throw raw pointers
+// throw new MyException();  // DON'T - causes memory leaks
+```
+
+---
+
+## 11. Memory Management with Exceptions
+
+### Problem: Exception Safety with Dynamic Memory
+```cpp
+void problematicFunction() {
+    int* ptr1 = new int[100];
+    int* ptr2 = new int[200];  // If this throws, ptr1 leaks!
+    
+    riskyOperation();  // If this throws, both pointers leak!
+    
+    delete[] ptr1;
+    delete[] ptr2;
+}
+```
+
+### Solution: RAII with Smart Pointers (C++98 auto_ptr)
+```cpp
+#include <memory>
+
+void safeFunction() {
+    std::auto_ptr<int> ptr1(new int[100]);  // Note: auto_ptr is deprecated
+    std::auto_ptr<int> ptr2(new int[200]);
+    
+    riskyOperation();  // Safe - destructors will clean up
+    
+    // Automatic cleanup when going out of scope
+}
+
+// Better: Custom RAII wrapper
+template<typename T>
+class ArrayPtr {
+private:
+    T* ptr;
+public:
+    explicit ArrayPtr(T* p) : ptr(p) {}
+    ~ArrayPtr() { delete[] ptr; }
+    
+    T& operator*() { return *ptr; }
+    T* operator->() { return ptr; }
+    T* get() { return ptr; }
+    
+    // Prevent copying
+    ArrayPtr(const ArrayPtr&);
+    ArrayPtr& operator=(const ArrayPtr&);
+};
+```
+
+---
+
+## 12. Practical Examples
+
+### Example 1: File Processing with Exception Safety
+```cpp
+#include <iostream>
+#include <fstream>
+#include <stdexcept>
+
+class FileProcessor {
+public:
+    void processFile(const char* filename) {
+        std::ifstream file(filename);
+        
+        if (!file.is_open()) {
+            throw std::runtime_error("Cannot open file");
+        }
+        
+        std::string line;
+        int lineNumber = 0;
+        
+        while (std::getline(file, line)) {
+            ++lineNumber;
+            
+            try {
+                processLine(line);
+            }
+            catch (const std::exception& e) {
+                // Add context to the exception
+                throw std::runtime_error(
+                    std::string("Error at line ") + 
+                    intToString(lineNumber) + ": " + e.what()
+                );
+            }
+        }
+        
+        // File automatically closed by destructor
+    }
+    
+private:
+    void processLine(const std::string& line) {
+        if (line.empty()) {
+            throw std::invalid_argument("Empty line not allowed");
+        }
+        
+        // Process the line...
+    }
+    
+    std::string intToString(int value) {
+        // Simple int to string conversion for C++98
+        char buffer[32];
+        sprintf(buffer, "%d", value);
+        return std::string(buffer);
+    }
+};
+```
+
+### Example 2: Container with Exception Safety
+```cpp
+class SafeVector {
+private:
+    int* data;
+    size_t size_;
+    size_t capacity_;
+    
+public:
+    SafeVector() : data(0), size_(0), capacity_(0) {}
+    
+    ~SafeVector() {
+        delete[] data;
+    }
+    
+    SafeVector(const SafeVector& other) : data(0), size_(0), capacity_(0) {
+        if (other.size_ > 0) {
+            data = new int[other.capacity_];  // May throw
+            
+            // Copy elements (if this throws, destructor cleans up)
+            for (size_t i = 0; i < other.size_; ++i) {
+                data[i] = other.data[i];
+            }
+            
+            size_ = other.size_;
+            capacity_ = other.capacity_;
+        }
+    }
+    
+    SafeVector& operator=(const SafeVector& other) {
+        if (this != &other) {
+            SafeVector temp(other);  // Copy constructor (may throw)
+            swap(temp);              // No-throw swap
+        }
+        return *this;
+    }
+    
+    void push_back(int value) {
+        if (size_ == capacity_) {
+            size_t newCapacity = capacity_ == 0 ? 1 : capacity_ * 2;
+            int* newData = new int[newCapacity];  // May throw
+            
+            // Copy existing elements
+            for (size_t i = 0; i < size_; ++i) {
+                newData[i] = data[i];
+            }
+            
+            delete[] data;
+            data = newData;
+            capacity_ = newCapacity;
+        }
+        
+        data[size_] = value;
+        ++size_;
+    }
+    
+    int& at(size_t index) {
+        if (index >= size_) {
+            throw std::out_of_range("Index out of range");
+        }
+        return data[index];
+    }
+    
+    size_t size() const { return size_; }
+    
+private:
+    void swap(SafeVector& other) throw() {
+        // No-throw swap
+        int* tempData = data;
+        size_t tempSize = size_;
+        size_t tempCapacity = capacity_;
+        
+        data = other.data;
+        size_ = other.size_;
+        capacity_ = other.capacity_;
+        
+        other.data = tempData;
+        other.size_ = tempSize;
+        other.capacity_ = tempCapacity;
+    }
+};
+```
+
+---
+
+## Key Takeaways
+
+1. **Always use RAII** for resource management
+2. **Throw by value, catch by const reference**
+3. **Order catch blocks from specific to general**
+4. **Never throw in destructors**
+5. **Use standard exception classes when possible**
+6. **Provide strong exception safety guarantees when feasible**
+7. **Clean up resources properly during stack unwinding**
+8. **Write exception-safe code from the beginning**
+
+Exception handling in C++98 requires careful attention to resource management and object lifetimes, but when done correctly, it provides a robust error-handling mechanism that separates error handling from normal program logic.
+
+
+
+GET / HTTP/1.1
+dfjdkfd
+
+
+GET / HTTP/1.1
