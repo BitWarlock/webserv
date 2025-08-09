@@ -86,7 +86,8 @@ enum ResponseNumberState
     Request_Header_Fields_Too_Large = 431,
     Internal_Server_Error = 500,
     Not_Implemented = 501,
-    HTTP_Version_Not_Supported = 505,   
+    Bad_Gateway = 502,
+    HTTP_Version_Not_Supported = 505, 
 };
 
 class Response{

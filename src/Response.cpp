@@ -555,6 +555,8 @@ std::string Response::DefaultForMatchError(void)
 		return "./error_pages/Internal_Server_Error.html";
 	else if (error == Not_Implemented)
 		return "./error_pages/Not_Implemented.html";
+	else if (error == Bad_Gateway)
+		return "./error_pages/Bad_Gateway.html";
 	else
 		return "./error_pages/HTTP_Version_Not_Supported.html";
 }
@@ -599,6 +601,7 @@ bool	Response::shouldExecuteCgi(ParseRequest& request, Server& server)
 	bool is_cgi = location->isCgiRequest(request.getUri());
 	if (is_cgi && request.getMethod() == "DELETE")
 		return false;
+
 	return is_cgi;
 }
 
@@ -618,17 +621,13 @@ void    Response::StartForResponse(ParseRequest request, int fd_client)
 	{
 		try {
 			handleCgiRequest(Request, ServerBlock);
-		} catch (const std::exception& e) {
-			ResponseWithError(500);
 		} catch (...) {
 			ResponseWithError(500);
 		}
 		return;
 	}
-
 	else if (getState() != OK)
 		ResponseWithError(NONE);
-
 	else
 		ResponseWithOk();
 }
@@ -639,33 +638,21 @@ void	Response::handleCgiRequest(ParseRequest& request, Server& server)
 	{
 		Location* location = findMatchingLocation(request.getUri(), server);
 		if (!location)
-		{
-			ResponseWithError(404);
-			return;
-		}
+			return (SetState(404), ResponseWithError(NONE));
 
 		if (!location->isCgiRequest(request.getUri()))
-		{
-			ResponseWithError(404);
-			return;
-		}
+			return (SetState(404), ResponseWithError(NONE));
 
 		std::string script_path = getScriptPath(*location, request.getUri());
 
-		if (script_path.empty())
-		{
-			ResponseWithError(404);
-			return;
-		}
+		if (script_path.empty() || access(script_path.c_str(), F_OK | R_OK) != 0)
+			return (SetState(404), ResponseWithError(NONE));
 
 		std::string file_extension = getFileExtension(request.getUri());
 		std::string interpreter = location->getCgiInterpreter(file_extension);
 
 		if (interpreter.empty())
-		{
-			ResponseWithError(500);
-			return;
-		}
+			return (SetState(500), ResponseWithError(NONE));
 
 		Cgi cgi(script_path, interpreter);
 		CgiResult result = cgi.execute(request);
@@ -673,11 +660,12 @@ void	Response::handleCgiRequest(ParseRequest& request, Server& server)
 		if (result.success)
 			sendCgiResponse(result);
 		else
-			ResponseWithError(502);
+			return (SetState(502), ResponseWithError(NONE));
 	}
 	catch (const std::exception& e)
 	{
-		ResponseWithError(500);
+		SetState(500);
+		ResponseWithError(NONE);
 	}
 }
 
@@ -715,7 +703,6 @@ Location*	Response::findMatchingLocation(const std::string& uri, Server& server)
 			best_length = location_path.length();
 		}
 	}
-
 	return best_match;
 }
 

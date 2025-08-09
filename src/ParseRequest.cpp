@@ -767,6 +767,7 @@ void ParseRequest::startParse(int fd, const Config& config){
 		if (CurrntParsState == FINISH || CurrntParsState == ERROR)
 			break ;
 	}
+	std::cout << " -- : " << CurrntParsState << "\n";
 	parseCookies();
 }
 

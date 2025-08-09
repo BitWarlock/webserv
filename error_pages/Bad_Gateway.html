@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>502 Bad Gateway</title>
+  <style>
+    body {
+      background-color: #0a0a1a; /* dark navy */
+      color: #00ffff; /* neon cyan */
+      font-family: 'Courier New', Courier, monospace;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      padding: 2rem;
+    }
+
+    .terminal {
+      background-color: #111122; /* deep navy */
+      border: 2px solid #ff00ff; /* bright magenta */
+      padding: 2rem;
+      max-width: 700px;
+      width: 100%;
+      box-shadow: 0 0 20px #ff00ff;
+    }
+
+    .error-code {
+      font-size: 6rem;
+      font-weight: bold;
+      color: #ff00ff; /* bright magenta */
+      text-align: center;
+      margin-bottom: 2rem;
+      letter-spacing: 0.5rem;
+      text-shadow: 0 0 10px #ff00ff;
+    }
+
+    .line {
+      white-space: nowrap;
+      overflow: hidden;
+      border-right: 3px solid #00ffff; /* neon cyan cursor */
+      font-size: 1.3rem;
+      margin-bottom: 1rem;
+      width: 0;
+      opacity: 0;
+      color: #00ffff; /* neon cyan */
+    }
+
+    .line.show {
+      animation: typing 0.6s steps(50, end) forwards;
+    }
+
+    a {
+      color: #7CFC00; /* light green */
+      text-decoration: underline;
+      display: block;
+      margin-top: 2rem;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      text-align: center;
+      font-size: 1.2rem;
+    }
+
+    a.visible {
+      opacity: 1;
+    }
+
+    @keyframes typing {
+      from { width: 0; opacity: 1; }
+      to { width: 100%; opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="terminal">
+    <div class="error-code">502</div>
+    <div class="line" id="line1">> Bad Gateway encountered.</div>
+    <div class="line" id="line2">> The server was acting as a gateway or proxy</div>
+    <div class="line" id="line3">> and received an invalid response from the upstream server.</div>
+    <a href="/" id="link">[ Return to base ]</a>
+  </div>
+
+  <script>
+    const lines = [
+      document.getElementById('line1'),
+      document.getElementById('line2'),
+      document.getElementById('line3')
+    ];
+    const delay = 400;
+
+    lines.forEach((line, index) => {
+      setTimeout(() => {
+        line.classList.add('show');
+      }, delay * index);
+    });
+
+    setTimeout(() => {
+      document.getElementById('link').classList.add('visible');
+    }, delay * lines.length + 500);
+  </script>
+</body>
+</html>
