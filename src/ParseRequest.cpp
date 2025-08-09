@@ -315,7 +315,7 @@ void ParseRequest::parseContentlengthBody(std::string &str){
 
         std::string contentType = getHeaderValue("Content-Type");
 
-		if (getMethod() == "POST" && contentType.find("multipart/form-data") != std::string::npos) {
+		if (getMethod() == "POST" && contentType.find("multipart/") != std::string::npos) {
             return SwitchState(READ_BOUNDARY);
         }
         
@@ -457,7 +457,7 @@ void        ParseRequest::ParseMultiPartBufferBody(std::string& None){
 	SwitchState(FINISH);
 }
 
-// parse cookies if there is 
+// parse cookies if there is
 void	ParseRequest::parseCookies(std::string& None)
 {
 	(void) None;
@@ -1062,6 +1062,9 @@ Server*	ParseRequest::findBlockServer(const Config& config, std::string buff)
 
 	return (const_cast<Server*> (config.getServer(host, port)));
 }
+
+
+
 //_____________________________________________________________________________START_READING_AND_PARSE_____________________________________________________________________________
 
 void ParseRequest::startParse(int fd, const Config& config){
