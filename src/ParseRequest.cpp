@@ -725,7 +725,6 @@ Server*	ParseRequest::findBlockServer(const Config& config, std::string buff)
 
 	Server* match_block = const_cast<Server*> (config.getServerName(host, port));
 
-	std::cout << "Match block: " << match_block << std::endl;
 	if (match_block != NULL)
 		return (match_block);
 
@@ -753,7 +752,6 @@ void ParseRequest::startParse(int fd, const Config& config){
 			}
 			if (CurrntParsState == PARSER_NONE)
 				S = findBlockServer(config, buff);
-			std::cout << buff;
 		}
 		switch(CurrntParsState){
 			case FINISH:
@@ -768,7 +766,6 @@ void ParseRequest::startParse(int fd, const Config& config){
 		if (CurrntParsState == FINISH || CurrntParsState == ERROR)
 			break ;
 	}
-	std::cout << " -- : " << CurrntParsState << "\n";
 	parseCookies();
 }
 

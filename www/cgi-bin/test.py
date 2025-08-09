@@ -2,7 +2,7 @@
 import os
 import sys
 
-prnt("Content-Type: text/html")
+print("Content-Type: text/html")
 print("<html>")
 print("<head><title>Python CGI Test</title></head>")
 print("<body>")
