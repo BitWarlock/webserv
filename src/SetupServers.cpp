@@ -95,8 +95,7 @@ void    SetupServers::CreateSocket(Server& server)
 			{
 				int opt = 1;
 				setsockopt(fd_server, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-				this->fd_sockets.push_back(fd_server);
-				this->servers[fd_server] = Server(server);			
+				this->fd_sockets.push_back(fd_server);			
 				Advance();
 			}
 		}
@@ -218,8 +217,6 @@ void    SetupServers::AcceptConnection(int fd)
 	}
 
 	fd_sockets.push_back(fd_accept);
-	
-	servers[fd_accept] = servers[fd];
 	
 	Advance();
 }

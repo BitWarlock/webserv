@@ -187,6 +187,10 @@ std::string Response::getStrState(void) const
 			return ("Not Implemented");
 		case HTTP_Version_Not_Supported:
 			return ("HTTP Version Not Supported");
+		case Bad_Gateway:
+			return ("Bad Gateway");
+		case Unsupported_Media_Type:
+			return ("Unsupported Media Type");
 		default:
 			return ("OK");
 	}

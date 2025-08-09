@@ -723,8 +723,9 @@ Server*	ParseRequest::findBlockServer(const Config& config, std::string buff)
 	std::string host = host_port.substr(0, pos);
 	std::string port = host_port.substr(pos + 1, host_port.size());
 
-	Server* match_block = const_cast<Server*> (config.getServer(host, port));
+	Server* match_block = const_cast<Server*> (config.getServerName(host, port));
 
+	std::cout << "Match block: " << match_block << std::endl;
 	if (match_block != NULL)
 		return (match_block);
 

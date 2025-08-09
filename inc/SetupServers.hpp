@@ -52,7 +52,6 @@ class SetupServers
         
     private:
         Config&                 config;
-        std::map<int, Server>   servers;
         size_t                  sock_number;
         std::vector<int>        fd_sockets;
         int                     fd_epoll;
