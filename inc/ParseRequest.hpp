@@ -13,12 +13,16 @@
 #include "Server.hpp"
 #include "Config.hpp"
 
+
+
 #define CLRF "\r\n"
 #define SPACE ' '
 #define RED "\033[1;31m"
 #define YLW "\033[1;33m"
 #define RESET "\033[0m"
 #define GRN "\e[0;32m"
+
+// ENUM_HOLDS_PARSING_MACHINE_STATES_____________________________
 
 enum RequestParser
 {
@@ -48,11 +52,15 @@ class ParseRequest{
     
     public:
 
+        // CONSTRUCTORS_AND_DISTRUCTOR_________________________________
+
         ParseRequest();
         ParseRequest(Server *server);
         ~ParseRequest();
 
     private:
+
+        // VARIABLES_____________________________________________________
 
         int                                                 errorNumber;
         size_t                                              pos;
@@ -79,13 +87,21 @@ class ParseRequest{
         std::string                                         Port;
         std::string                                         QueryString;
         std::map<std::string, std::string>					cookies;
+        
+        // FUNCTOIONS_POINTER_PARSING_TABLES_____________________________________________________________
+
         typedef void                                        (ParseRequest::*ParseFuncPtr)(std::string& buffer);
         static  const ParseFuncPtr                          ParseTable[];
 
 
     public:
+        // FINDING_THE_BLOCK_SERVER_FOR_REQUEST__________________________________________________________________
 
-        // parse input
+        Server*                                             findBlockServer(const Config& config, std::string buff);
+        
+        
+        // PARSING_FUNCTIONS________________________________________________
+
         void        startParse(int fd, const Config& config);
         void        StartNewRequest(std::string& buff);
         void        parseMethod(std::string& str);
@@ -95,8 +111,16 @@ class ParseRequest{
         void        CheckingForBody();
         void        parseContentlengthBody(std::string &str);
         void        parseChunkedBody(std::string &str);
+        void		ParseMultipartBodyBoundary(std::string &None);
+        void        ParseMultiPartBufferBody(std::string &None);
+        void        parseCookies(std::string& None);
+
+
+        // PARSING_HELPERS_________________________________________________
+
         int         HexaStringToDecimalNum(std::string s);
         void        trimBuff(std::string &str);
+        void        trimBuffTail(std::string &str);
         void        toLowerCase(std::string &key);
         bool        isAllSpaces(std::string &str);
         bool        validKey(std::string &key);
@@ -104,11 +128,6 @@ class ParseRequest{
         bool        isNumber(std::string toCheck);
         void        ResetParserf();
         void        DecompressBody();
-        void		ParseMultipartBodyBoundary(std::string &None);
-        void        ParseMultiPartBufferBody(std::string &None);
-        void        parseCookies(std::string& None);
-
-        // checkers
         bool        isFinish();
         bool        isSupportedMethod(std::string &RequestMethod);
         int         isKnownMethod();
@@ -120,7 +139,8 @@ class ParseRequest{
         bool        isValidVersion();
         void        CheckContentEncoding();
 
-        // getters
+        // GETTER_FUNCTIONS__________________________________________________
+
         std::string&                                        getMethod();
         std::string&                                        getUri();
         std::string&                                        getVersion();
@@ -131,7 +151,6 @@ class ParseRequest{
         std::string&                                        getHost();
         std::string&                                        getPort();
         int                                                 getContentEncodingType(int Type);
-        Server*                                             findBlockServer(const Config& config, std::string buff);
         std::string&                                        getQueryString(void);
         std::string&                                        getBufferBody(void);
         size_t                                              getContentLength(void);
@@ -142,8 +161,9 @@ class ParseRequest{
         Server                                              getBlockServer();
         std::string                                         getCookie(const std::string& name) const;
         const std::map<std::string, std::string>&           getCookies() const;
+        
+        // SETTER_FUNCTIONS__________________________________________________
 
-        // setters
         void        setMethod(std::string m);
         void        setUri(std::string u);
         void        setVersion(std::string v);

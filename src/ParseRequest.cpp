@@ -477,8 +477,7 @@ void	ParseRequest::parseCookies(std::string& None)
 			std::string name = cookie.substr(0, pos);
 			std::string value = cookie.substr(pos + 1);
 			
-			while (name.length() > 0 && (name[0] == ' ' || name[0] == '\t'))
-				name.erase(0, 1);
+			trimBuff(name);
 
 			while (name.length() > 0 && (name[name.length() - 1] == ' ' || name[name.length() - 1] == '\t'))
 				name.erase(name.length() - 1, 1);
@@ -851,6 +850,18 @@ void ParseRequest::trimBuff(std::string &str){
 
 	ResetBuffPos();
 }
+
+// trimming a buffer if there is a spaces at the begining ;
+void ParseRequest::trimBuffTail(std::string &str){
+
+	pos = str.find_last_not_of(" ");
+
+	if (pos != std::string::npos)
+		str.erase(pos);
+
+	ResetBuffPos();
+}
+
 
 // check request verison and define the error number if its not valid ;
 bool ParseRequest::isValidVersion(){
