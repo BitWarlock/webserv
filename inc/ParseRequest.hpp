@@ -9,9 +9,10 @@
 #include <sys/socket.h>
 #include <cstring>
 #include <zlib.h>
-//#include <brotli/decode.h>
+#include <brotli/decode.h>
 #include "Server.hpp"
 #include "Config.hpp"
+
 #define CLRF "\r\n"
 #define SPACE ' '
 #define RED "\033[1;31m"
@@ -33,6 +34,7 @@ enum RequestParser
     READCHUNK,
 	READ_BOUNDARY,
 	READ_MULTIPART_BODY,
+    PARSE_COUCKIES,
     PARSEARRAYSIZE,
     FINISH,
     ERROR,
@@ -43,14 +45,15 @@ enum RequestParser
 };
 
 class ParseRequest{
+    
     public:
+
         ParseRequest();
         ParseRequest(Server *server);
-        // ParseRequest(ParseRequest& other);
-        // ParseRequest& operator=(const ParseRequest& other);
         ~ParseRequest();
 
     private:
+
         int                                                 errorNumber;
         size_t                                              pos;
         int                                                 CurrntParsState;
@@ -81,6 +84,7 @@ class ParseRequest{
 
 
     public:
+
         // parse input
         void        startParse(int fd, const Config& config);
         void        StartNewRequest(std::string& buff);
@@ -102,6 +106,7 @@ class ParseRequest{
         void        DecompressBody();
         void		ParseMultipartBodyBoundary(std::string &None);
         void        ParseMultiPartBufferBody(std::string &None);
+        void        parseCookies(std::string& None);
 
         // checkers
         bool        isFinish();
@@ -135,6 +140,8 @@ class ParseRequest{
         std::vector<std::string >&							getMultipartBuferBody();
         int                                                 getMatchedLocationBodySizeMax();
         Server                                              getBlockServer();
+        std::string                                         getCookie(const std::string& name) const;
+        const std::map<std::string, std::string>&           getCookies() const;
 
         // setters
         void        setMethod(std::string m);
@@ -146,9 +153,6 @@ class ParseRequest{
         void        Reset();
         void        ResetBuffPos();
         void        setContentEncodingType(int Type);
-        void        parseCookies();
-        std::string getCookie(const std::string& name) const;
-        const std::map<std::string, std::string>& getCookies() const;
 };
 
 #endif
