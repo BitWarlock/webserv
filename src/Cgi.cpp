@@ -176,20 +176,17 @@ std::string	Cgi::readCgiOutput(int pipe_fd, pid_t pid, int timeout_seconds)
 	(void)pid;
 	std::string output;
 	char buffer[4096];
-	fd_set read_fds;
-	struct timeval timeout;
 	
-	FD_ZERO(&read_fds);
-	FD_SET(pipe_fd, &read_fds);
-	
-	timeout.tv_sec = timeout_seconds;
-	timeout.tv_usec = 0;
+	int flags = fcntl(pipe_fd, F_GETFL, 0);
+	fcntl(pipe_fd, F_SETFL, flags | O_NONBLOCK);
 	
 	const size_t max_output_size = 1024 * 1024;
+	time_t start_time = time(NULL);
 	
-	while (select(pipe_fd + 1, &read_fds, NULL, NULL, &timeout) > 0)
+	while (time(NULL) - start_time < timeout_seconds)
 	{
 		ssize_t bytes_read = read(pipe_fd, buffer, sizeof(buffer) - 1);
+		
 		if (bytes_read > 0)
 		{
 			buffer[bytes_read] = '\0';
@@ -199,8 +196,24 @@ std::string	Cgi::readCgiOutput(int pipe_fd, pid_t pid, int timeout_seconds)
 				break;
 		}
 		else if (bytes_read == 0)
+		{
 			break;
+		}
+		else if (bytes_read == -1)
+		{
+			if (errno == EAGAIN || errno == EWOULDBLOCK)
+			{
+				usleep(10000);
+				continue;
+			}
+			else
+			{
+				break;
+			}
+		}
 	}
+	
+	fcntl(pipe_fd, F_SETFL, flags);
 	
 	return output;
 }

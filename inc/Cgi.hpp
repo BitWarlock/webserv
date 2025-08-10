@@ -10,6 +10,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <sys/stat.h>
+#include <errno.h>
 #include "ParseRequest.hpp"
 #include "Server.hpp"
 #include <map>

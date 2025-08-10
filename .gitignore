@@ -5,6 +5,8 @@
 .vscode/
 objs/
 
+error_pages/listening_page.html
+
 # Compiled Object files
 *.slo
 *.lo
