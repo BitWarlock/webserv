@@ -310,8 +310,10 @@ void ParseRequest::parseContentlengthBody(std::string &str){
 		return (setErrorNumber(400, "Bad Request – Request body exceeds declared 'Content-Length' value"));
 
 	if (static_cast<size_t> (contentLength) == BufferBody.size()){
-        if (ContentEncodingType == GZIP || ContentEncodingType == DEFLATE)
+        if (ContentEncodingType == GZIP || ContentEncodingType == DEFLATE){
 			DecompressBody();
+			BufferBody = getBufferDecompressedBody();
+		}
 
         std::string contentType = getHeaderValue("Content-Type");
 
@@ -350,8 +352,10 @@ void ParseRequest::parseChunkedBody(std::string &str){
 			ResetBuffPos();
 
 			if (ChunkSize == 0){
-				if (ContentEncodingType == GZIP || ContentEncodingType == DEFLATE)
+				if (ContentEncodingType == GZIP || ContentEncodingType == DEFLATE){
 					DecompressBody();
+					BufferBody = getBufferDecompressedBody();
+				}
 
 				if (getMethod() == "POST" && getHeaderValue("content-type").find("multipart/") != std::string::npos)
 					return SwitchState(READ_BOUNDARY);
@@ -512,7 +516,7 @@ void        ParseRequest::DecompressBody(){
 	Strm.opaque = Z_NULL;
 	Strm.next_in = (Bytef *)BufferBody.data();
 	Strm.avail_in = BufferBody.size();
-
+	std::cout << BufferBody <<"\n" ;
 	if (inflateInit2(&Strm, Bits) != Z_OK)
 		return (setErrorNumber(400, "Decompressing The Body Fails "));
 
@@ -526,14 +530,14 @@ void        ParseRequest::DecompressBody(){
 		ret = inflate(&Strm, Z_NO_FLUSH);
 		if (ret != Z_OK && ret != Z_STREAM_END){
 			inflateEnd(&Strm);
-			return (setErrorNumber(400, "Decompressing the body Fails "));
+			return (setErrorNumber(400, "Decompressing the body Fails 2222"));
 		}
-	
 		DecompressedBufferBody.append(outbuffer, sizeof(outbuffer) - Strm.avail_out);
+		
 	}
 	
 	inflateEnd(&Strm);
-	
+
 	SwitchState(FINISH);
 }
 
@@ -1102,7 +1106,7 @@ void ParseRequest::startParse(int fd, const Config& config){
 				str[bytes] = 0;
 				buff.append(str, bytes);
 			}
-
+			std::cout << buff << "\n";
 			if (CurrntParsState == PARSER_NONE)
 				S = findBlockServer(config, buff);
 		}
@@ -1117,7 +1121,7 @@ void ParseRequest::startParse(int fd, const Config& config){
 						break;
 			}
 		}
-
+		std::cout << "THis is the BOdy >>  " << BufferBody << "\n";
 		if (CurrntParsState == FINISH || CurrntParsState == ERROR)
 			break ;
 	}
