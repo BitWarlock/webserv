@@ -26,7 +26,7 @@ ParseRequest::ParseRequest() : errorNumber(200), pos(0),
 
 	NonRepeatablesHeaders["authorization"] = 0;
 
-	NonRepeatablesHeaders["user-agent"] = 0;
+	NonRepeatablesHeaders["user-agent\t"] = 0;
 
 	NonRepeatablesHeaders["connection"] = 0;
 
@@ -1095,10 +1095,17 @@ void ParseRequest::startParse(int fd, const Config& config, Server* server){
 
 			ssize_t bytes = recv(fd, str, 999, 0);
 
-			if (bytes <= 0 && (CurrntParsState == ERROR || CurrntParsState == FINISH || CurrntParsState == PARSER_NONE)){
-				if (CurrntParsState == FINISH)
-					std::cout << GRN << "OK " << YLW << "- HTTP request parsed and validated successfully" << RESET << std::endl;
-				return ;
+			if (bytes == 0){
+				if (CurrntParsState == ERROR || CurrntParsState == FINISH || CurrntParsState == PARSER_NONE){
+					if (CurrntParsState == FINISH)
+						std::cout << GRN << "OK " << YLW << "- HTTP request parsed and validated successfully" << RESET << std::endl;
+					return ;
+				}
+				setErrorNumber(400, "Bad Request – Client closed connection before completing the request");
+				return;
+			}
+			if (bytes < 0){
+				return;
 			}
 
 			if (bytes > 0)
