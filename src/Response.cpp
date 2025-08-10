@@ -12,7 +12,7 @@
 
 #include "../inc/Response.hpp"
 
-Response::Response() : sessionManager(NULL) {}
+Response::Response() : sessionManager(NULL), responseBody(""){}
 
 Response::~Response(){}   
 
@@ -243,7 +243,7 @@ void    Response::BuildGetResponse(void)
 
 	oss << getState();
 
-	fd = open(path.c_str(), O_RDONLY);
+	std::ifstream	fd(path.c_str());
 
 	struct stat info;
 
@@ -258,15 +258,13 @@ void    Response::BuildGetResponse(void)
 	addCookiesToHeaders();
 	responseBody += "Connection: close\r\n\r\n";
 
-	send(fd_client, responseBody.c_str(), std::strlen(responseBody.c_str()), MSG_NOSIGNAL);
+	std::string	line;
 
-	char buffer[4096];
-	ssize_t n(0);
+	getline(fd, line, '\0');
 
-	while ((n = read(fd, buffer, sizeof(buffer))) > 0)
-		send(fd_client, buffer, n, MSG_NOSIGNAL);
+	responseBody += line;
 
-	close(fd);
+	fd.close();
 }
 
 bool    Response::ReturnDirective(void)
@@ -294,7 +292,7 @@ bool    Response::ReturnDirective(void)
 	responseBody += "Location: " + redirecturl + "\r\n";
 	responseBody += "Content-Length: 0\r\n";
 	responseBody += "Connection: close\r\n\r\n";
-	send(fd_client, responseBody.c_str(), std::strlen(responseBody.c_str()), MSG_NOSIGNAL);
+
 	return (false);
 }
 
@@ -325,8 +323,6 @@ void    Response::BuildDeleteResponse(void)
 	responseBody = "HTTP/1.1 204 No Content\r\n";
 	responseBody += "Content-Length: 0\r\n";
 	responseBody += "Connection: close\r\n\r\n";
-
-	send(fd_client, responseBody.c_str(), std::strlen(responseBody.c_str()), MSG_NOSIGNAL);
 }
 
 void    Response::DeleteContentResponse(void)
@@ -359,8 +355,6 @@ void    Response::BuildPostResponse(void)
 	headers += "Connection: close\r\n\r\n";
 
 	responseBody = headers + body;
-
-	send(fd_client, responseBody.c_str(), responseBody.size(), MSG_NOSIGNAL);
 }
 
 bool	Response::MultiPart(std::string body)
@@ -685,8 +679,6 @@ void	Response::sendCgiResponse(const CgiResult& cgi_result)
 	responseBody += "Content-Length: " + intToString(cgi_result.body.length()) + "\r\n";
 	responseBody += "\r\n";
 	responseBody += cgi_result.body;
-
-	send(fd_client, responseBody.c_str(), responseBody.length(), 0);
 }
 
 Location*	Response::findMatchingLocation(const std::string& uri, Server& server)
@@ -736,6 +728,8 @@ std::string	Response::getFileExtension(const std::string& uri)
 }
 
 int     Response::getState() const {return state;}
+
+std::string	Response::GetResponseBody() const {return responseBody;}
 
 std::string Response::getPath() {return path;}
 

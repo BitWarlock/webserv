@@ -271,9 +271,19 @@ void    SetupServers::Run(void)
 			}
 			else if (events[i].events & EPOLLOUT)
 			{
+				size_t bytes(0);
 				handleSessionManagement(Requests[fd]);
 				Responses[fd].setSessionManager(&sessionManager);
 				Responses[fd].StartForResponse(Requests[fd], fd);
+				std::string	ResBody = Responses[fd].GetResponseBody();
+				while (bytes < ResBody.length())
+				{
+					size_t n(0);
+					n = send(fd, ResBody.c_str(), ResBody.length(), MSG_NOSIGNAL);
+					if (n == std::string::npos)
+						break;
+					bytes += n;
+				}
 				EraseFd(fd);
 				Requests.erase(fd);
 				Responses.erase(fd);

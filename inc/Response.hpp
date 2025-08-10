@@ -144,6 +144,7 @@ class Response{
         std::string getStrState(void) const;
         std::string MIME_Type(void) const;
         std::string ConnectionState(void) const;
+        std::string GetResponseBody(void) const;
         
         // Startresponse
         
