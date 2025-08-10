@@ -95,7 +95,8 @@ void    SetupServers::CreateSocket(Server& server)
 			{
 				int opt = 1;
 				setsockopt(fd_server, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-				this->fd_sockets.push_back(fd_server);			
+				this->fd_sockets.push_back(fd_server);
+				this->servers[fd_server] = Server(server);			
 				Advance();
 			}
 		}
@@ -217,6 +218,7 @@ void    SetupServers::AcceptConnection(int fd)
 	}
 
 	fd_sockets.push_back(fd_accept);
+	this->servers[fd_accept] = this->servers[fd];
 	
 	Advance();
 }
@@ -235,6 +237,13 @@ void    SetupServers::EraseFd(int fd)
 	fd_sockets.erase(target);
 	
 	Retreat();
+}
+
+Server*	SetupServers::GetBlockServer(int block)
+{
+	std::map<int, Server>::iterator	it = servers.find(block);
+
+	return (&(it->second));
 }
 
 void    SetupServers::Run(void)
@@ -264,7 +273,7 @@ void    SetupServers::Run(void)
 				}
 				else
 				{
-					Requests[fd].startParse(fd, config);
+					Requests[fd].startParse(fd, config, GetBlockServer(fd));
 					if (Requests[fd].getParseState() == FINISH || Requests[fd].getParseState() == ERROR)
 						AddSocketToEpoll(fd, EPOLLOUT, EPOLL_CTL_MOD);
 				}

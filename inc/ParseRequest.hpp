@@ -97,12 +97,12 @@ class ParseRequest{
     public:
         // FINDING_THE_BLOCK_SERVER_FOR_REQUEST__________________________________________________________________
 
-        Server*                                             findBlockServer(const Config& config, std::string buff);
+        Server*                                             findBlockServer(const Config& config, std::string buff, Server* server);
         
         
         // PARSING_FUNCTIONS________________________________________________
 
-        void        startParse(int fd, const Config& config);
+        void        startParse(int fd, const Config& config, Server* server);
         void        StartNewRequest(std::string& buff);
         void        parseMethod(std::string& str);
         void        parseUrl(std::string& str);

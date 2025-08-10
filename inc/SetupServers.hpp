@@ -48,11 +48,12 @@ class SetupServers
         void                Retreat(void);
         void                handleSessionManagement(ParseRequest& request);
 
-        Server              GetBlockServer(int block);
+        Server*              GetBlockServer(int block);
         
     private:
         Config&                 config;
         size_t                  sock_number;
+        std::map<int, Server>   servers;
         std::vector<int>        fd_sockets;
         int                     fd_epoll;
         int                     number_events;

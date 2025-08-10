@@ -1047,25 +1047,25 @@ void         ParseRequest::CheckContentEncoding(){
 
 }
 
-Server*	ParseRequest::findBlockServer(const Config& config, std::string buff)
+Server*	ParseRequest::findBlockServer(const Config& config, std::string buff, Server* server)
 {
 	size_t	pos_start = buff.find("Host: ");
 	
 	if (pos_start == std::string::npos)
-		return NULL;
+		return server;
 	
 	pos_start += 6;
 
 	size_t	pos_end = buff.find_first_of("\r\n", pos_start);
 
 	if (pos_end == std::string::npos)
-		return NULL;
+		return server;
 
 	std::string host_port = buff.substr(pos_start, pos_end - pos_start);
 	size_t pos = host_port.find(":");
 
 	if (pos == std::string::npos)
-		return NULL;
+		return server;
 
 	std::string host = host_port.substr(0, pos);
 	std::string port = host_port.substr(pos + 1, host_port.size());
@@ -1082,7 +1082,7 @@ Server*	ParseRequest::findBlockServer(const Config& config, std::string buff)
 
 //_____________________________________________________________________________START_READING_AND_PARSE_____________________________________________________________________________
 
-void ParseRequest::startParse(int fd, const Config& config){
+void ParseRequest::startParse(int fd, const Config& config, Server* server){
 	std::string buff;
 
 	while(true)
@@ -1106,9 +1106,8 @@ void ParseRequest::startParse(int fd, const Config& config){
 				str[bytes] = 0;
 				buff.append(str, bytes);
 			}
-			std::cout << buff << "\n";
 			if (CurrntParsState == PARSER_NONE)
-				S = findBlockServer(config, buff);
+				S = findBlockServer(config, buff, server);
 		}
 
 		switch(CurrntParsState){
@@ -1121,7 +1120,6 @@ void ParseRequest::startParse(int fd, const Config& config){
 						break;
 			}
 		}
-		std::cout << "THis is the BOdy >>  " << BufferBody << "\n";
 		if (CurrntParsState == FINISH || CurrntParsState == ERROR)
 			break ;
 	}
