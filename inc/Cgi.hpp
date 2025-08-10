@@ -48,7 +48,6 @@ class Cgi
 		std::string			script_path;
 		std::string			interpreter;
 
-
 		void	setupEnv(ParseRequest& request);
 		void	cleanEnv(char **env) const;
 		void	writeCgiInput(ParseRequest& request, int pipe_fd);
@@ -57,8 +56,6 @@ class Cgi
 		void	setRequestEnv(ParseRequest& request);
 		void	setServerEnv();
 
-		CgiResult	executeCompiled(ParseRequest& request);
-		CgiResult	executePipes(ParseRequest& request);
 		CgiResult	parseCgiOutput(const std::string& raw_output);
 
 		std::string	replacePlaceholders(const std::string& cmd, const std::string& input, const std::string& output);

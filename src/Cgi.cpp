@@ -41,41 +41,6 @@ std::string	Cgi::replacePlaceholders(const std::string& cmd, const std::string& 
 	return result;
 }
 
-CgiResult	Cgi::executeCompiled(ParseRequest& request)
-{
-    std::string output_path = script_path + ".out";
-    std::string full_cmd = replacePlaceholders(interpreter, script_path, output_path);
-    
-    int pipe_out[2];
-    pipe(pipe_out);
-
-    pid_t pid = fork();
-    if (pid == 0)
-	{
-        close(pipe_out[0]);
-        dup2(pipe_out[1], STDOUT_FILENO);
-        dup2(pipe_out[1], STDERR_FILENO);
-
-        char** env_array = getEnv(request);
-
-        char* argv[] = {
-            const_cast<char*>("/bin/sh"),
-            const_cast<char*>("-c"),
-            const_cast<char*>(full_cmd.c_str()),
-            NULL
-        };
-
-        execve("/bin/sh", argv, env_array);
-        exit(1);
-    }
-
-    close(pipe_out[1]);
-    std::string output = readCgiOutput(pipe_out[0], pid);
-    close(pipe_out[0]);
-
-    return parseCgiOutput(output);
-}
-
 CgiResult	Cgi::execute(ParseRequest& request)
 {
 	if (access(script_path.c_str(), F_OK | R_OK) != 0)
@@ -83,21 +48,10 @@ CgiResult	Cgi::execute(ParseRequest& request)
 
 	setupEnv(request);
 
-	if (interpreter.find("{INPUT}") != std::string::npos || 
-			interpreter.find("{OUTPUT}") != std::string::npos)
-		return executeCompiled(request);
-	else
-		return executePipes(request);
-}
-
-CgiResult Cgi::executePipes(ParseRequest& request)
-{
 	int pipe_in[2], pipe_out[2];
 	
 	if (pipe(pipe_in) < 0 || pipe(pipe_out) < 0)
-	{
 		return CgiResult(false, "Failed to create pipes for CGI execution");
-	}
 	
 	pid_t pid = fork();
 	if (pid == -1) {
@@ -119,10 +73,17 @@ CgiResult Cgi::executePipes(ParseRequest& request)
 		close(pipe_in[0]);
 		close(pipe_out[1]);
 		
-		char* args[] = {const_cast<char*>(interpreter.c_str()), const_cast<char*>(script_path.c_str()), NULL};
 		char** env_array = getEnv(request);
 		
-		execve(interpreter.c_str(), args, env_array);
+		if (interpreter.find("{INPUT}") != std::string::npos || interpreter.find("{OUTPUT}") != std::string::npos) {
+			std::string output_path = script_path + ".out";
+			std::string full_cmd = replacePlaceholders(interpreter, script_path, output_path);
+			char* argv[] = {const_cast<char*>("/bin/sh"), const_cast<char*>("-c"), const_cast<char*>(full_cmd.c_str()), NULL};
+			execve("/bin/sh", argv, env_array);
+		} else {
+			char* args[] = {const_cast<char*>(interpreter.c_str()), const_cast<char*>(script_path.c_str()), NULL};
+			execve(interpreter.c_str(), args, env_array);
+		}
 		
 		cleanEnv(env_array);
 		exit(1);
@@ -162,13 +123,9 @@ CgiResult Cgi::executePipes(ParseRequest& request)
 	}
 	
 	if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
-	{
 		return parseCgiOutput(output);
-	}
 	else
-	{
 		return CgiResult(false, "CGI script execution failed");
-	}
 }
 
 std::string	Cgi::readCgiOutput(int pipe_fd, pid_t pid, int timeout_seconds)
