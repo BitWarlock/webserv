@@ -191,6 +191,12 @@ std::string Response::getStrState(void) const
 			return ("Bad Gateway");
 		case Unsupported_Media_Type:
 			return ("Unsupported Media Type");
+		case Conflict:
+			return ("Conflict");
+		case Length_Required:
+			return ("Length Required");
+		case Moved_Permanently:
+			return ("Moved Permanently");
 		default:
 			return ("OK");
 	}
