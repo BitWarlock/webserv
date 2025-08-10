@@ -34,8 +34,9 @@ const Server* Config::getServer(const std::string& host, const std::string& port
 		Server	*server = servers[i];
 		for (size_t i = 0; i < server->getListen().size(); ++i)
 		{
-			if (server->getListen()[i].first == new_host
-					&& server->getListen()[i].second == port)
+			if ((server->getListen()[i].first == new_host
+					&& server->getListen()[i].second == port) || (server->getListen()[i].first == "0.0.0.0"
+					&& server->getListen()[i].second == port))
 				return (server);
 		}
 	}

@@ -252,13 +252,13 @@ void    Response::BuildGetResponse(void)
 	std::ostringstream  os;
 	os << info.st_size;
 
-	res = "HTTP/1.1 " + oss.str() + " " + getStrState() + "\r\n";
-	res += "Content-Type: " + MIME_Type() + "\r\n";
-	res += "Content-Length: " + os.str() + "\r\n";
+	responseBody = "HTTP/1.1 " + oss.str() + " " + getStrState() + "\r\n";
+	responseBody += "Content-Type: " + MIME_Type() + "\r\n";
+	responseBody += "Content-Length: " + os.str() + "\r\n";
 	addCookiesToHeaders();
-	res += "Connection: close\r\n\r\n";
+	responseBody += "Connection: close\r\n\r\n";
 
-	send(fd_client, res.c_str(), std::strlen(res.c_str()), MSG_NOSIGNAL);
+	send(fd_client, responseBody.c_str(), std::strlen(responseBody.c_str()), MSG_NOSIGNAL);
 
 	char buffer[4096];
 	ssize_t n(0);
@@ -290,11 +290,11 @@ bool    Response::ReturnDirective(void)
 		redirecturl = ServerBlock.getReturnDirective().target;
 	}
 
-	std::string response = "HTTP/1.1 " + statuscode.str() + " Redirect\r\n";
-	response += "Location: " + redirecturl + "\r\n";
-	response += "Content-Length: 0\r\n";
-	response += "Connection: close\r\n\r\n";
-	send(fd_client, response.c_str(), std::strlen(response.c_str()), MSG_NOSIGNAL);
+	responseBody = "HTTP/1.1 " + statuscode.str() + " Redirect\r\n";
+	responseBody += "Location: " + redirecturl + "\r\n";
+	responseBody += "Content-Length: 0\r\n";
+	responseBody += "Connection: close\r\n\r\n";
+	send(fd_client, responseBody.c_str(), std::strlen(responseBody.c_str()), MSG_NOSIGNAL);
 	return (false);
 }
 
@@ -322,11 +322,11 @@ void    Response::BuildDeleteResponse(void)
 	if (unlink(path.c_str()) == -1)
 		return (SetState(Internal_Server_Error), ResponseWithError(NONE));
 
-	std::string headers = "HTTP/1.1 204 No Content\r\n";
-	headers += "Content-Length: 0\r\n";
-	headers += "Connection: close\r\n\r\n";
+	responseBody = "HTTP/1.1 204 No Content\r\n";
+	responseBody += "Content-Length: 0\r\n";
+	responseBody += "Connection: close\r\n\r\n";
 
-	send(fd_client, headers.c_str(), std::strlen(headers.c_str()), MSG_NOSIGNAL);
+	send(fd_client, responseBody.c_str(), std::strlen(responseBody.c_str()), MSG_NOSIGNAL);
 }
 
 void    Response::DeleteContentResponse(void)
@@ -358,9 +358,9 @@ void    Response::BuildPostResponse(void)
 	headers += "Content-Length: " + oss.str() + "\r\n";
 	headers += "Connection: close\r\n\r\n";
 
-	std::string response = headers + body;
+	responseBody = headers + body;
 
-	send(fd_client, response.c_str(), response.size(), MSG_NOSIGNAL);
+	send(fd_client, responseBody.c_str(), responseBody.size(), MSG_NOSIGNAL);
 }
 
 bool	Response::MultiPart(std::string body)
@@ -675,18 +675,18 @@ void	Response::handleCgiRequest(ParseRequest& request, Server& server)
 
 void	Response::sendCgiResponse(const CgiResult& cgi_result)
 {
-	std::string response = "HTTP/1.1 " + intToString(cgi_result.status_code) + " OK\r\n";
+	responseBody = "HTTP/1.1 " + intToString(cgi_result.status_code) + " OK\r\n";
 	
-	response += cgi_result.headers;
+	responseBody += cgi_result.headers;
 	
 	for (std::vector<std::string>::iterator it = cookies_to_set.begin(); it != cookies_to_set.end(); ++it)
-		response += *it + "\r\n";
+		responseBody += *it + "\r\n";
 	
-	response += "Content-Length: " + intToString(cgi_result.body.length()) + "\r\n";
-	response += "\r\n";
-	response += cgi_result.body;
+	responseBody += "Content-Length: " + intToString(cgi_result.body.length()) + "\r\n";
+	responseBody += "\r\n";
+	responseBody += cgi_result.body;
 
-	send(fd_client, response.c_str(), response.length(), 0);
+	send(fd_client, responseBody.c_str(), responseBody.length(), 0);
 }
 
 Location*	Response::findMatchingLocation(const std::string& uri, Server& server)
@@ -768,7 +768,7 @@ void	Response::setCookie(const std::string& name, const std::string& value,
 void	Response::addCookiesToHeaders()
 {
 	for (std::vector<std::string>::iterator it = cookies_to_set.begin(); it != cookies_to_set.end(); ++it)
-		res += *it + "\r\n";
+		responseBody += *it + "\r\n";
 }
 
 void	Response::setSessionManager(SessionManager* sm)

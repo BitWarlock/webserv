@@ -107,6 +107,7 @@ class Response{
         SessionManager*		sessionManager;
         std::vector
 			<std::string>	cookies_to_set;
+        std::string         responseBody;
 		
 
 
@@ -129,7 +130,6 @@ class Response{
         
         // Setters
         
-        std::string         res;
         void    SetRequest(ParseRequest Request);
         void    SetBlockServer(Server BlockServer);
         void    SetState(int state);
