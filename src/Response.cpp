@@ -537,7 +537,7 @@ std::string Response::DefaultForMatchError(void)
 	if (error == Moved_Permanently)
 		return "./error_pages/Moved_Permanently.html";
 	else if (error == Bad_Request)
-		return "./error_pages/Bad_request.html";
+		return "./error_pages/Bad_Request.html";
 	else if (error == Forbidden)
 		return "./error_pages/Forbidden.html";
 	else if (error == Not_Found)
