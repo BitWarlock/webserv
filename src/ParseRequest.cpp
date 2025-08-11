@@ -1074,8 +1074,6 @@ Server*	ParseRequest::findBlockServer(const Config& config, std::string buff, Se
 
 	std::string host = host_port.substr(0, pos);
 	std::string port = host_port.substr(pos + 1, host_port.size());
-	std::cout << host << "\n";
-	std::cout << port << "\n";
 	Server* match_block = const_cast<Server*> (config.getServerName(host, port));
 
 	if (match_block != NULL)
@@ -1085,7 +1083,7 @@ Server*	ParseRequest::findBlockServer(const Config& config, std::string buff, Se
 
 	if (match_block != NULL)
 		return (match_block);
-		
+
 	return S;
 }
 
@@ -1098,8 +1096,7 @@ void ParseRequest::startParse(int fd, const Config& config, Server*server){
 
 	if (PARSER_NONE == CurrntParsState)
 		S = server;
-	if (!server)
-		std::cout << "null start\n";
+
 	while(true)
 	{
 		char        str[1000];
@@ -1130,12 +1127,7 @@ void ParseRequest::startParse(int fd, const Config& config, Server*server){
 				buff.append(str, bytes);
 			}
 			if (CurrntParsState == PARSER_NONE)
-			{
 				S = findBlockServer(config, buff, server);
-				if (!S)
-					std::cout << "null\n";
-			}
-			std::cout << "here\n";
 		}
 		switch(CurrntParsState){
 			case FINISH:
