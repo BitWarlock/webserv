@@ -14,7 +14,7 @@
 
 Response::Response() : sessionManager(NULL), responseBody(""){}
 
-Response::~Response(){}   
+Response::~Response(){}
 
 void    Response::CheckLocations(std::string& path)
 {
@@ -96,45 +96,88 @@ void    Response::CheckIndexAccess(std::vector<std::string> indexs)
 	BuildGetResponse();
 }
 
+static std::string escapeHtml(const std::string& input)
+{
+	std::string out;
+	out.reserve(input.size());
+	for (size_t i = 0; i < input.size(); ++i)
+	{
+		char c = input[i];
+		switch (c)
+		{
+			case '&': out += "&amp;"; break;
+			case '<': out += "&lt;"; break;
+			case '>': out += "&gt;"; break;
+			case '"': out += "&quot;"; break;
+			case '\'': out += "&#39;"; break;
+			default: out += c; break;
+		}
+	}
+	return out;
+}
+
 void    Response::GetListingPage(void)
 {
 	DIR *dir = opendir(path.c_str());
-	int file = open("./error_pages/template.html", O_RDONLY);
-	fd = open("./error_pages/listening_page.html", O_RDWR | O_TRUNC);
-
-	if (!dir || file == -1 || fd == -1)
+	if (!dir)
 	{
-		state = Forbidden;
+		SetState(Forbidden);
 		ResponseWithError(NONE);
-		return ;
+		return;
 	}
+
+	std::string uri = Request.getUri();
+	std::string uriEsc = escapeHtml(uri);
+
+	std::cout << "uri: " << uri << " uriEsc: " << uriEsc << std::endl;
+
+	std::string listingHtml;
+	listingHtml.reserve(2048);
+	listingHtml += "<!DOCTYPE html>\n";
+	listingHtml += "<html><head><title>Index of ";
+	listingHtml += uriEsc;
+	listingHtml += "</title></head><body><h1>Index of ";
+	listingHtml += uriEsc;
+	listingHtml += "</h1><ul>";
+
 	struct dirent *entry;
-
-	char buff[500];
-	int bytes = read(file, buff, sizeof(buff));
-	write (fd, buff, bytes);
-	buff[bytes] = 0;
-	close(file);
-
-	std::ostringstream  os;
 	while ((entry = readdir(dir)) != NULL)
 	{
-		std::string value = entry->d_name;
-
-		if (value == "." || value == "..")
+		std::string name = entry->d_name;
+		if (name == "." || name == "..")
 			continue;
 
+		bool is_dir = false;
 		if (entry->d_type == DT_DIR)
-			value = "/" + value;
+			is_dir = true;
+		else if (entry->d_type == DT_UNKNOWN)
+		{
+			std::string full = path;
+			if (!full.empty() && full[full.size() - 1] != '/')
+				full += "/";
+			full += name;
+			struct stat st;
+			if (stat(full.c_str(), &st) == 0)
+				is_dir = S_ISDIR(st.st_mode);
+		}
 
-		os << "    <li><a href=\"" + value + "\">" + value + "</a></li>\n";
+		std::string display = name;
+		std::string href = name;
+		if (is_dir)
+			href += "/";
+
+		listingHtml += "    <li><a href=\"" + escapeHtml(href) + "\">" + escapeHtml(display) + (is_dir ? "/" : "") + "</a></li>\n";
 	}
-	os << "  </ul>\n  <hr>\n</body>\n</html>";
-	closedir (dir);
-	write (fd, os.str().c_str(), os.str().size());
-	close(fd);
-	SetPath("./error_pages/listening_page.html");
-	BuildGetResponse();
+	closedir(dir);
+
+	listingHtml += "  </ul><hr></body></html>";
+
+	responseBody = "HTTP/1.1 200 OK\r\n";
+	responseBody += "Content-Type: text/html\r\n";
+	responseBody += "Content-Length: " + intToString(static_cast<int>(listingHtml.size())) + "\r\n";
+	addCookiesToHeaders();
+	responseBody += "Connection: close\r\n\r\n";
+	responseBody += listingHtml;
 }
 
 void    Response::SearchForIndex(void)
