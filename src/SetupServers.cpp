@@ -19,6 +19,7 @@
 #include <fcntl.h>
 #include <sstream>
 #include <algorithm>
+#include <errno.h>
 #include "../inc/SetupServers.hpp"
 
 SetupServers::SetupServers(Config& config) : config(config), sock_number(0), fd_epoll(0), endpoints(0), sessionManager("/tmp/webserv_sessions", 86400)
@@ -30,6 +31,8 @@ SetupServers::~SetupServers()
 {
 	for (size_t i(0); i < sock_number; i++)
 		close(fd_sockets[i]);
+	if (fd_epoll > 0)
+		close(fd_epoll);
 }
 
 void    SetupServers::CheckPortIp(const std::string& host, const std::string& port, size_t pos_server, size_t pos_listen)
@@ -94,7 +97,10 @@ void    SetupServers::CreateSocket(Server& server)
 			else
 			{
 				int opt = 1;
-				setsockopt(fd_server, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+				if (setsockopt(fd_server, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
+				{
+					std::cerr << YLW"Warning: setsockopt(SO_REUSEADDR) failed. errno=" << errno << "\n" << RESET;
+				}
 				this->fd_sockets.push_back(fd_server);
 				this->servers[fd_server] = server;			
 				Advance();
@@ -137,7 +143,6 @@ void    SetupServers::Binding(Server& server, size_t index)
 		}
 		else
 		{
-			// Remove the 'T' marker from the port string
 			std::vector<std::pair<std::string, std::string> >& listen_vec = server.getListen();
 			listen_vec[i].second.erase(port.size() - 1);
 		}
@@ -165,12 +170,13 @@ struct epoll_event    SetupServers::InitEvents(int fd, int event)
 }
 
 void    SetupServers::AddSocketToEpoll(int fd, int event, int job)
-{    
+{
 	int return_value = fcntl(fd, F_SETFL, O_NONBLOCK);
 
 	if (return_value == -1)
 	{
 		std::cerr << "Warning: fcntl() function failed to set non-blocking mode" << std::endl;
+		EraseFd(fd);
 		return;
 	}
 	
@@ -181,6 +187,7 @@ void    SetupServers::AddSocketToEpoll(int fd, int event, int job)
 	if (return_value == -1)
 	{
 		std::cerr << "Warning: epoll_ctl() function failed to monitor a socket." << std::endl;
+		EraseFd(fd);
 		return;
 	}
 }
@@ -202,7 +209,13 @@ void    SetupServers::WaitEpoll(void)
 
 	if (number_events < 0)
 	{
+		if (errno == EINTR)
+		{
+			number_events = 0;
+			return;
+		}
 		std::cerr << "Warning: epoll_wait() function failed to wait for events." << std::endl;
+		number_events = 0;
 		return;
 	}
 }
@@ -213,6 +226,8 @@ void    SetupServers::AcceptConnection(int fd)
 
 	if (fd_accept == -1)
 	{
+		if (errno == EAGAIN || errno == EWOULDBLOCK)
+			return;
 		std::cerr << "Warning: accept() function failed to accept new connection." << std::endl;
 		return;
 	}
@@ -232,7 +247,9 @@ void    SetupServers::EraseFd(int fd)
 	if (target == fd_sockets.end())
 		return ;
 
+	RemoveSocketFromEpoll(fd, EPOLL_CTL_DEL);
 	close (fd);
+	servers.erase(fd);
 	
 	fd_sockets.erase(target);
 	
@@ -242,7 +259,8 @@ void    SetupServers::EraseFd(int fd)
 Server*	SetupServers::GetBlockServer(int block)
 {
 	std::map<int, Server>::iterator	it = servers.find(block);
-
+	if (it == servers.end())
+		return NULL;
 	return (&(it->second));
 }
 
@@ -263,7 +281,11 @@ void    SetupServers::Run(void)
 		{
 			int	fd = events[i].data.fd;
 			if (events[i].events & (EPOLLERR | EPOLLHUP))
+			{
 				EraseFd(fd);
+				Requests.erase(fd);
+				Responses.erase(fd);
+			}
 			else if (events[i].events & EPOLLIN)
 			{
 				if (fd_sockets.begin() + endpoints != find(fd_sockets.begin(), fd_sockets.begin() + endpoints, fd))
@@ -276,6 +298,12 @@ void    SetupServers::Run(void)
 					Requests[fd].startParse(fd, config, GetBlockServer(fd));
 					if (Requests[fd].getParseState() == FINISH || Requests[fd].getParseState() == ERROR)
 						AddSocketToEpoll(fd, EPOLLOUT, EPOLL_CTL_MOD);
+					else if (Requests[fd].getParseState() == CLOSE)
+					{
+						EraseFd(fd);
+						Requests.erase(fd);
+						Responses.erase(fd);
+					}
 				}
 			}
 			else if (events[i].events & EPOLLOUT)
@@ -287,11 +315,11 @@ void    SetupServers::Run(void)
 				std::string	ResBody = Responses[fd].GetResponseBody();
 				while (bytes < ResBody.length())
 				{
-					size_t n(0);
+					ssize_t n(0);
 					n = send(fd, ResBody.c_str() + bytes, ResBody.length() - bytes, MSG_NOSIGNAL);
-					if (n == std::string::npos)
+					if (n <= 0)
 						break;
-					bytes += n;
+					bytes += static_cast<size_t>(n);
 				}
 				EraseFd(fd);
 				Requests.erase(fd);
@@ -347,5 +375,4 @@ void	SetupServers::handleSessionManagement(ParseRequest& request)
 			sessionManager.updateSessionAccess(session_id);
 		}
 	}
-
 }
