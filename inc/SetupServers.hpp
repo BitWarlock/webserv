@@ -48,7 +48,7 @@ class SetupServers
         void                Retreat(void);
         void                handleSessionManagement(ParseRequest& request);
 
-        Server*              GetBlockServer(int block);
+        Server*             GetBlockServer(int block);
         
     private:
         Config&                 config;

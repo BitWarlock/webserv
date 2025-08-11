@@ -34,9 +34,11 @@ void    Response::CheckLocations(std::string& path)
 			urlpath = urlpath.erase(urlpath.find_last_of('/')+1);
 		}
 		else if (urlpath == "/") {
+			i = 0;
 			while (i < locations.size()){
 				if (locations[i]->getPath() == "/")
 					return (FromLocation = true, SetLocation(*(locations[i])));
+				i++;
 			}
 			break;
 		}

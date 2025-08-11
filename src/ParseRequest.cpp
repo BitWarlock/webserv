@@ -653,9 +653,11 @@ const std::vector<std::string>&     ParseRequest::getMatchedLocationAllowedMetho
 		}
 
 		else if (urlpath == "/") {
+			i = 0;
 			while (i < locations.size()){
 				if (locations[i]->getPath() == "/")
 					return locations[i]->getAllowedMethods();
+				i++;
 			}
 
 			break;
@@ -688,9 +690,11 @@ int     ParseRequest::getMatchedLocationBodySizeMax(){
 		}
 
 		else if (urlpath == "/") {
+			i = 0;
 			while (i < locations.size()){
-			if (locations[i]->getPath() == "/")
-				return locations[i]->getClientBodyLimit();
+				if (locations[i]->getPath() == "/")
+					return locations[i]->getClientBodyLimit();
+				i++;
 			}
 
 			break;
@@ -1051,40 +1055,51 @@ Server*	ParseRequest::findBlockServer(const Config& config, std::string buff, Se
 {
 	size_t	pos_start = buff.find("Host: ");
 	
+	(void) server;
 	if (pos_start == std::string::npos)
-		return server;
+		return S;
 	
 	pos_start += 6;
 
 	size_t	pos_end = buff.find_first_of("\r\n", pos_start);
 
 	if (pos_end == std::string::npos)
-		return server;
+		return S;
 
 	std::string host_port = buff.substr(pos_start, pos_end - pos_start);
 	size_t pos = host_port.find(":");
 
 	if (pos == std::string::npos)
-		return server;
+		return S;
 
 	std::string host = host_port.substr(0, pos);
 	std::string port = host_port.substr(pos + 1, host_port.size());
-
+	std::cout << host << "\n";
+	std::cout << port << "\n";
 	Server* match_block = const_cast<Server*> (config.getServerName(host, port));
 
 	if (match_block != NULL)
 		return (match_block);
 
-	return (const_cast<Server*> (config.getServer(host, port)));
+	match_block = const_cast<Server*> (config.getServer(host, port));
+
+	if (match_block != NULL)
+		return (match_block);
+		
+	return S;
 }
 
 
 
 //_____________________________________________________________________________START_READING_AND_PARSE_____________________________________________________________________________
 
-void ParseRequest::startParse(int fd, const Config& config, Server* server){
+void ParseRequest::startParse(int fd, const Config& config, Server*server){
 	std::string buff;
 
+	if (PARSER_NONE == CurrntParsState)
+		S = server;
+	if (!server)
+		std::cout << "null start\n";
 	while(true)
 	{
 		char        str[1000];
@@ -1115,9 +1130,13 @@ void ParseRequest::startParse(int fd, const Config& config, Server* server){
 				buff.append(str, bytes);
 			}
 			if (CurrntParsState == PARSER_NONE)
+			{
 				S = findBlockServer(config, buff, server);
+				if (!S)
+					std::cout << "null\n";
+			}
+			std::cout << "here\n";
 		}
-
 		switch(CurrntParsState){
 			case FINISH:
 			case ERROR:
