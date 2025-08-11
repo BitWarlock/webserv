@@ -138,9 +138,9 @@ std::string	Cgi::readCgiOutput(int pipe_fd, pid_t pid, int timeout_seconds)
 	fcntl(pipe_fd, F_SETFL, flags | O_NONBLOCK);
 	
 	const size_t max_output_size = 1024 * 1024;
-	time_t start_time = time(NULL);
+	time_t start_time = std::time(NULL);
 	
-	while (time(NULL) - start_time < timeout_seconds)
+	while (std::time(NULL) - start_time < timeout_seconds)
 	{
 		ssize_t bytes_read = read(pipe_fd, buffer, sizeof(buffer) - 1);
 		

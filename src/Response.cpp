@@ -80,20 +80,23 @@ bool    Response::CheckAutoIndex(void)
 
 void    Response::CheckIndexAccess(std::vector<std::string> indexs)
 {
+	bool found = false;
 	for (size_t i(0); i < indexs.size(); i++)
 	{
 		std::string join = path + indexs[i];
-
 		if (access(join.c_str(), F_OK) == 0)
 		{
 			SetPath(join);
-			break ;
+			found = true;
+			break;
 		}
-		else if (i + 1 == indexs.size())
-			return (SetState(Forbidden), ResponseWithError(NONE));
 	}
-
-	BuildGetResponse();
+	if (found)
+		BuildGetResponse();
+	else if (CheckAutoIndex() == ON)
+		GetListingPage();
+	else
+		SetState(Forbidden), ResponseWithError(NONE);
 }
 
 
