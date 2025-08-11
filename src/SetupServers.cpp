@@ -288,7 +288,7 @@ void    SetupServers::Run(void)
 				while (bytes < ResBody.length())
 				{
 					size_t n(0);
-					n = send(fd, ResBody.c_str(), ResBody.length(), MSG_NOSIGNAL);
+					n = send(fd, ResBody.c_str() + bytes, ResBody.length() - bytes, MSG_NOSIGNAL);
 					if (n == std::string::npos)
 						break;
 					bytes += n;

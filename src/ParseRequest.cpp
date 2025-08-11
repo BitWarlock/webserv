@@ -1104,8 +1104,9 @@ void ParseRequest::startParse(int fd, const Config& config, Server* server){
 				setErrorNumber(400, "Bad Request – Client closed connection before completing the request");
 				return;
 			}
-			if (bytes < 0){
-				return;
+			if (bytes < 0 &&
+					!(CurrntParsState == READ_BOUNDARY || CurrntParsState == READ_MULTIPART_BODY)){
+					return;
 			}
 
 			if (bytes > 0)
@@ -1124,8 +1125,8 @@ void ParseRequest::startParse(int fd, const Config& config, Server* server){
 			default :
 				if (CurrntParsState < PARSEARRAYSIZE){
 					(this->*ParseRequest::ParseTable[CurrntParsState])(buff);
-						break;
-			}
+					break;
+				}
 		}
 		if (CurrntParsState == FINISH || CurrntParsState == ERROR)
 			break ;

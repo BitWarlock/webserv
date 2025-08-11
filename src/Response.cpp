@@ -249,8 +249,6 @@ void    Response::BuildGetResponse(void)
 
 	oss << getState();
 
-	std::ifstream	fd(path.c_str());
-
 	struct stat info;
 
 	stat(path.c_str(), &info);
@@ -264,13 +262,14 @@ void    Response::BuildGetResponse(void)
 	addCookiesToHeaders();
 	responseBody += "Connection: close\r\n\r\n";
 
-	std::string	line;
-
-	getline(fd, line, '\0');
-
-	responseBody += line;
-
-	fd.close();
+	std::ifstream fd(path.c_str(), std::ios::in | std::ios::binary);
+	if (fd)
+	{
+		std::ostringstream body;
+		body << fd.rdbuf();
+		responseBody += body.str();
+		fd.close();
+	}
 }
 
 bool    Response::ReturnDirective(void)
