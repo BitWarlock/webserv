@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/16 16:32:33 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/08/12 02:43:45 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/08/12 21:36:35 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,52 +16,12 @@ Response::Response() : sessionManager(NULL), responseBody(""){}
 
 Response::~Response(){}
 
-void Response::CheckLocations(std::string& path)
-{
-    std::vector<Location*>	locations = ServerBlock.getLocations();
-    std::string 			urlpath = path;
-
-	if (urlpath[urlpath.size() - 1] != '/')
-		urlpath += '/';
-    while (1337)
-    {
-        for (size_t i = 0; i < locations.size(); ++i)
-        {
-            if (locations[i]->getPath() == urlpath)
-            {
-                FromLocation = true;
-                SetLocation(*(locations[i]));
-                return;
-            }
-        }
-
-        if (urlpath == "/")
-            break;
-
-        if (urlpath.length() > 1 && urlpath[urlpath.length() - 1] == '/')
-        {
-            urlpath.erase(urlpath.length() - 1);
-            continue;
-        }
-
-        size_t pos = urlpath.find_last_of('/');
-        if (pos == std::string::npos)
-            break;
-        else if (pos == 0)
-            urlpath = "/";
-        else
-            urlpath.erase(pos + 1);
-    }
-
-    FromLocation = false;
-}
-
 bool    Response::GetFullPath(std::string& path)
 {
-	if (FromLocation == true)
+	if (location)
 	{    
-		if (!location.getRoot().empty())
-			SetPath(location.getRoot() + path.erase(0, 1));
+		if (!location->getRoot().empty())
+			SetPath(location->getRoot() + path.erase(0, 1));
 
 		else if (!ServerBlock.getRoot().empty())
 			SetPath(ServerBlock.getRoot() + path.erase(0, 1));
@@ -71,14 +31,14 @@ bool    Response::GetFullPath(std::string& path)
 	}
 	else
 		SetPath(ServerBlock.getRoot() + path.erase(0, 1));
-
+	std::cout << path << "\n";
 	return (true);
 }
 
 bool    Response::CheckAutoIndex(void)
 {
-	if (FromLocation == true)
-		return (location.getAutoindex());
+	if (location)
+		return (location->getAutoindex());
 
 	return (ServerBlock.getAutoindex());
 }
@@ -86,9 +46,16 @@ bool    Response::CheckAutoIndex(void)
 void    Response::CheckIndexAccess(std::vector<std::string> indexs)
 {
 	bool found = false;
+
 	for (size_t i(0); i < indexs.size(); i++)
 	{
-		std::string join = path + indexs[i];
+		std::string join = path;
+
+		if (path[path.size() - 1] != '/')
+			path += "/";
+
+		join += indexs[i];
+
 		if (access(join.c_str(), F_OK) == 0)
 		{
 			SetPath(join);
@@ -98,24 +65,26 @@ void    Response::CheckIndexAccess(std::vector<std::string> indexs)
 	}
 	if (found)
 		BuildGetResponse();
+
 	else if (CheckAutoIndex() == ON)
 		GetListingPage();
+
 	else
 		SetState(Forbidden), ResponseWithError(NONE);
 }
 
 void    Response::SearchForIndex(void)
 {
-	if (FromLocation == true)
+	if (location)
 	{
-		if (location.getIndex().empty() && CheckAutoIndex() == ON)
+		if (location->getIndex().empty() && CheckAutoIndex() == ON)
 			GetListingPage();
 
-		else if (location.getIndex().empty())
+		else if (location->getIndex().empty())
 			return (SetState(Forbidden), ResponseWithError(NONE));
 
 		else
-			CheckIndexAccess(location.getIndex());
+			CheckIndexAccess(location->getIndex());
 	}
 	else
 	{
@@ -246,18 +215,18 @@ bool    Response::ReturnDirective(void)
 	std::ostringstream   statuscode;
 	std::string         redirecturl;
 
-	CheckLocations(path);
-
-	if (ServerBlock.getReturnDirective().enabled == false && 
-			location.getReturnDirective().enabled == false)
-		return (true);
-	else if (FromLocation == true)
+	if (location)
 	{
-		statuscode << location.getReturnDirective().status_code;
-		redirecturl = location.getReturnDirective().target;
+		if (ServerBlock.getReturnDirective().enabled == false && 
+			location->getReturnDirective().enabled == false)
+			return (true);
+		statuscode << location->getReturnDirective().status_code;
+		redirecturl = location->getReturnDirective().target;
 	}
 	else
 	{
+		if (ServerBlock.getReturnDirective().enabled == false)
+			return (true);
 		statuscode << ServerBlock.getReturnDirective().status_code;
 		redirecturl = ServerBlock.getReturnDirective().target;
 	}
@@ -276,6 +245,7 @@ void    Response::GetPageResponse(void)
 
 	if (GetFullPath(path) == false)
 		return ;
+
 	if (stat(path.c_str(), &info) == -1)
 			return (SetState(Not_Found), ResponseWithError(NONE));
 
@@ -358,9 +328,9 @@ bool	Response::MultiPart(std::string body)
 		Body += body.substr(clrf + 4);
 
 	std::string upload_path = path;
-	if (FromLocation && !location.getUploadStore().empty())
+	if (location && !location->getUploadStore().empty())
 	{
-		upload_path = location.getUploadStore();
+		upload_path = location->getUploadStore();
 		if (upload_path[upload_path.size() - 1] != '/')
 			upload_path += "/";
 	}
@@ -566,7 +536,7 @@ void    Response::ResponseWithError(int serve)
 
 bool	Response::shouldExecuteCgi(ParseRequest& request)
 {
-	Location* location = (FromLocation == true) ? (&this->location) : NULL;
+	Location* location = this->location;
 	if (!location)
 		return false;
 
@@ -583,7 +553,9 @@ void    Response::StartForResponse(ParseRequest request, int fd_client)
 	SetBlockServer(request.getBlockServer());
 	SetState(request.getErrorNumber());
 	SetPath(request.getUri());
+	SetLocation(request.getMatchLocation());
 	this->fd_client = fd_client;
+
 	if (ReturnDirective() == false)
 		return ;
 
@@ -606,7 +578,7 @@ void	Response::handleCgiRequest(ParseRequest& request)
 {
 	try
 	{
-		Location* location = (FromLocation == true) ? (&this->location) : NULL;
+		Location* location = this->location;
 		if (!location)
 			return (SetState(404), ResponseWithError(NONE));
 
@@ -688,7 +660,7 @@ void    Response::SetRequest(ParseRequest Request){this->Request = Request;}
 
 void    Response::SetBlockServer(Server BlockServer){this->ServerBlock = BlockServer;}
 
-void    Response::SetLocation(Location location){this->location = location; this->FromLocation = true;}
+void    Response::SetLocation(Location* location){this->location = location;}
 
 void    Response::SetState(int state){this->state = state;}
 

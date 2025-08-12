@@ -142,7 +142,7 @@ CgiResult Cgi::execute(ParseRequest& request)
 	int wait_result = childProcessWait(pid, timeout / 2);
 
 	if (wait_result == 1)
-		return CgiResult(false, "CGI script execution timed out", 504);
+		return std::cout << "CGI timeout " << pid << "\n", CgiResult(false, "CGI script execution timed out", 504);
 	if (wait_result == -1)
 		return CgiResult(false, "Error waiting for CGI script", 500);
 

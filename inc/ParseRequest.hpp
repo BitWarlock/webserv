@@ -87,6 +87,7 @@ class ParseRequest{
         std::string                                         Port;
         std::string                                         QueryString;
         std::map<std::string, std::string>					cookies;
+        Location*                                           MatchLocation;
         
         // FUNCTOIONS_POINTER_PARSING_TABLES_____________________________________________________________
 
@@ -138,6 +139,7 @@ class ParseRequest{
         bool        PercentEncoded(size_t &i);
         bool        isValidVersion();
         void        CheckContentEncoding();
+        void        FindMatchLocation();
 
         // GETTER_FUNCTIONS__________________________________________________
 
@@ -160,7 +162,8 @@ class ParseRequest{
         int                                                 getMatchedLocationBodySizeMax();
         Server                                              getBlockServer();
         std::string                                         getCookie(const std::string& name) const;
-        const std::map<std::string, std::string>&           getCookies() const;
+        const std::map<std::string, std::string>&           getCookies() const;  
+        Location*                                           getMatchLocation();             
         
         // SETTER_FUNCTIONS__________________________________________________
 

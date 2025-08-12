@@ -8,7 +8,7 @@
 ParseRequest::ParseRequest() : errorNumber(200), pos(0), 
     CurrntParsState(PARSER_NONE), Method(""), Url(""),
 	HttpProtocolVersion(""),
-    chunkedEncoding(false), contentLength(0){
+    chunkedEncoding(false), contentLength(0), MatchLocation(NULL){
 
 	BufferBody.clear();
 
@@ -43,7 +43,7 @@ ParseRequest::ParseRequest() : errorNumber(200), pos(0),
 ParseRequest::ParseRequest(Server *server) : errorNumber(200), pos(0), 
     CurrntParsState(PARSER_NONE), Method(""), Url(""),
 	HttpProtocolVersion(""),
-    S(server), chunkedEncoding(false), contentLength(0){
+    S(server), chunkedEncoding(false), contentLength(0), MatchLocation(NULL){
 
 	BufferBody.clear();
 
@@ -177,7 +177,7 @@ void ParseRequest::parseUrl(std::string &str){
 	}
 
 	ResetBuffPos();
-
+	FindMatchLocation();
 	if (!isSupportedMethod(Method)){
 
 		int numberErr = isKnownMethod();
@@ -619,6 +619,8 @@ std::vector<std::string >&							ParseRequest::getMultipartBuferBody()			{ retur
 
 Server												ParseRequest::getBlockServer() 					{ return *S; }
 
+Location*											ParseRequest::getMatchLocation()				{ return MatchLocation; }
+
 std::string	ParseRequest::getCookie(const std::string& name) const
 {
 	std::map<std::string, std::string>::const_iterator it = cookies.find(name);
@@ -632,74 +634,16 @@ const std::map<std::string, std::string>&	ParseRequest::getCookies() const						
 // if no location  matched i get the default allowed methods for the server  
 const std::vector<std::string>&     ParseRequest::getMatchedLocationAllowedMethods(){
 
-	std::string urlpath = Url;
-
-	const std::vector<Location*>& locations = S->getLocations();
-
-	while (true){
-		size_t i = 0;
-
-		while (i < locations.size()){
-			if (locations[i]->getPath() == urlpath)
-				return locations[i]->getAllowedMethods();
-			i++;
-		}
-
-		if (urlpath != "/" && urlpath.size() > 1){
-			if (urlpath[urlpath.size() - 1] == '/')
-				urlpath.erase(urlpath.find_last_of('/'));
-			urlpath = urlpath.erase(urlpath.find_last_of('/')+1);
-		}
-
-		else if (urlpath == "/") {
-			i = 0;
-			while (i < locations.size()){
-				if (locations[i]->getPath() == "/")
-					return locations[i]->getAllowedMethods();
-				i++;
-			}
-
-			break;
-		}
-	}
-
+	if (MatchLocation)
+		return MatchLocation->getAllowedMethods();
 	return S->getAllowedMethods();
 }
 
 // get the matched location body size limits 
 int     ParseRequest::getMatchedLocationBodySizeMax(){
 
-	std::string urlpath = Url;
-
-	const std::vector<Location*>& locations = S->getLocations();
-
-	while (true){
-		size_t i = 0;
-
-		while (i < locations.size()){
-			if (locations[i]->getPath() == urlpath)
-				return locations[i]->getClientBodyLimit();
-			i++;
-		}
-
-		if (urlpath != "/" && urlpath.size() > 1){
-			if (urlpath[urlpath.size() - 1] == '/')
-				urlpath.erase(urlpath.find_last_of('/'));
-			urlpath = urlpath.erase(urlpath.find_last_of('/')+1);
-		}
-
-		else if (urlpath == "/") {
-			i = 0;
-			while (i < locations.size()){
-				if (locations[i]->getPath() == "/")
-					return locations[i]->getClientBodyLimit();
-				i++;
-			}
-
-			break;
-		}
-	}
-
+	if (MatchLocation)
+		return MatchLocation->getClientBodyLimit();
 	return S->getClientBodyLimit();
 }
 
@@ -757,7 +701,24 @@ void ParseRequest::setErrorNumber(int Number, std::string ErrorMsg){
 //_____________________________________________________________________________PARSE_HELPER_FUNCTIONS_____________________________________________________________________________
 
 
+void	ParseRequest::FindMatchLocation()
+{
+	const std::vector<Location*>&	locations = S->getLocations();
+	std::string	urlpath = getUri();
+	size_t	size(0);
 
+	for (size_t i(0); i < locations.size(); i++)
+	{
+		const std::string& locPath = locations[i]->getPath();
+
+		if (urlpath.compare(0, locPath.size(), locPath) == 0){
+			if (locations[i]->getPath().size() > size){
+				size = locations[i]->getPath().size();
+				MatchLocation = locations[i];
+			}
+		}
+	}
+}
 
 // check if the request parsing is finish or not yet ; 
 bool ParseRequest::isFinish()                   { return (getParseState() == FINISH); }

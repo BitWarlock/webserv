@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/16 16:28:12 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/08/12 02:41:55 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/08/12 20:38:48 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -98,8 +98,7 @@ class Response{
         int                 state_path;
         ParseRequest        Request;
         Server              ServerBlock;
-        Location            location;
-        bool                FromLocation;
+        Location*           location;
         std::string         path;
         char                *env[7];
         std::string         Body;
@@ -131,7 +130,7 @@ class Response{
         void    SetRequest(ParseRequest Request);
         void    SetBlockServer(Server BlockServer);
         void    SetState(int state);
-        void    SetLocation(Location location);
+        void    SetLocation(Location* location);
         void    SetPath(std::string path);        
         
         // Getters
@@ -182,8 +181,6 @@ class Response{
         void    BuildPostResponse(void);
 
         std::string DefaultForMatchError(void);
-
-
 
         bool    MultiPart(std::string body);
 
