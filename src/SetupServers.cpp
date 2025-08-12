@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/21 20:57:28 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/08/12 02:43:32 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/08/12 23:02:40 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -248,7 +248,9 @@ void    SetupServers::EraseFd(int fd)
 		return ;
 
 	RemoveSocketFromEpoll(fd, EPOLL_CTL_DEL);
+
 	close (fd);
+
 	servers.erase(fd);
 	
 	fd_sockets.erase(target);
@@ -359,6 +361,9 @@ void    SetupServers::StartSetup(void)
 		}
 		catch (...){}
 	}
+
+	if (sock_number == 0)
+		return ;
 
 	endpoints = sock_number;
 
