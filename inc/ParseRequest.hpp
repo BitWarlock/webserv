@@ -9,7 +9,7 @@
 #include <sys/socket.h>
 #include <cstring>
 #include <zlib.h>
-#include <brotli/decode.h>
+// #include <brotli/decode.h>
 #include "Server.hpp"
 #include "Config.hpp"
 

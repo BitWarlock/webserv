@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/21 20:57:28 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/08/08 22:17:27 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/08/12 02:43:32 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -275,7 +275,7 @@ void    SetupServers::Run(void)
 		AddSocketToEpoll(fd_sockets[i], EPOLLIN, EPOLL_CTL_ADD);
 
 	while (1337)
-	{
+	{	
 		WaitEpoll();
 		for (int i(0); i < number_events; i++)
 		{
@@ -297,7 +297,9 @@ void    SetupServers::Run(void)
 				{
 					Requests[fd].startParse(fd, config, GetBlockServer(fd));
 					if (Requests[fd].getParseState() == FINISH || Requests[fd].getParseState() == ERROR)
+					{
 						AddSocketToEpoll(fd, EPOLLOUT, EPOLL_CTL_MOD);
+					}
 					else if (Requests[fd].getParseState() == CLOSE)
 					{
 						EraseFd(fd);
