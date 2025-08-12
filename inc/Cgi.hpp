@@ -20,6 +20,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+void	usleep_(int mseconds);
+
 struct CgiResult
 {
 	std::string	headers;
@@ -29,7 +31,7 @@ struct CgiResult
 	std::string	error_message;
 	
 	CgiResult() : status_code(200), success(false) {}
-	CgiResult(bool s, const std::string& error = "") : status_code(200), success(s), error_message(error) {}
+	CgiResult(bool s, const std::string& error = "", int status_code = 200) : status_code(status_code), success(s), error_message(error) {}
 };
 
 class Cgi
@@ -48,6 +50,11 @@ class Cgi
 		std::string			script_path;
 		std::string			interpreter;
 
+		int	childProcessWait(pid_t pid, int max_timeout_seconds);
+
+		void	runChildProcess(int pipe_in[2], int pipe_out[2], ParseRequest& request,
+							const std::string& script_path, const std::string& interpreter);
+		void	parentPipe(ParseRequest& request, int pipe_in[2]);
 		void	setupEnv(ParseRequest& request);
 		void	cleanEnv(char **env) const;
 		void	writeCgiInput(ParseRequest& request, int pipe_fd);
@@ -59,7 +66,7 @@ class Cgi
 		CgiResult	parseCgiOutput(const std::string& raw_output);
 
 		std::string	replacePlaceholders(const std::string& cmd, const std::string& input, const std::string& output);
-		std::string	readCgiOutput(int pipe_fd, pid_t pid, int timeout_sec = 30);
+		std::string	readCgiOutput(int pipe_fd, pid_t pid, int timeout_sec = 5);
 		std::string	urlDecode(const std::string& encoded) const;
 		std::string	intToString(int value) const;
 

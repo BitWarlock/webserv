@@ -1,4 +1,5 @@
 #include "../inc/Cgi.hpp"
+#include <cstddef>
 #include <ctime>
 
 Cgi::Cgi(const std::string& script_path, const std::string& interpreter)
@@ -41,137 +42,164 @@ std::string	Cgi::replacePlaceholders(const std::string& cmd, const std::string& 
 	return result;
 }
 
-CgiResult	Cgi::execute(ParseRequest& request)
+int	Cgi::childProcessWait(pid_t pid, int max_timeout_seconds)
 {
-	if (access(script_path.c_str(), F_OK | R_OK) != 0)
-		return CgiResult(false, "Script not accessible: " + script_path);
+	int status;
+	int elapsed = 0;
 
-	setupEnv(request);
+	while (true)
+	{
+		int ret = waitpid(pid, &status, WNOHANG);
+		if (ret == pid)
+			return (WIFEXITED(status) && WEXITSTATUS(status) == 0) ? 0 : -1;
 
-	int pipe_in[2], pipe_out[2];
-	
-	if (pipe(pipe_in) < 0 || pipe(pipe_out) < 0)
-		return CgiResult(false, "Failed to create pipes for CGI execution");
-	
-	pid_t pid = fork();
-	if (pid == -1) {
-		close(pipe_in[0]);
-		close(pipe_in[1]);
-		close(pipe_out[0]);
-		close(pipe_out[1]);
-		return CgiResult(false, "Fork failed");
-	}
-	
-	if (pid == 0) {
-		close(pipe_in[1]);
-		close(pipe_out[0]);
-		
-		dup2(pipe_in[0], STDIN_FILENO);
-		dup2(pipe_out[1], STDOUT_FILENO);
-		dup2(pipe_out[1], STDERR_FILENO);
-		
-		close(pipe_in[0]);
-		close(pipe_out[1]);
-		
-		char** env_array = getEnv(request);
-		
-		if (interpreter.find("{INPUT}") != std::string::npos || interpreter.find("{OUTPUT}") != std::string::npos) {
-			std::string output_path = script_path + ".out";
-			std::string full_cmd = replacePlaceholders(interpreter, script_path, output_path);
-			char* argv[] = {const_cast<char*>("/bin/sh"), const_cast<char*>("-c"), const_cast<char*>(full_cmd.c_str()), NULL};
-			execve("/bin/sh", argv, env_array);
-		} else {
-			char* args[] = {const_cast<char*>(interpreter.c_str()), const_cast<char*>(script_path.c_str()), NULL};
-			execve(interpreter.c_str(), args, env_array);
+		if (ret == -1)
+			return -1;
+
+		if (elapsed >= max_timeout_seconds)
+		{
+			killProcess(pid);
+			waitpid(pid, &status, 0);
+			return 1;
 		}
-		
-		cleanEnv(env_array);
-		exit(1);
+
+		usleep_(1000000);
+		++elapsed;
 	}
+}
+
+void Cgi::runChildProcess(int pipe_in[2], int pipe_out[2], ParseRequest& request,
+				const std::string& script_path, const std::string& interpreter)
+{
+	close(pipe_in[1]);
+	close(pipe_out[0]);
+
+	dup2(pipe_in[0], STDIN_FILENO);
+	dup2(pipe_out[1], STDOUT_FILENO);
+	dup2(pipe_out[1], STDERR_FILENO);
 
 	close(pipe_in[0]);
 	close(pipe_out[1]);
 
-	if (request.getMethod() == "POST") {
-		writeCgiInput(request, pipe_in[1]);
+	char** env_array = getEnv(request);
+
+	if (interpreter.find("{INPUT}") != std::string::npos
+			|| interpreter.find("{OUTPUT}") != std::string::npos)
+	{
+		std::string output_path = script_path + ".out";
+		std::string full_cmd = replacePlaceholders(interpreter, script_path, output_path);
+		char* argv[] = { const_cast<char*>("/bin/sh"), const_cast<char*>("-c"), const_cast<char*>(full_cmd.c_str()), NULL };
+		execve("/bin/sh", argv, env_array);
 	}
-	close(pipe_in[1]);
-	
-	std::string output = readCgiOutput(pipe_out[0], pid);
-	close(pipe_out[0]);
-	
-	int status;
-	int wait_result;
-	int timeout_count = 0;
-	const int max_timeout = 30;
-	
-	do {
-		wait_result = waitpid(pid, &status, WNOHANG);
-		if (wait_result == 0) {
-			if (timeout_count >= max_timeout) {
-				killProcess(pid);
-				waitpid(pid, &status, 0);
-				return CgiResult(false, "CGI script execution timed out");
-			}
-			sleep(1);
-			timeout_count++;
-		}
-	} while (wait_result == 0);
-	
-	if (wait_result == -1) {
-		return CgiResult(false, "Error waiting for CGI script");
-	}
-	
-	if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
-		return parseCgiOutput(output);
 	else
-		return CgiResult(false, "CGI script execution failed");
+	{
+		char* args[] = { const_cast<char*>(interpreter.c_str()), const_cast<char*>(script_path.c_str()), NULL };
+		execve(interpreter.c_str(), args, env_array);
+	}
+
+	cleanEnv(env_array);
+	exit(1);
 }
 
-std::string	Cgi::readCgiOutput(int pipe_fd, pid_t pid, int timeout_seconds)
+void Cgi::parentPipe(ParseRequest& request, int pipe_in[2])
 {
-	(void)pid;
-	std::string output;
-	char buffer[4096];
-	
-	int flags = fcntl(pipe_fd, F_GETFL, 0);
+	close(pipe_in[0]);
+
+	if (request.getMethod() == "POST")
+		writeCgiInput(request, pipe_in[1]);
+
+	close(pipe_in[1]);
+}
+
+CgiResult Cgi::execute(ParseRequest& request)
+{
+	const int	timeout = 10;
+
+	if (access(script_path.c_str(), F_OK | R_OK) != 0)
+		return CgiResult(false, "Script not accessible: " + script_path, 403);
+
+	setupEnv(request);
+
+	int pipe_in[2], pipe_out[2];
+	if (pipe(pipe_in) < 0 || pipe(pipe_out) < 0)
+		return CgiResult(false, "Failed to create pipes for CGI execution", 500);
+
+	pid_t pid = fork();
+	if (pid == -1)
+	{
+		close(pipe_in[0]); close(pipe_in[1]);
+		close(pipe_out[0]); close(pipe_out[1]);
+		return CgiResult(false, "Fork failed", 500);
+	}
+
+	if (pid == 0)
+		runChildProcess(pipe_in, pipe_out, request, script_path, interpreter);
+
+	parentPipe(request, pipe_in);
+
+	close(pipe_out[1]);
+	std::string output = readCgiOutput(pipe_out[0], pid, timeout / 2);
+	close(pipe_out[0]);
+
+	int wait_result = childProcessWait(pid, timeout / 2);
+
+	if (wait_result == 1)
+		return CgiResult(false, "CGI script execution timed out", 504);
+	if (wait_result == -1)
+		return CgiResult(false, "Error waiting for CGI script", 500);
+
+	return parseCgiOutput(output);
+}
+
+void	usleep_(int mseconds)
+{
+	clock_t	start = clock();
+
+	clock_t ticks_wait = mseconds * (CLOCKS_PER_SEC / 1000000.0);
+	while (clock() - start <= ticks_wait) {}
+}
+
+std::string Cgi::readCgiOutput(int pipe_fd, pid_t pid, int timeout_seconds)
+{
+	std::string		output;
+	char			buffer[4096];
+	const size_t	max_output_size = 1024 * 1024 * 10; // 10 MB
+	time_t			start_time = std::time(NULL);
+	int				flags = fcntl(pipe_fd, F_GETFL, 0);
+
 	fcntl(pipe_fd, F_SETFL, flags | O_NONBLOCK);
-	
-	const size_t max_output_size = 1024 * 1024;
-	time_t start_time = std::time(NULL);
-	
+
+	int			failed_reads = 0;
+	const int	max_failed_reads = 1000;
+	bool		got_data = false;
+
 	while (std::time(NULL) - start_time < timeout_seconds)
 	{
 		ssize_t bytes_read = read(pipe_fd, buffer, sizeof(buffer) - 1);
-		
+
 		if (bytes_read > 0)
 		{
 			buffer[bytes_read] = '\0';
-			output += buffer;
-			
-			if (output.size() > max_output_size)
-				break;
+			output.append(buffer, bytes_read);
+			got_data = true;
+			failed_reads = 0;
+			if (output.size() > max_output_size) break;
+			continue;
 		}
-		else if (bytes_read == 0)
-		{
+
+		if (bytes_read == 0 && (got_data || waitpid(pid, NULL, WNOHANG) != 0))
 			break;
-		}
-		else if (bytes_read == -1)
+
+		if (++failed_reads > max_failed_reads)
 		{
-			if (errno == EAGAIN || errno == EWOULDBLOCK)
-			{
-				usleep(10000);
-				continue;
-			}
-			else
-			{
-				break;
-			}
+			if (got_data || waitpid(pid, NULL, WNOHANG) != 0) break;
+			failed_reads = 0;
 		}
+
+		usleep_(1000);
 	}
-	
+
 	fcntl(pipe_fd, F_SETFL, flags);
-	
 	return output;
 }
 
@@ -201,7 +229,6 @@ void	Cgi::writeCgiInput(ParseRequest& request, int pipe_fd)
 void	Cgi::killProcess(pid_t pid)
 {
 	kill(pid, SIGTERM);
-	usleep(100000);
 	kill(pid, SIGKILL);
 }
 

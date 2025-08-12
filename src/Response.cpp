@@ -528,6 +528,8 @@ std::string Response::DefaultForMatchError(void)
 		return "./error_pages/Not_Implemented.html";
 	else if (error == Bad_Gateway)
 		return "./error_pages/Bad_Gateway.html";
+	else if (error == Gateway_Timeout)
+		return "./error_pages/Gateway_Timeout.html";
 	else
 		return "./error_pages/HTTP_Version_Not_Supported.html";
 }
@@ -625,10 +627,11 @@ void	Response::handleCgiRequest(ParseRequest& request)
 		Cgi cgi(script_path, interpreter);
 		CgiResult result = cgi.execute(request);
 
+		std::cout << "Cgi failed: " << result.error_message << std::endl;
 		if (result.success)
 			sendCgiResponse(result);
 		else
-			return (SetState(502), ResponseWithError(NONE));
+			return (SetState(result.status_code), ResponseWithError(NONE));
 	}
 	catch (const std::exception& e)
 	{

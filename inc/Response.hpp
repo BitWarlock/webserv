@@ -85,6 +85,7 @@ enum ResponseNumberState
     Internal_Server_Error = 500,
     Not_Implemented = 501,
     Bad_Gateway = 502,
+	Gateway_Timeout = 504,
     HTTP_Version_Not_Supported = 505, 
 };
 

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>504 Gateway Timeout</title>
+  <style>
+    body {
+      background-color: #1a0a0a; /* dark maroon */
+      color: #ffcc00; /* warm yellow */
+      font-family: 'Courier New', Courier, monospace;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      padding: 2rem;
+    }
+
+    .terminal {
+      background-color: #220f0f; /* deep reddish brown */
+      border: 2px solid #ff6600; /* bright orange */
+      padding: 2rem;
+      max-width: 700px;
+      width: 100%;
+      box-shadow: 0 0 20px #ff6600;
+    }
+
+    .error-code {
+      font-size: 6rem;
+      font-weight: bold;
+      color: #ff6600; /* bright orange */
+      text-align: center;
+      margin-bottom: 2rem;
+      letter-spacing: 0.5rem;
+      text-shadow: 0 0 10px #ff6600;
+    }
+
+    .line {
+      white-space: nowrap;
+      overflow: hidden;
+      border-right: 3px solid #ffcc00; /* warm yellow cursor */
+      font-size: 1.3rem;
+      margin-bottom: 1rem;
+      width: 0;
+      opacity: 0;
+      color: #ffcc00; /* warm yellow */
+    }
+
+    .line.show {
+      animation: typing 0.6s steps(50, end) forwards;
+    }
+
+    a {
+      color: #00ff99; /* bright mint green */
+      text-decoration: underline;
+      display: block;
+      margin-top: 2rem;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      text-align: center;
+      font-size: 1.2rem;
+    }
+
+    a.visible {
+      opacity: 1;
+    }
+
+    @keyframes typing {
+      from { width: 0; opacity: 1; }
+      to { width: 100%; opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="terminal">
+    <div class="error-code">504</div>
+    <div class="line" id="line1">> Gateway Timeout encountered.</div>
+    <div class="line" id="line2">> The server was acting as a gateway or proxy</div>
+    <div class="line" id="line3">> and did not receive a timely response from the upstream server.</div>
+    <a href="/" id="link">[ Return to base ]</a>
+  </div>
+
+  <script>
+    const lines = [
+      document.getElementById('line1'),
+      document.getElementById('line2'),
+      document.getElementById('line3')
+    ];
+    const delay = 400;
+
+    lines.forEach((line, index) => {
+      setTimeout(() => {
+        line.classList.add('show');
+      }, delay * index);
+    });
+
+    setTimeout(() => {
+      document.getElementById('link').classList.add('visible');
+    }, delay * lines.length + 500);
+  </script>
+</body>
+</html>
