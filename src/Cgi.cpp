@@ -1,6 +1,4 @@
 #include "../inc/Cgi.hpp"
-#include <cstddef>
-#include <ctime>
 
 Cgi::Cgi(const std::string& script_path, const std::string& interpreter)
 	: script_path(script_path), interpreter(interpreter)
@@ -113,7 +111,9 @@ void Cgi::parentPipe(ParseRequest& request, int pipe_in[2])
 
 CgiResult Cgi::execute(ParseRequest& request)
 {
-	const int	timeout = 10;
+	const size_t	timeout = request.getBlockServer().getClientTimeout();
+
+	std::cout << "Timeout " << timeout << std::endl;
 
 	if (access(script_path.c_str(), F_OK | R_OK) != 0)
 		return CgiResult(false, "Script not accessible: " + script_path, 403);

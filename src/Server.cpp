@@ -68,6 +68,8 @@ void Server::setRoot(const std::string& root) {this->root = root;}
 
 void Server::setClientBodyLimit(size_t limit) {client_max_body_size = limit;}
 
+void Server::addClientTimeout(size_t timeout) {client_timeout = timeout;}
+
 void Server::setAutoindex(bool autoindex) {this->autoindex = autoindex;}
 
 void Server::addIndex(const std::string& index) {this->index.push_back(index);}
@@ -88,6 +90,8 @@ const std::vector<Location*>& Server::getLocations() const {return locations;}
 const std::string& Server::getRoot() const {return root;}
 
 size_t Server::getClientBodyLimit() const {return client_max_body_size;}
+
+size_t Server::getClientTimeout() const {return client_timeout;}
 
 bool Server::getAutoindex() const {return autoindex;}
 

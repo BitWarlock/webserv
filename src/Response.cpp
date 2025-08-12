@@ -581,6 +581,7 @@ void    Response::StartForResponse(ParseRequest request, int fd_client)
 {
 	SetRequest(request);
 	SetBlockServer(request.getBlockServer());
+	std::cout << "client_timeout response : " << request.getBlockServer().getClientTimeout() << std::endl;
 	SetState(request.getErrorNumber());
 	SetPath(request.getUri());
 	this->fd_client = fd_client;

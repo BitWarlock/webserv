@@ -166,6 +166,8 @@ void DirectiveParser::parseServerDirective(Server* server)
 		parseAllowMethodsServ(server, values);
 	else if (directive == "listen")
 		parseListen(server, values);
+	else if (directive == "client_timeout")
+		parseTimeout(server, values);
 	else if (directive == "server_name")
 		parseServerName(server, values);
 	else if (directive == "root")
@@ -272,6 +274,22 @@ void DirectiveParser::parseListen(Server* server, const std::vector<std::string>
 
 	if (UniqueListen(server, std::make_pair(host, port)))
 		server->setListen(std::make_pair(host, port));
+}
+
+void DirectiveParser::parseTimeout(Server* server, const std::vector<std::string>& values)
+{
+	if (values.size() != 1)
+		throw ParseException("client_timeout requires exactly one value", currentToken.line);
+
+	std::cout << "Parse client_timeout : " << values[0] << std::endl;
+
+	char*	end;
+	long	timeout = strtol(values[0].c_str(), &end, 10);
+
+	if (*end != '\0' || timeout <= 0)
+		throw ParseException("Invalid client_timeout: " + values[0], currentToken.line);
+
+	server->addClientTimeout(static_cast<size_t>(timeout));
 }
 
 void DirectiveParser::parseClientBodyLimit(Server* server,
