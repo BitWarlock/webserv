@@ -56,7 +56,7 @@ Config* DirectiveParser::parseConfig()
 			{
 				Server* server = parseServerBlock();
 				if (server->getListen().empty())
-					server->setListen(std::make_pair("0.0.0.0", "8000"));
+					throw ParseException("Listen directive required", currentToken.line);
 				config->addServer(server);
 			}
 			else
