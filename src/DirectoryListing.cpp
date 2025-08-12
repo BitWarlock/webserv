@@ -218,7 +218,7 @@ void    Response::GetListingPage(void)
 		std::string modified_str = e.mtime ? formatTime(e.mtime) : "N/A";
 		std::string type_class = e.is_dir ? "type-dir" : (e.is_file ? "type-file" : "type-other");
 		std::string type_label = e.is_dir ? "Directory" : (e.is_file ? "File" : "Other");
-		std::string href = e.name;
+		std::string href = uri + e.name;
 		if (e.is_dir) href += "/";
 		out << "<tr>\n";
 		out << "<td><a href='" << escapeHtml(href) << "'>" << escapeHtml(e.name) << (e.is_dir ? "/" : "") << "</a></td>\n";

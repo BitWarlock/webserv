@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/16 16:32:33 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/08/12 21:36:35 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/08/12 23:53:24 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,7 +31,7 @@ bool    Response::GetFullPath(std::string& path)
 	}
 	else
 		SetPath(ServerBlock.getRoot() + path.erase(0, 1));
-	std::cout << path << "\n";
+
 	return (true);
 }
 
@@ -49,12 +49,10 @@ void    Response::CheckIndexAccess(std::vector<std::string> indexs)
 
 	for (size_t i(0); i < indexs.size(); i++)
 	{
-		std::string join = path;
-
 		if (path[path.size() - 1] != '/')
 			path += "/";
 
-		join += indexs[i];
+		std::string	join = path + indexs[i];
 
 		if (access(join.c_str(), F_OK) == 0)
 		{
@@ -249,8 +247,9 @@ void    Response::GetPageResponse(void)
 	if (stat(path.c_str(), &info) == -1)
 			return (SetState(Not_Found), ResponseWithError(NONE));
 
-	if (S_ISDIR(info.st_mode))
-		return (SearchForIndex());
+	if (!S_ISREG(info.st_mode))
+		if (S_ISDIR(info.st_mode))
+			return (SearchForIndex());
 
 	if (access(path.c_str(), R_OK) != 0)
 		return (SetState(Forbidden), ResponseWithError(NONE));
