@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/16 16:28:12 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/06/23 18:23:10 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/08/12 02:41:55 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -42,8 +42,6 @@
 
 #define DEFAULT 0
 #define NONE 1
-#define NORMAL 2
-#define RES_ERROR 3
 
 #define html "html"
 #define htm "htm"
@@ -111,9 +109,8 @@ class Response{
 		
 
 
-        bool			shouldExecuteCgi(ParseRequest& request, Server& server);
+        bool			shouldExecuteCgi(ParseRequest& request);
         void			sendCgiResponse(const CgiResult& cgi_result);
-        Location*		findMatchingLocation(const std::string& uri, Server& server);
         std::string		getScriptPath(const Location& location, const std::string& uri);
         std::string		getFileExtension(const std::string& uri);
         void			setCookie(const std::string& name, const std::string& value, 
@@ -125,7 +122,7 @@ class Response{
         Response();
         ~Response();
 
-        void   	handleCgiRequest(ParseRequest& request, Server& server);
+        void   	handleCgiRequest(ParseRequest& request);
         void	setSessionManager(SessionManager* sm);
         
         // Setters
@@ -133,7 +130,6 @@ class Response{
         void    SetRequest(ParseRequest Request);
         void    SetBlockServer(Server BlockServer);
         void    SetState(int state);
-        void    SetStatePath(int state_path);
         void    SetLocation(Location location);
         void    SetPath(std::string path);        
         

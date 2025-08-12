@@ -11,7 +11,7 @@ all: $(NAME)
 
 $(NAME): $(OBJS)
 	@printf "\033[1;34m[✓] Linking object files...\033[0m\n"
-	@$(CC) $(CFLAGS) -lz $^ -o $@
+	@$(CC) $(CFLAGS)  $^ -o $@ -lz
 
 objs/%.o: %.cpp
 	@mkdir -p $(dir $@)

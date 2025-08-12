@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/16 16:32:33 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/08/08 22:45:54 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/08/12 02:43:45 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,34 +16,44 @@ Response::Response() : sessionManager(NULL), responseBody(""){}
 
 Response::~Response(){}
 
-void    Response::CheckLocations(std::string& path)
+void Response::CheckLocations(std::string& path)
 {
-	std::vector<Location*>  locations = ServerBlock.getLocations();
-	std::string urlpath = path;
+    std::vector<Location*>	locations = ServerBlock.getLocations();
+    std::string 			urlpath = path;
 
-	while (true){
-		size_t i = 0;
-		while (i < locations.size()){
-			if (locations[i]->getPath() == urlpath)
-				return (FromLocation = true, SetLocation(*(locations[i])));
-			i++;
-		}
-		if (urlpath != "/" && urlpath.size() > 1){
-			if (urlpath[urlpath.size() - 1] == '/')
-				urlpath.erase(urlpath.find_last_of('/'));
-			urlpath = urlpath.erase(urlpath.find_last_of('/')+1);
-		}
-		else if (urlpath == "/") {
-			i = 0;
-			while (i < locations.size()){
-				if (locations[i]->getPath() == "/")
-					return (FromLocation = true, SetLocation(*(locations[i])));
-				i++;
-			}
-			break;
-		}
-	}
-	FromLocation = false;
+	if (urlpath[urlpath.size() - 1] != '/')
+		urlpath += '/';
+    while (1337)
+    {
+        for (size_t i = 0; i < locations.size(); ++i)
+        {
+            if (locations[i]->getPath() == urlpath)
+            {
+                FromLocation = true;
+                SetLocation(*(locations[i]));
+                return;
+            }
+        }
+
+        if (urlpath == "/")
+            break;
+
+        if (urlpath.length() > 1 && urlpath[urlpath.length() - 1] == '/')
+        {
+            urlpath.erase(urlpath.length() - 1);
+            continue;
+        }
+
+        size_t pos = urlpath.find_last_of('/');
+        if (pos == std::string::npos)
+            break;
+        else if (pos == 0)
+            urlpath = "/";
+        else
+            urlpath.erase(pos + 1);
+    }
+
+    FromLocation = false;
 }
 
 bool    Response::GetFullPath(std::string& path)
@@ -51,13 +61,8 @@ bool    Response::GetFullPath(std::string& path)
 	if (FromLocation == true)
 	{    
 		if (!location.getRoot().empty())
-		{
-			if (state_path == NORMAL)
-				path.erase(0, location.getPath().size());
-			if (path[0] == '/')
-				path.erase(0, 1);
-			SetPath(location.getRoot() + path);
-		}
+			SetPath(location.getRoot() + path.erase(0, 1));
+
 		else if (!ServerBlock.getRoot().empty())
 			SetPath(ServerBlock.getRoot() + path.erase(0, 1));
 		else
@@ -98,7 +103,6 @@ void    Response::CheckIndexAccess(std::vector<std::string> indexs)
 	else
 		SetState(Forbidden), ResponseWithError(NONE);
 }
-
 
 void    Response::SearchForIndex(void)
 {
@@ -272,9 +276,8 @@ void    Response::GetPageResponse(void)
 
 	if (GetFullPath(path) == false)
 		return ;
-
 	if (stat(path.c_str(), &info) == -1)
-		return (SetState(Not_Found), ResponseWithError(NONE));
+			return (SetState(Not_Found), ResponseWithError(NONE));
 
 	if (S_ISDIR(info.st_mode))
 		return (SearchForIndex());
@@ -543,7 +546,6 @@ void    Response::ResponseWithError(int serve)
 
 	if (!error_page.empty())
 	{
-		SetStatePath(RES_ERROR);
 		SetPath(error_page);
 		if (GetFullPath(path) == false)
 			return ;
@@ -560,9 +562,9 @@ void    Response::ResponseWithError(int serve)
 	BuildGetResponse();
 }
 
-bool	Response::shouldExecuteCgi(ParseRequest& request, Server& server)
+bool	Response::shouldExecuteCgi(ParseRequest& request)
 {
-	Location* location = findMatchingLocation(request.getUri(), server);
+	Location* location = (FromLocation == true) ? (&this->location) : NULL;
 	if (!location)
 		return false;
 
@@ -579,16 +581,14 @@ void    Response::StartForResponse(ParseRequest request, int fd_client)
 	SetBlockServer(request.getBlockServer());
 	SetState(request.getErrorNumber());
 	SetPath(request.getUri());
-	SetStatePath(NORMAL);
 	this->fd_client = fd_client;
-
 	if (ReturnDirective() == false)
 		return ;
 
-	if (shouldExecuteCgi(Request, ServerBlock))
+	if (shouldExecuteCgi(Request))
 	{
 		try {
-			handleCgiRequest(Request, ServerBlock);
+			handleCgiRequest(Request);
 		} catch (...) {
 			ResponseWithError(500);
 		}
@@ -600,11 +600,11 @@ void    Response::StartForResponse(ParseRequest request, int fd_client)
 		ResponseWithOk();
 }
 
-void	Response::handleCgiRequest(ParseRequest& request, Server& server)
+void	Response::handleCgiRequest(ParseRequest& request)
 {
 	try
 	{
-		Location* location = findMatchingLocation(request.getUri(), server);
+		Location* location = (FromLocation == true) ? (&this->location) : NULL;
 		if (!location)
 			return (SetState(404), ResponseWithError(NONE));
 
@@ -651,27 +651,6 @@ void	Response::sendCgiResponse(const CgiResult& cgi_result)
 	responseBody += cgi_result.body;
 }
 
-Location*	Response::findMatchingLocation(const std::string& uri, Server& server)
-{
-	const std::vector<Location*>& locations = server.getLocations();
-
-	Location*	best_match = NULL;
-	size_t		best_length = 0;
-
-	for (std::vector<Location*>::const_iterator it = locations.begin(); it != locations.end(); ++it)
-	{
-		std::string location_path = (*it)->getPath();
-
-		if (uri.substr(0, location_path.length()) == location_path && 
-				location_path.length() > best_length)
-		{
-			best_match = *it;
-			best_length = location_path.length();
-		}
-	}
-	return best_match;
-}
-
 std::string Response::getScriptPath(const Location& location, const std::string& uri)
 {
 	std::string root = location.getRoot();
@@ -681,7 +660,7 @@ std::string Response::getScriptPath(const Location& location, const std::string&
 	if (relative_path.empty() || relative_path[0] != '/')
 		relative_path = "/" + relative_path;
 
-	std::string script_path = root + relative_path;
+	std::string script_path = root + location_path + relative_path;
 
 	char abs_path[1024];
 	if (realpath(script_path.c_str(), abs_path) != NULL)
@@ -710,8 +689,6 @@ void    Response::SetBlockServer(Server BlockServer){this->ServerBlock = BlockSe
 void    Response::SetLocation(Location location){this->location = location; this->FromLocation = true;}
 
 void    Response::SetState(int state){this->state = state;}
-
-void    Response::SetStatePath(int state_path){this->state_path = state_path;}
 
 void    Response::SetPath(std::string path){this->path = path;}
 

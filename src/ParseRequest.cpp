@@ -516,7 +516,6 @@ void        ParseRequest::DecompressBody(){
 	Strm.opaque = Z_NULL;
 	Strm.next_in = (Bytef *)BufferBody.data();
 	Strm.avail_in = BufferBody.size();
-	std::cout << BufferBody <<"\n" ;
 	if (inflateInit2(&Strm, Bits) != Z_OK)
 		return (setErrorNumber(400, "Decompressing The Body Fails "));
 
@@ -1096,7 +1095,6 @@ void ParseRequest::startParse(int fd, const Config& config, Server*server){
 
 	if (PARSER_NONE == CurrntParsState)
 		S = server;
-
 	while(true)
 	{
 		char        str[1000];
