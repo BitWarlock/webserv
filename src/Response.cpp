@@ -581,7 +581,6 @@ void    Response::StartForResponse(ParseRequest request, int fd_client)
 {
 	SetRequest(request);
 	SetBlockServer(request.getBlockServer());
-	std::cout << "client_timeout response : " << request.getBlockServer().getClientTimeout() << std::endl;
 	SetState(request.getErrorNumber());
 	SetPath(request.getUri());
 	this->fd_client = fd_client;
@@ -628,7 +627,6 @@ void	Response::handleCgiRequest(ParseRequest& request)
 		Cgi cgi(script_path, interpreter);
 		CgiResult result = cgi.execute(request);
 
-		std::cout << "Cgi failed: " << result.error_message << std::endl;
 		if (result.success)
 			sendCgiResponse(result);
 		else

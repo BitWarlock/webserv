@@ -4,6 +4,7 @@ Server::Server()
 	: client_max_body_size(0), autoindex(false)
 {
 	return_d.enabled = false;
+	client_timeout = 5;
 }
 
 Server::Server(const Server &other)  :
@@ -19,6 +20,7 @@ Server::Server(const Server &other)  :
 {
 	for (size_t i = 0; i < other.locations.size(); i++)
 		locations.push_back(new Location(*other.locations[i]));
+	client_timeout = other.client_timeout;
 }
 
 Server	&Server::operator=(const Server &other)
@@ -41,6 +43,8 @@ Server	&Server::operator=(const Server &other)
 
 		for (size_t i = 0; i < other.locations.size(); i++)
 			locations.push_back(new Location(*other.locations[i]));
+
+		client_timeout = other.client_timeout;
 	}
 	return (*this);
 }

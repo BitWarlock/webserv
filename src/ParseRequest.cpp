@@ -1096,9 +1096,6 @@ void ParseRequest::startParse(int fd, const Config& config, Server*server){
 	if (PARSER_NONE == CurrntParsState)
 		S = server;
 
-	std::cout << "client_timeout request : " << S->getClientTimeout() << std::endl;
-	std::cout << "client_body request : " << S->getClientBodyLimit() << std::endl;
-	std::cout << "root request : " << S->getRoot() << std::endl;
 	while(true)
 	{
 		char        str[1000];

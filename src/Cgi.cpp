@@ -113,8 +113,6 @@ CgiResult Cgi::execute(ParseRequest& request)
 {
 	const size_t	timeout = request.getBlockServer().getClientTimeout();
 
-	std::cout << "Timeout " << timeout << std::endl;
-
 	if (access(script_path.c_str(), F_OK | R_OK) != 0)
 		return CgiResult(false, "Script not accessible: " + script_path, 403);
 

@@ -281,8 +281,6 @@ void DirectiveParser::parseTimeout(Server* server, const std::vector<std::string
 	if (values.size() != 1)
 		throw ParseException("client_timeout requires exactly one value", currentToken.line);
 
-	std::cout << "Parse client_timeout : " << values[0] << std::endl;
-
 	char*	end;
 	long	timeout = strtol(values[0].c_str(), &end, 10);
 
