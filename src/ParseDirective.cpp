@@ -1,4 +1,6 @@
 #include "../inc/ParseDirective.hpp"
+#include <algorithm>
+#include <cctype>
 #include <clocale>
 #include <exception>
 #include <string>
@@ -284,19 +286,30 @@ void DirectiveParser::parseTimeout(Server* server, const std::vector<std::string
 	char*	end;
 	long	timeout = strtol(values[0].c_str(), &end, 10);
 
-	if (*end != '\0' || timeout <= 0)
+	if (*end != '\0')
 		throw ParseException("Invalid client_timeout: " + values[0], currentToken.line);
 
+	if (timeout <= 0 || timeout < 4)
+		throw ParseException("client_timeout minimum value is 4: " + values[0], currentToken.line);
+
 	server->addClientTimeout(static_cast<size_t>(timeout));
+}
+
+void	to_upper(std::string &str)
+{
+	for (size_t i = 0; i < str.length(); i++)
+		str[i] = std::toupper(str[i]);
 }
 
 void DirectiveParser::parseClientBodyLimit(Server* server,
 		Location* location, const std::vector<std::string>& values)
 {
-	if (values.size() != 1)
+	if (values.size() != 2 && values.size() != 1)
 		throw ParseException("client_max_body_size requires exactly one value", currentToken.line);
 
-	size_t limit = parseSize(values[0]);
+	std::string size_unit = values.size() == 1 ? "" : values[1];
+
+	size_t limit = parseSize(values[0], size_unit);
 
 	if (location)
 		location->setClientBodyLimit(limit);
@@ -465,21 +478,19 @@ std::vector<std::string> DirectiveParser::gatherDirectiveValues()
 	return values;
 }
 
-size_t DirectiveParser::parseSize(const std::string& sizeStr)
+size_t DirectiveParser::parseSize(const std::string& sizeStr, std::string size_unit)
 {
 	char* end;
 	long size = strtol(sizeStr.c_str(), &end, 10);
 
-	if (*end != '\0')
+	if (!size_unit.empty())
 	{
-		char unit = std::toupper(*end);
-		switch (unit)
-		{
-			case 'K': size *= 1024; break;
-			case 'M': size *= 1024 * 1024; break;
-			case 'G': size *= 1024 * 1024 * 1024; break;
-			default: throw ParseException("Invalid size unit: " + sizeStr, currentToken.line);
-		}
+		to_upper(size_unit);
+		if (size_unit == "KB") size *= 1024;
+		else if (size_unit == "MB") size *= 1024 * 1024;
+		else if (size_unit == "GB") size *= 1024 * 1024 * 1024;
+		else
+			throw ParseException("client_max_body_size Invalid size unit", currentToken.line);
 	}
 
 	if (size <= 0)

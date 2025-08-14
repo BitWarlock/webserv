@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <stdexcept>
+#include <algorithm>
 #include <cstdlib>
 #include <sstream>
 
@@ -51,7 +52,7 @@ class DirectiveParser
 		void						advance();
 		std::vector<std::string>	gatherDirectiveValues();
 		bool						isLocationDirective(const std::string& directive) const;
-		size_t						parseSize(const std::string& sizeStr);
+		size_t						parseSize(const std::string& sizeStr, std::string size);
 };
 
 static std::string intToString(int value)
