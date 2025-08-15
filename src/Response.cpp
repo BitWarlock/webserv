@@ -6,13 +6,13 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/16 16:32:33 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/08/15 01:17:18 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/08/15 21:36:06 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../inc/Response.hpp"
 
-Response::Response() : sessionManager(NULL), responseBody(""){}
+Response::Response() : sessionManager(NULL), responseBody(""), buildRes(false), bytes(0){}
 
 Response::~Response(){}
 
@@ -43,6 +43,7 @@ void    Response::GetFullPath(std::string& path)
 
 		SetPath(ServerBlock.getRoot() + path.erase(0, 1));
 	}
+	std::cout << path << "\n";
 }
 
 bool    Response::CheckAutoIndex(void)
@@ -256,7 +257,7 @@ void    Response::GetPageResponse(void)
 	GetFullPath(path);
 
 	if (stat(path.c_str(), &info) == -1)
-			return (SetState(Not_Found), ResponseWithError(NONE));
+		return (SetState(Not_Found), ResponseWithError(NONE));
 
 	if (!S_ISREG(info.st_mode))
 		if (S_ISDIR(info.st_mode))
@@ -671,6 +672,14 @@ int     Response::getState() const {return state;}
 std::string	Response::GetResponseBody() const {return responseBody;}
 
 std::string Response::getPath() {return path;}
+
+bool	Response::getBuildRes() {return buildRes;}
+
+size_t	Response::getBytes() {return bytes;}
+
+void	Response::SetBuildRes(bool buildres) {this->buildRes = buildres;}
+
+void	Response::SetBytes(size_t bytes) {this->bytes = bytes;}
 
 void    Response::SetRequest(ParseRequest Request){this->Request = Request;}
 

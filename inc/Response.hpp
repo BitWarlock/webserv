@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/16 16:28:12 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/08/14 23:32:07 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/08/15 21:14:55 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -106,6 +106,8 @@ class Response{
         std::vector
 			<std::string>	cookies_to_set;
         std::string         responseBody;
+        bool                buildRes;
+        size_t              bytes;
 		
 
 
@@ -131,11 +133,15 @@ class Response{
         void    SetBlockServer(Server BlockServer);
         void    SetState(int state);
         void    SetLocation(Location* location);
-        void    SetPath(std::string path);        
+        void    SetPath(std::string path);
+        void	SetBuildRes(bool buildres);
+        void	SetBytes(size_t bytes);        
         
         // Getters
         
         std::string getPath();
+        size_t      getBytes();
+        bool        getBuildRes();
         int         getState(void) const;
         std::string getStrState(void) const;
         std::string MIME_Type(void) const;

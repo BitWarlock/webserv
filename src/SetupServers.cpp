@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/21 20:57:28 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/08/12 23:02:40 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/08/15 21:15:30 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -312,22 +312,37 @@ void    SetupServers::Run(void)
 			}
 			else if (events[i].events & EPOLLOUT)
 			{
-				size_t bytes(0);
-				handleSessionManagement(Requests[fd]);
-				Responses[fd].setSessionManager(&sessionManager);
-				Responses[fd].StartForResponse(Requests[fd], fd);
-				std::string	ResBody = Responses[fd].GetResponseBody();
-				while (bytes < ResBody.length())
+				if (Responses[fd].getBuildRes() == false)
 				{
-					ssize_t n(0);
-					n = send(fd, ResBody.c_str() + bytes, ResBody.length() - bytes, MSG_NOSIGNAL);
-					if (n <= 0)
-						break;
-					bytes += static_cast<size_t>(n);
+					handleSessionManagement(Requests[fd]);
+					Responses[fd].setSessionManager(&sessionManager);
+					Responses[fd].StartForResponse(Requests[fd], fd);
+					Responses[fd].SetBuildRes(true);
 				}
-				EraseFd(fd);
-				Requests.erase(fd);
-				Responses.erase(fd);
+
+				std::string	ResBody = Responses[fd].GetResponseBody();
+				ssize_t n(0);
+
+				while (n < 1000000000)
+				{
+					ssize_t	byte(0);
+					byte = send(fd, ResBody.c_str() + Responses[fd].getBytes(), 1000000000, MSG_NOSIGNAL);
+					if (byte > 0)
+						Responses[fd].SetBytes(Responses[fd].getBytes() + static_cast<size_t>(byte));
+					
+					else if (byte == 0 || Responses[fd].getBytes() == ResBody.size())
+					{
+						EraseFd(fd);
+						Requests.erase(fd);
+						Responses.erase(fd);
+						break ;
+					}
+
+					else if (byte < 0)
+						break ;
+
+					n += byte;
+				}
 			}
 		}
 	}
