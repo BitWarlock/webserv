@@ -8,7 +8,7 @@
 ParseRequest::ParseRequest() : errorNumber(200), pos(0), 
     CurrntParsState(PARSER_NONE), Method(""), Url(""),
 	HttpProtocolVersion(""),
-    chunkedEncoding(false), contentLength(0), MatchLocation(NULL){
+    chunkedEncoding(false), contentLength(0){
 
 	BufferBody.clear();
 
@@ -43,7 +43,7 @@ ParseRequest::ParseRequest() : errorNumber(200), pos(0),
 ParseRequest::ParseRequest(Server *server) : errorNumber(200), pos(0), 
     CurrntParsState(PARSER_NONE), Method(""), Url(""),
 	HttpProtocolVersion(""),
-    S(server), chunkedEncoding(false), contentLength(0), MatchLocation(NULL){
+    S(server), chunkedEncoding(false), contentLength(0){
 
 	BufferBody.clear();
 
@@ -177,7 +177,7 @@ void ParseRequest::parseUrl(std::string &str){
 	}
 
 	ResetBuffPos();
-	FindMatchLocation();
+
 	if (!isSupportedMethod(Method)){
 
 		int numberErr = isKnownMethod();
@@ -619,8 +619,6 @@ std::vector<std::string >&							ParseRequest::getMultipartBuferBody()			{ retur
 
 Server												ParseRequest::getBlockServer() 					{ return *S; }
 
-Location*											ParseRequest::getMatchLocation()				{ return MatchLocation; }
-
 std::string	ParseRequest::getCookie(const std::string& name) const
 {
 	std::map<std::string, std::string>::const_iterator it = cookies.find(name);
@@ -634,16 +632,74 @@ const std::map<std::string, std::string>&	ParseRequest::getCookies() const						
 // if no location  matched i get the default allowed methods for the server  
 const std::vector<std::string>&     ParseRequest::getMatchedLocationAllowedMethods(){
 
-	if (MatchLocation)
-		return MatchLocation->getAllowedMethods();
+	std::string urlpath = Url;
+
+	const std::vector<Location*>& locations = S->getLocations();
+
+	while (true){
+		size_t i = 0;
+
+		while (i < locations.size()){
+			if (locations[i]->getPath() == urlpath)
+				return locations[i]->getAllowedMethods();
+			i++;
+		}
+
+		if (urlpath != "/" && urlpath.size() > 1){
+			if (urlpath[urlpath.size() - 1] == '/')
+				urlpath.erase(urlpath.find_last_of('/'));
+			urlpath = urlpath.erase(urlpath.find_last_of('/')+1);
+		}
+
+		else if (urlpath == "/") {
+			i = 0;
+			while (i < locations.size()){
+				if (locations[i]->getPath() == "/")
+					return locations[i]->getAllowedMethods();
+				i++;
+			}
+
+			break;
+		}
+	}
+
 	return S->getAllowedMethods();
 }
 
 // get the matched location body size limits 
 int     ParseRequest::getMatchedLocationBodySizeMax(){
 
-	if (MatchLocation)
-		return MatchLocation->getClientBodyLimit();
+	std::string urlpath = Url;
+
+	const std::vector<Location*>& locations = S->getLocations();
+
+	while (true){
+		size_t i = 0;
+
+		while (i < locations.size()){
+			if (locations[i]->getPath() == urlpath)
+				return locations[i]->getClientBodyLimit();
+			i++;
+		}
+
+		if (urlpath != "/" && urlpath.size() > 1){
+			if (urlpath[urlpath.size() - 1] == '/')
+				urlpath.erase(urlpath.find_last_of('/'));
+			urlpath = urlpath.erase(urlpath.find_last_of('/')+1);
+		}
+
+		else if (urlpath == "/") {
+			i = 0;
+			while (i < locations.size()){
+				if (locations[i]->getPath() == "/")
+					return locations[i]->getClientBodyLimit();
+				i++;
+			}
+
+			break;
+		}
+	}
+
 	return S->getClientBodyLimit();
 }
 
@@ -701,24 +757,7 @@ void ParseRequest::setErrorNumber(int Number, std::string ErrorMsg){
 //_____________________________________________________________________________PARSE_HELPER_FUNCTIONS_____________________________________________________________________________
 
 
-void	ParseRequest::FindMatchLocation()
-{
-	const std::vector<Location*>&	locations = S->getLocations();
-	std::string	urlpath = getUri();
-	size_t	size(0);
 
-	for (size_t i(0); i < locations.size(); i++)
-	{
-		const std::string& locPath = locations[i]->getPath();
-
-		if (urlpath.compare(0, locPath.size(), locPath) == 0){
-			if (locations[i]->getPath().size() > size){
-				size = locations[i]->getPath().size();
-				MatchLocation = locations[i];
-			}
-		}
-	}
-}
 
 // check if the request parsing is finish or not yet ; 
 bool ParseRequest::isFinish()                   { return (getParseState() == FINISH); }
@@ -1059,12 +1098,14 @@ void ParseRequest::startParse(int fd, const Config& config, Server*server){
 
 	while(true)
 	{
-		char        str[6];
+		char        str[1000];
 
-		while (buff.empty() || (buff.find("\r\n\r\n") == std::string::npos) ||
-				CurrntParsState > ADD_HEADER ){
+		if (buff.empty()){
+
 			std::memset(str, 0, sizeof(str));
-			ssize_t bytes = recv(fd, str, 5, 0);
+
+			ssize_t bytes = recv(fd, str, 999, 0);
+
 			if (bytes == 0){
 				if (CurrntParsState == ERROR || CurrntParsState == FINISH || CurrntParsState == PARSER_NONE){
 					if (CurrntParsState == FINISH)
@@ -1076,7 +1117,7 @@ void ParseRequest::startParse(int fd, const Config& config, Server*server){
 			}
 			if (bytes < 0 &&
 					!(CurrntParsState == READ_BOUNDARY || CurrntParsState == READ_MULTIPART_BODY)){
-					break;
+					return;
 			}
 
 			if (bytes > 0)
@@ -1087,7 +1128,6 @@ void ParseRequest::startParse(int fd, const Config& config, Server*server){
 			if (CurrntParsState == PARSER_NONE)
 				S = findBlockServer(config, buff, server);
 		}
-		std::cout << buff << "\n";
 		switch(CurrntParsState){
 			case FINISH:
 			case ERROR:
@@ -1101,3 +1141,4 @@ void ParseRequest::startParse(int fd, const Config& config, Server*server){
 		if (CurrntParsState == FINISH || CurrntParsState == ERROR)
 			break ;
 	}
+}
