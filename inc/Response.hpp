@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/16 16:28:12 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/08/12 20:38:48 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/08/14 23:32:07 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -162,7 +162,7 @@ class Response{
         
         void    CheckLocations(std::string& path);
         
-        bool    GetFullPath(std::string& path);
+        void    GetFullPath(std::string& path);
         
 
         

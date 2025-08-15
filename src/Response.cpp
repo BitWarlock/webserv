@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/16 16:32:33 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/08/12 23:53:24 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/08/15 01:17:18 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,23 +16,33 @@ Response::Response() : sessionManager(NULL), responseBody(""){}
 
 Response::~Response(){}
 
-bool    Response::GetFullPath(std::string& path)
+void    Response::GetFullPath(std::string& path)
 {
+
 	if (location)
-	{    
+	{
+		std::string	loc_path = location->getPath();
+		std::string	temp_path = path.substr(loc_path.size());
+		
+		if (loc_path[loc_path.size() - 1] != '/')
+			loc_path += '/';
+
+		std::string	path_update = loc_path + temp_path;
+
 		if (!location->getRoot().empty())
-			SetPath(location->getRoot() + path.erase(0, 1));
+			SetPath(location->getRoot() + path_update.erase(0, 1));
 
 		else if (!ServerBlock.getRoot().empty())
-			SetPath(ServerBlock.getRoot() + path.erase(0, 1));
-		else
-			return (SetState(Internal_Server_Error),
-					ResponseWithError(DEFAULT), false);
+			SetPath(ServerBlock.getRoot() + path_update.erase(0, 1));
 	}
-	else
-		SetPath(ServerBlock.getRoot() + path.erase(0, 1));
 
-	return (true);
+	else
+	{
+		if (path[0] != '/')
+			return SetPath(ServerBlock.getRoot() + path);
+
+		SetPath(ServerBlock.getRoot() + path.erase(0, 1));
+	}
 }
 
 bool    Response::CheckAutoIndex(void)
@@ -125,6 +135,8 @@ std::string Response::getStrState(void) const
 			return ("HTTP Version Not Supported");
 		case Bad_Gateway:
 			return ("Bad Gateway");
+		case Gateway_Timeout:
+			return ("Gateway Timeout");
 		case Unsupported_Media_Type:
 			return ("Unsupported Media Type");
 		case Conflict:
@@ -241,8 +253,7 @@ void    Response::GetPageResponse(void)
 {
 	struct stat info;
 
-	if (GetFullPath(path) == false)
-		return ;
+	GetFullPath(path);
 
 	if (stat(path.c_str(), &info) == -1)
 			return (SetState(Not_Found), ResponseWithError(NONE));
@@ -271,8 +282,7 @@ void    Response::DeleteContentResponse(void)
 {
 	struct stat info;
 
-	if (GetFullPath(path) == false)
-		return ;
+	GetFullPath(path);
 
 	if (stat(path.c_str(), &info) == -1)
 		return (SetState(Not_Found), ResponseWithError(NONE));
@@ -404,8 +414,7 @@ void    Response::PostContentResponse(void)
 	std::string ContentType = Request.getHeaderValue("content-type");
 	size_t      multipart = ContentType.find("multipart/form-data");
 
-	if (GetFullPath(path) == false)
-		return ;
+	GetFullPath(path);
 
 	if (multipart != std::string::npos)
 	{
@@ -518,8 +527,12 @@ void    Response::ResponseWithError(int serve)
 	if (!error_page.empty())
 	{
 		SetPath(error_page);
-		if (GetFullPath(path) == false)
-			return ;
+		Request.setUri(path);
+		SetLocation(NULL);
+		Request.FindMatchLocation();
+		SetLocation(Request.getMatchLocation());
+
+		GetFullPath(path);
 
 		if (stat(path.c_str(), &info) != 0)
 			return (SetState(Not_Found), ResponseWithError(DEFAULT));
@@ -563,12 +576,15 @@ void    Response::StartForResponse(ParseRequest request, int fd_client)
 		try {
 			handleCgiRequest(Request);
 		} catch (...) {
-			ResponseWithError(500);
+			SetState(500);
+			ResponseWithError(NONE);
 		}
 		return;
 	}
+
 	else if (getState() != OK)
 		ResponseWithError(NONE);
+
 	else
 		ResponseWithOk();
 }
@@ -580,7 +596,7 @@ void	Response::handleCgiRequest(ParseRequest& request)
 		Location* location = this->location;
 		if (!location)
 			return (SetState(404), ResponseWithError(NONE));
-
+		
 		if (!location->isCgiRequest(request.getUri()))
 			return (SetState(404), ResponseWithError(NONE));
 
@@ -620,6 +636,7 @@ void	Response::sendCgiResponse(const CgiResult& cgi_result)
 		responseBody += *it + "\r\n";
 	
 	responseBody += "Content-Length: " + intToString(cgi_result.body.length()) + "\r\n";
+	responseBody += "Connection: close\r\n";
 	responseBody += "\r\n";
 	responseBody += cgi_result.body;
 }
