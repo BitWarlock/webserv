@@ -167,8 +167,9 @@ void ParseRequest::parseUrl(std::string &str){
 
 	str.erase(0, pos + 1);
 
-	if (!isValidUrl())
+	if (!isValidUrl()){
 		return;
+	}
 
 	if ((pos = Url.find('?')) != std::string::npos)
 	{
@@ -792,7 +793,9 @@ bool ParseRequest::isValidUrl(){
 	for (size_t i(0); i < Url.size(); i++)
 	{
 		if ((Url[i] == '%' && !PercentEncoded(i)) || (!Unresreved(Url[i]) && !Reserved(Url[i])))
+		{
 			return (setErrorNumber(400, "Bad Request – URL contains invalid or incorrectly encoded characters"), false);
+		}
 	}
 
 	return (true);
@@ -1061,7 +1064,7 @@ void ParseRequest::startParse(int fd, const Config& config, Server*server){
 	{
 		char        str[6];
 
-		while (buff.empty() || (buff.find("\r\n\r\n") == std::string::npos) ||
+		while ((buff.find("\r\n\r\n") == std::string::npos) ||
 				CurrntParsState > ADD_HEADER ){
 			std::memset(str, 0, sizeof(str));
 			ssize_t bytes = recv(fd, str, 5, 0);
@@ -1087,7 +1090,7 @@ void ParseRequest::startParse(int fd, const Config& config, Server*server){
 			if (CurrntParsState == PARSER_NONE)
 				S = findBlockServer(config, buff, server);
 		}
-		std::cout << buff << "\n";
+		// std::cout << buff << "\n";
 		switch(CurrntParsState){
 			case FINISH:
 			case ERROR:
@@ -1101,3 +1104,4 @@ void ParseRequest::startParse(int fd, const Config& config, Server*server){
 		if (CurrntParsState == FINISH || CurrntParsState == ERROR)
 			break ;
 	}
+}
