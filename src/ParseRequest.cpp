@@ -1077,6 +1077,11 @@ void ParseRequest::startParse(int fd, const Config& config, Server*server){
 				setErrorNumber(400, "Bad Request – Client closed connection before completing the request");
 				return;
 			}
+			if (buff.empty() && CurrntParsState <= ADD_HEADER){
+				setErrorNumber(400, "Bad Request – Client closed connection before completing the request 222222222");
+				return ;
+			}
+
 			if (bytes < 0 &&
 					!(CurrntParsState == READ_BOUNDARY || CurrntParsState == READ_MULTIPART_BODY)){
 					break;
