@@ -1062,13 +1062,19 @@ void ParseRequest::startParse(int fd, const Config& config, Server*server){
 
 	while(true)
 	{
-		char        str[6];
+		char        str[100000];
 
 		while ((buff.find("\r\n\r\n") == std::string::npos) ||
 				CurrntParsState > ADD_HEADER ){
 			std::memset(str, 0, sizeof(str));
-			ssize_t bytes = recv(fd, str, 5, 0);
-			if (bytes == 0){
+			ssize_t bytes = recv(fd, str, 99999, 0);
+			if (bytes > 0)
+			{
+				str[bytes] = 0;
+				buff.append(str, bytes);
+			}
+
+			else if (bytes == 0){
 				if (CurrntParsState == ERROR || CurrntParsState == FINISH || CurrntParsState == PARSER_NONE){
 					if (CurrntParsState == FINISH)
 						std::cout << GRN << "OK " << YLW << "- HTTP request parsed and validated successfully" << RESET << std::endl;
@@ -1077,6 +1083,7 @@ void ParseRequest::startParse(int fd, const Config& config, Server*server){
 				setErrorNumber(400, "Bad Request – Client closed connection before completing the request");
 				return;
 			}
+
 			if (buff.empty() && CurrntParsState <= ADD_HEADER){
 				setErrorNumber(400, "Bad Request – Client closed connection before completing the request 222222222");
 				return ;
@@ -1087,15 +1094,10 @@ void ParseRequest::startParse(int fd, const Config& config, Server*server){
 					break;
 			}
 
-			if (bytes > 0)
-			{
-				str[bytes] = 0;
-				buff.append(str, bytes);
-			}
+
 			if (CurrntParsState == PARSER_NONE)
 				S = findBlockServer(config, buff, server);
 		}
-		// std::cout << buff << "\n";
 		switch(CurrntParsState){
 			case FINISH:
 			case ERROR:

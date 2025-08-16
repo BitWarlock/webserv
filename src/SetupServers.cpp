@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   SetupServers.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mthamir <mthamir@student.42.fr>            +#+  +:+       +#+        */
+/*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/21 20:57:28 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/08/15 23:23:39 by mthamir          ###   ########.fr       */
+/*   Updated: 2025/08/16 03:08:47 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -299,10 +299,8 @@ void    SetupServers::Run(void)
 				{
 					Requests[fd].startParse(fd, config, GetBlockServer(fd));
 					if (Requests[fd].getParseState() == FINISH || Requests[fd].getParseState() == ERROR)
-					{
-						std::cout << "HERE IS IT  :"  << Requests[fd].getParseState() << " -- - -- - - - \n";
 						AddSocketToEpoll(fd, EPOLLOUT, EPOLL_CTL_MOD);
-					}
+
 					else if (Requests[fd].getParseState() == CLOSE)
 					{
 						EraseFd(fd);
@@ -322,28 +320,22 @@ void    SetupServers::Run(void)
 				}
 
 				std::string	ResBody = Responses[fd].GetResponseBody();
-				ssize_t n(0);
+				ssize_t	byte(0);
+				byte = send(fd, ResBody.c_str() + Responses[fd].getBytes(), ResBody.size() - Responses[fd].getBytes(), MSG_NOSIGNAL);
 
-				while (n < 1000000000)
-				{
-					ssize_t	byte(0);
-					byte = send(fd, ResBody.c_str() + Responses[fd].getBytes(), 1000000000, MSG_NOSIGNAL);
-					if (byte > 0)
-						Responses[fd].SetBytes(Responses[fd].getBytes() + static_cast<size_t>(byte));
+				if (byte > 0)
+					Responses[fd].SetBytes(Responses[fd].getBytes() + static_cast<size_t>(byte));
 					
-					else if (byte == 0 || Responses[fd].getBytes() == ResBody.size())
-					{
-						EraseFd(fd);
-						Requests.erase(fd);
-						Responses.erase(fd);
-						break ;
-					}
-
-					else if (byte < 0)
-						break ;
-
-					n += byte;
+				if (Responses[fd].getBytes() == ResBody.size() || byte == 0)
+				{
+					EraseFd(fd);
+					Requests.erase(fd);
+					Responses.erase(fd);
 				}
+
+				else if (byte < 0)
+					continue;
+
 			}
 		}
 	}

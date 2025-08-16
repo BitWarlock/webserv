@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/16 16:32:33 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/08/15 21:36:06 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/08/16 03:08:27 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,7 +18,6 @@ Response::~Response(){}
 
 void    Response::GetFullPath(std::string& path)
 {
-
 	if (location)
 	{
 		std::string	loc_path = location->getPath();
@@ -26,6 +25,9 @@ void    Response::GetFullPath(std::string& path)
 		
 		if (loc_path[loc_path.size() - 1] != '/')
 			loc_path += '/';
+
+		if (temp_path[0] == '/')
+			temp_path = temp_path.erase(0, 1);
 
 		std::string	path_update = loc_path + temp_path;
 
@@ -43,7 +45,6 @@ void    Response::GetFullPath(std::string& path)
 
 		SetPath(ServerBlock.getRoot() + path.erase(0, 1));
 	}
-	std::cout << path << "\n";
 }
 
 bool    Response::CheckAutoIndex(void)
@@ -518,6 +519,7 @@ void    Response::ResponseWithError(int serve)
 	if (serve == DEFAULT)
 	{
 		SetPath(DefaultForMatchError());
+		std::cout << path << "\n";
 		BuildGetResponse();
 		return ;
 	}
