@@ -722,7 +722,9 @@ void	ParseRequest::FindMatchLocation()
 }
 
 // check if the request parsing is finish or not yet ; 
-bool ParseRequest::isFinish()                   { return (getParseState() == FINISH); }
+bool ParseRequest::isFinish()                   { 
+	return (CurrntParsState == FINISH || CurrntParsState == ERROR ); 
+}
 
 // checking the method if its a supporetd one by the server ;
 bool ParseRequest::isSupportedMethod(std::string &RequestMethod)
@@ -1054,61 +1056,89 @@ Server*	ParseRequest::findBlockServer(const Config& config, std::string buff, Se
 
 //_____________________________________________________________________________START_READING_AND_PARSE_____________________________________________________________________________
 
+
+
 void ParseRequest::startParse(int fd, const Config& config, Server*server){
 	std::string buff;
 
 	if (PARSER_NONE == CurrntParsState)
 		S = server;
 
-	while(true)
-	{
-		char        str[100000];
 
-		while ((buff.find("\r\n\r\n") == std::string::npos) ||
-				CurrntParsState > ADD_HEADER ){
-			std::memset(str, 0, sizeof(str));
-			ssize_t bytes = recv(fd, str, 99999, 0);
-			if (bytes > 0)
-			{
-				str[bytes] = 0;
-				buff.append(str, bytes);
+	char readBuffer[READING_BUFFER_SIZE+1];	
+	while (!isFinish()){
+		while (buff.find(HEADERS_FINISH) == std::string::npos){
+
+			std::memset(readBuffer, 0, READING_BUFFER_SIZE);
+			ssize_t  ReadedBytes = recv(fd, readBuffer, READING_BUFFER_SIZE, 0);
+			if (ReadedBytes){
+				readBuffer[ReadedBytes] = 0;
+				buff.append(readBuffer, ReadedBytes);
 			}
-
-			else if (bytes == 0){
-				if (CurrntParsState == ERROR || CurrntParsState == FINISH || CurrntParsState == PARSER_NONE){
-					if (CurrntParsState == FINISH)
-						std::cout << GRN << "OK " << YLW << "- HTTP request parsed and validated successfully" << RESET << std::endl;
-					return ;
-				}
-				setErrorNumber(400, "Bad Request – Client closed connection before completing the request");
-				return;
+			else if (!ReadedBytes){
+				
 			}
-
-			if (buff.empty() && CurrntParsState <= ADD_HEADER){
-				setErrorNumber(400, "Bad Request – Client closed connection before completing the request 222222222");
-				return ;
-			}
-
-			if (bytes < 0 &&
-					!(CurrntParsState == READ_BOUNDARY || CurrntParsState == READ_MULTIPART_BODY)){
-					break;
-			}
-
-
-			if (CurrntParsState == PARSER_NONE)
-				S = findBlockServer(config, buff, server);
 		}
-		switch(CurrntParsState){
-			case FINISH:
-			case ERROR:
-				return;
-			default :
-				if (CurrntParsState < PARSEARRAYSIZE){
-					(this->*ParseRequest::ParseTable[CurrntParsState])(buff);
-					break;
-				}
-		}
-		if (CurrntParsState == FINISH || CurrntParsState == ERROR)
-			break ;
+
 	}
 }
+
+
+// void ParseRequest::startParse(int fd, const Config& config, Server*server){
+// 	std::string buff;
+
+// 	if (PARSER_NONE == CurrntParsState)
+// 		S = server;
+
+// 	while(true)
+// 	{
+// 		char        str[100000];
+
+// 		while ((buff.find("\r\n\r\n") == std::string::npos) ||
+// 				CurrntParsState > ADD_HEADER ){
+// 			std::memset(str, 0, sizeof(str));
+// 			ssize_t bytes = recv(fd, str, 99999, 0);
+// 			if (bytes > 0)
+// 			{
+// 				str[bytes] = 0;
+// 				buff.append(str, bytes);
+// 			}
+
+// 			else if (bytes == 0){
+// 				if (CurrntParsState == ERROR || CurrntParsState == FINISH || CurrntParsState == PARSER_NONE){
+// 					if (CurrntParsState == FINISH)
+// 						std::cout << GRN << "OK " << YLW << "- HTTP request parsed and validated successfully" << RESET << std::endl;
+// 					return ;
+// 				}
+// 				setErrorNumber(400, "Bad Request – Client closed connection before completing the request");
+// 				return;
+// 			}
+
+// 			if (buff.empty() && CurrntParsState <= ADD_HEADER){
+// 				setErrorNumber(400, "Bad Request – Client closed connection before completing the request 222222222");
+// 				return ;
+// 			}
+
+// 			if (bytes < 0 &&
+// 					!(CurrntParsState == READ_BOUNDARY || CurrntParsState == READ_MULTIPART_BODY)){
+// 					break;
+// 			}
+
+
+// 			if (CurrntParsState == PARSER_NONE)
+// 				S = findBlockServer(config, buff, server);
+// 		}
+// 		switch(CurrntParsState){
+// 			case FINISH:
+// 			case ERROR:
+// 				return;
+// 			default :
+// 				if (CurrntParsState < PARSEARRAYSIZE){
+// 					(this->*ParseRequest::ParseTable[CurrntParsState])(buff);
+// 					break;
+// 				}
+// 		}
+// 		if (CurrntParsState == FINISH || CurrntParsState == ERROR)
+// 			break ;
+// 	}
+// }

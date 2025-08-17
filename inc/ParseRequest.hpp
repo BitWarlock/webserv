@@ -16,6 +16,8 @@
 
 
 #define CLRF "\r\n"
+#define HEADERS_FINISH "\r\n\r\n"
+#define READING_BUFFER_SIZE 5
 #define SPACE ' '
 #define RED "\033[1;31m"
 #define YLW "\033[1;33m"
@@ -78,6 +80,7 @@ class ParseRequest{
         std::vector<std::pair<std::string, std::string> >   Headers;
         bool                                                hasValidHost;
         size_t                                              ChunkSize;
+        std::string                                         LineToParse;
         std::string                                         BufferBody;
         std::string                                         MultipartBoundary;
         std::vector<std::string >                           MultipartBufferBody;
