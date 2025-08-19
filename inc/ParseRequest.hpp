@@ -1,3 +1,4 @@
+
 #ifndef PARSEREQUEST_HPP
 #define PARSEREQUEST_HPP
 
@@ -37,8 +38,8 @@ enum RequestParser
     CONTENTLENGTHBODY,
     READCHUNKSIZE,
     READCHUNK,
-	READ_BOUNDARY,
-	READ_MULTIPART_BODY,
+    READ_BOUNDARY,
+    READ_MULTIPART_BODY,
     PARSE_COUCKIES,
     PARSEARRAYSIZE,
     FINISH,
@@ -63,9 +64,9 @@ class ParseRequest{
 
         // VARIABLES_____________________________________________________
 
-	
-		char 												ReadingBuffer[READING_BUFFER_SIZE + 1];
-		std::string											Current_PrasingLine;
+    
+        char                                                 ReadingBuffer[READING_BUFFER_SIZE + 1];
+        std::string                                            Current_PrasingLine;
         int                                                 errorNumber;
         size_t                                              pos;
         int                                                 CurrntParsState;
@@ -77,14 +78,14 @@ class ParseRequest{
         std::string                                         HttpProtocolVersion;
         Server                                              *S;
         bool                                                chunkedEncoding;
-		size_t												lastBodyPos;
+        size_t                                                lastBodyPos;
         int                                                 contentLength;
         int                                                 ContentEncodingType;
         std::vector<std::pair<std::string, std::string> >   Headers;
         bool                                                hasValidHost;
         size_t                                              ChunkSize;
         std::vector <char >                                 BufferBody;
-		std::vector <char >									RequestBufferbody;
+        std::vector <char >                                    RequestBufferbody;
         std::string                                         MultipartBoundary;
         std::vector<std::vector <char > >                           MultipartBufferBody;
         std::vector <char >                                 DecompressedBufferBody;
@@ -92,7 +93,7 @@ class ParseRequest{
         std::string                                         Host;
         std::string                                         Port;
         std::string                                         QueryString;
-        std::map<std::string, std::string>					cookies;
+        std::map<std::string, std::string>                    cookies;
         Location*                                           MatchLocation;
         
         // FUNCTOIONS_POINTER_PARSING_TABLES_____________________________________________________________
@@ -120,13 +121,13 @@ class ParseRequest{
         void        CheckingForBody();
         void        parseContentlengthBody(std::vector <char > &str);
         void        parseChunkedBody(std::vector <char >& str);
-        void		ParseMultipartBodyBoundary(std::vector <char > &None);
+        void        ParseMultipartBodyBoundary(std::vector <char > &None);
         void        ParseMultiPartBufferBody(std::vector <char > &None);
         void        parseCookies(std::vector <char >& None);
-		void		ReadAndParseIntilHeadersFinish(std::string& buff, int fd, const Config& config, Server* server);
-		void		RaedAndParseRequestBody(std::string& buff, int fd);
-		size_t 		findInVector(const std::vector<char>& haystack, 
-                                  const std::vector<char>& needle, 
+        void        ReadAndParseIntilHeadersFinish(std::string& buff, int fd, const Config& config, Server* server);
+        void        RaedAndParseRequestBody(std::string& buff, int fd);
+        size_t         findInVector(const std::vector<char>& haystack,
+                                  const std::vector<char>& needle,
                                   size_t startPos);
 
         // PARSING_HELPERS_________________________________________________
@@ -170,12 +171,12 @@ class ParseRequest{
         size_t                                              getContentLength(void);
         std::vector <char >&                                getBufferDecompressedBody();
         const std::vector<std::string>&                     getMatchedLocationAllowedMethods();
-        std::vector<std::vector <char > >&					getMultipartBuferBody();
+        std::vector<std::vector <char > >&                    getMultipartBuferBody();
         int                                                 getMatchedLocationBodySizeMax();
         Server                                              getBlockServer();
         std::string                                         getCookie(const std::string& name) const;
-        const std::map<std::string, std::string>&           getCookies() const;  
-        Location*                                           getMatchLocation();             
+        const std::map<std::string, std::string>&           getCookies() const;
+        Location*                                           getMatchLocation();
         
         // SETTER_FUNCTIONS__________________________________________________
 
