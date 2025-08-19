@@ -1159,12 +1159,11 @@ void    ParseRequest::ReadAndParseIntilHeadersFinish(std::string& buff, int fd, 
             }
             while (!buff.empty() && (pos = buff.find(CLRF)) != std::string::npos){
                 if (Current_PrasingLine.empty()){
-					
                     Current_PrasingLine = buff.substr(0, pos + 2);
 					std::cout << RED << "current Prase Line   : " << Current_PrasingLine << RESET;
                     buff.erase(0, pos + 2);
                     if (Current_PrasingLine.find(CLRF) == 0){
-                        buff.erase(0, 2);
+                        // buff.erase(0, 2);
 						if (!checkIsThereaHost())
             				return (setErrorNumber(400, "Bad Request – Missing or empty 'Host' header (required in HTTP/1.1)"));
         				CheckingForBody();
