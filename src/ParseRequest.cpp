@@ -128,8 +128,6 @@ const ParseRequest::ParseBodyFuncPtr ParseRequest::SecondParseTable[] = {
 
     &ParseRequest::ParseMultiPartBufferBody,    //    READ_MULTYPART_BUFFER_BODY_
 
-    // &ParseRequest::parseCookies,                // PARSE_COUCKIES_
-
 };
 
 // start newrequest;
@@ -314,13 +312,16 @@ void ParseRequest::parseContentlengthBody(std::vector <char >& NONE){
 
     // str.erase(0, str.size());
 
-    if (static_cast<size_t> (contentLength) > RequestBufferbody.size())
+    std::cout << GRN << contentLength << "     "<< RequestBufferbody.size() << RESET<<"\n\n\n\n";
+    if (static_cast<size_t> (contentLength) > RequestBufferbody.size() ){
         return ;
+    }
 
     if (static_cast<size_t> (contentLength) < RequestBufferbody.size())
         return (setErrorNumber(400, "Bad Request – Request body exceeds declared 'Content-Length' value"));
 
-    if (static_cast<size_t> (contentLength) == BufferBody.size()){
+    if (static_cast<size_t> (contentLength) > BufferBody.size()){
+
         if (ContentEncodingType == GZIP || ContentEncodingType == DEFLATE){
             DecompressBody();
             BufferBody = getBufferDecompressedBody();
@@ -413,7 +414,6 @@ void    ParseRequest::ParseMultipartBodyBoundary(std::vector<char >& None){
 
                 if (pos + 9 < ContentTypeValue.size()){
                     MultipartBoundary = ContentTypeValue.substr(pos+9);
-                    std:: cout << "PARSESTATE :      " << MultipartBoundary << "\n\n\n\n\n";
 
                     return SwitchState(READ_MULTIPART_BODY);
                 }
@@ -424,130 +424,60 @@ void    ParseRequest::ParseMultipartBodyBoundary(std::vector<char >& None){
     }
 }
 
-// Helper function to find a pattern in vector<char>
-size_t ParseRequest::findInVector(const std::vector<char>& haystack,
-                                  const std::vector<char>& needle,
-                                  size_t startPos) {
-    if (needle.empty() || startPos >= haystack.size())
-        return std::string::npos;
-        
-    for (size_t i = startPos; i <= haystack.size() - needle.size(); ++i) {
-        bool found = true;
-        for (size_t j = 0; j < needle.size(); ++j) {
-            if (haystack[i + j] != needle[j]) {
-                found = false;
-                break;
-            }
-        }
-        if (found)
-            return i;
-    }
-    return std::string::npos;
-}
 
-void ParseRequest::ParseMultiPartBufferBody(std::vector <char >& None) {
+
+
+
+void        ParseRequest::ParseMultiPartBufferBody(std::vector <char >& None){
     (void) None;
+
     std::string Delimiter = "--" + MultipartBoundary;
-    std::vector<char> DelimiterVec(Delimiter.begin(), Delimiter.end());
-    std::vector<char> Part;
+
+    std::string Part;
+
     size_t StartPart = 0;
+
     size_t NextPos = 0;
+     
     ResetBuffPos();
-    
-    while (true) {
-        // Find delimiter in vector<char>
-        pos = findInVector(BufferBody, DelimiterVec, pos);
+    std::cout << "HERE HERE HERE HERE \n\n\n";
+    while (true){
+        pos = getBufferBody_string().find(Delimiter, pos);
+
         if (pos == std::string::npos)
-            return;
-            
-        StartPart = pos + DelimiterVec.size();
-        
-        // Check for end delimiter "--"
-        if (StartPart + 2 <= BufferBody.size() &&
-            BufferBody[StartPart] == '-' && BufferBody[StartPart + 1] == '-')
-            break;
-            
-        // Skip CRLF or LF after boundary
-        if (StartPart + 2 <= BufferBody.size() &&
-            BufferBody[StartPart] == '\r' && BufferBody[StartPart + 1] == '\n')
+            return ;
+
+        StartPart = pos + Delimiter.size();
+        if (StartPart + 2 <= getBufferBody_string().size() && !getBufferBody_string().compare(StartPart, 2, "--"))
+            break ;
+
+        if (StartPart + 2 <= getBufferBody_string().size() && !getBufferBody_string().compare(StartPart, 2, CLRF))
             StartPart += 2;
-        else if (StartPart + 1 <= BufferBody.size() && BufferBody[StartPart] == '\n')
+        else if (StartPart + 1 <= getBufferBody_string().size() && !getBufferBody_string().compare(StartPart, 1, "\n"))
             StartPart += 1;
-            
-        // Find next delimiter
-        NextPos = findInVector(BufferBody, DelimiterVec, StartPart);
+
+        NextPos = getBufferBody_string().find(Delimiter, StartPart);
+
         if (NextPos == std::string::npos)
-            break;
-            
-        // Remove trailing CRLF or LF before next boundary
-        if (NextPos >= 2 && BufferBody[NextPos - 2] == '\r' && BufferBody[NextPos - 1] == '\n')
+            break ;
+
+        if (NextPos >= 2 && !getBufferBody_string().compare(NextPos - 2, 2, CLRF))
             NextPos -= 2;
-        else if (NextPos >= 1 && BufferBody[NextPos - 1] == '\n')
+        else if (NextPos >= 1 && !getBufferBody_string().compare(NextPos - 1, 1, "\n"))
             NextPos -= 1;
-            
-        // Extract part as vector<char>
-        Part.assign(BufferBody.begin() + StartPart, BufferBody.begin() + NextPos);
-        MultipartBufferBody.push_back(Part);
-        
+
+        Part = getBufferBody_string().substr(StartPart, NextPos - StartPart);
+
+        MultipartBufferBody.push_back( std::vector<char >(Part.begin(), Part.end()));
+
         pos = NextPos;
+
         if (getParseState() == FINISH || getParseState() == ERROR)
-            return;
+            return ;
     }
-    
+
     SwitchState(FINISH);
 }
-
-
-// void        ParseRequest::ParseMultiPartBufferBody(std::string& None){
-//     (void) None;
-
-//     std::string Delimiter = "--" + MultipartBoundary;
-
-//     std::string Part;
-
-//     size_t StartPart = 0;
-
-//     size_t NextPos = 0;
-
-//     ResetBuffPos();
-
-//     while (true){
-//         pos = BufferBody.find(Delimiter, pos);
-
-//         if (pos == std::string::npos)
-//             return ;
-
-//         StartPart = pos + Delimiter.size();
-//         if (StartPart + 2 <= BufferBody.size() && !BufferBody.compare(StartPart, 2, "--"))
-//             break ;
-
-//         if (StartPart + 2 <= BufferBody.size() && !BufferBody.compare(StartPart, 2, CLRF))
-//             StartPart += 2;
-//         else if (StartPart + 1 <= BufferBody.size() && !BufferBody.compare(StartPart, 1, "\n"))
-//             StartPart += 1;
-
-//         NextPos = BufferBody.find(Delimiter, StartPart);
-
-//         if (NextPos == std::string::npos)
-//             break ;
-
-//         if (NextPos >= 2 && !BufferBody.compare(NextPos - 2, 2, CLRF))
-//             NextPos -= 2;
-//         else if (NextPos >= 1 && !BufferBody.compare(NextPos - 1, 1, "\n"))
-//             NextPos -= 1;
-
-//         Part = BufferBody.substr(StartPart, NextPos - StartPart);
-
-//         MultipartBufferBody.push_back(Part);
-
-//         pos = NextPos;
-
-//         if (getParseState() == FINISH || getParseState() == ERROR)
-//             return ;
-//     }
-
-//     SwitchState(FINISH);
-// }
 
 // parse cookies if there is
 void    ParseRequest::parseCookies(std::string& None)
@@ -625,7 +555,7 @@ void        ParseRequest::DecompressBody(){
     
     inflateEnd(&Strm);
 
-    SwitchState(FINISH);
+    // SwitchState(FINISH);
 }
 
 // reset the variable to parse another request ;
@@ -1185,17 +1115,21 @@ Server*    ParseRequest::findBlockServer(const Config& config, std::string buff,
 void    ParseRequest::ReadAndParseRequestBody(std::string&    buff, int fd){
 
     RequestBufferbody.assign( buff.begin(), buff.end());
+    std::cout << YLW << buff << RESET;
+    size_t  ByetsReadsFromBody = buff.size();
     buff.clear();
-    ssize_t ReadedBytes = 2;
+    ssize_t ReadedBytes = 0;
     while (true){
 
         std::memset(ReadingBuffer, 0, READING_BUFFER_SIZE);
         ReadedBytes = recv(fd, ReadingBuffer, READING_BUFFER_SIZE, 0);
-
-        std::cout <<RED<<"\n\n\n\n\n\n\n\n\n\n"<< ReadedBytes << "\n\n\n\n\n\n\n\n" << RESET ;
+        std::cout <<RED<<"\n\n\n\n\n\n\n\n\n\n"<< RequestBufferbody.size() << "\n\n\n\n\n\n\n\n" << RESET ;
         if (ReadedBytes > 0){
-            RequestBufferbody.insert(RequestBufferbody.end(), ReadingBuffer, ReadingBuffer + ReadedBytes);
+            ByetsReadsFromBody += ReadedBytes;
+            RequestBufferbody.insert(RequestBufferbody.end(), &ReadingBuffer[0], ReadingBuffer + ReadedBytes);
+
         }
+        std::cout << YLW << ByetsReadsFromBody << RESET << "         \n\n\n" ;
         (this->*ParseRequest::SecondParseTable[CurrntParsState])(RequestBufferbody);
 	
         if (ReadedBytes <= 0){
@@ -1255,10 +1189,11 @@ void        ParseRequest::startParse(int fd, const Config& config, Server* serve
             S = server;
         
         ReadAndParseIntilHeadersFinish(buff, fd, config, server);
-		std::cout << "HERE\n";
         parseCookies(buff);
-        if (Method == "POST" && CurrntParsState > ADD_HEADER && CurrntParsState < PARSEARRAYSIZE)
+        if (Method == "POST" && CurrntParsState > ADD_HEADER && CurrntParsState < PARSEARRAYSIZE){
+            std::cout << "hhhhhhhhhhh\n\n\n\n";
             ReadAndParseRequestBody(buff, fd);
+        }
         return ;
 }
 
