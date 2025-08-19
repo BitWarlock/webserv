@@ -204,7 +204,7 @@ std::string Cgi::readCgiOutput(int pipe_fd, pid_t pid, int timeout_seconds)
 void	Cgi::writeCgiInput(ParseRequest& request, int pipe_fd)
 {
 	if (request.getMethod() == "POST") {
-		std::string body = request.getBufferBody();
+		std::string body = request.getBufferBody_string();
 		if (!body.empty()) {
 			const char* data = body.c_str();
 			size_t remaining = body.length();

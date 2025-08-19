@@ -128,7 +128,7 @@ const ParseRequest::ParseBodyFuncPtr ParseRequest::SecondParseTable[] = {
 
     &ParseRequest::ParseMultiPartBufferBody,    //    READ_MULTYPART_BUFFER_BODY_
 
-    &ParseRequest::parseCookies,                // PARSE_COUCKIES_
+    // &ParseRequest::parseCookies,                // PARSE_COUCKIES_
 
 };
 
@@ -301,17 +301,6 @@ void ParseRequest::parseHeaders(std::string &str){
     }
 
     ResetBuffPos();
-
-    if ((pos = str.find(CLRF)) == 0)
-    {
-        str.erase(0, 2);
-
-        if (!checkIsThereaHost())
-            return (setErrorNumber(400, "Bad Request – Missing or empty 'Host' header (required in HTTP/1.1)"));
-        CheckingForBody();
-
-        return;
-    }
 }
 
 // parse the content length body type ;
@@ -408,11 +397,10 @@ void ParseRequest::parseChunkedBody(std::vector<char >& str){
 
 void    ParseRequest::ParseMultipartBodyBoundary(std::vector<char >& None){
     (void ) None;
-
+    std::cout << ";;;;;;;;;;;;;;;;;;;;;;;;;\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n";
     std::string ContentTypeValue = getHeaderValue("content-type");
 
     pos = ContentTypeValue.find("multipart/");
-
     if (ContentTypeValue.empty() || pos == std::string::npos)
         return SwitchState(FINISH);
 
@@ -425,6 +413,8 @@ void    ParseRequest::ParseMultipartBodyBoundary(std::vector<char >& None){
 
                 if (pos + 9 < ContentTypeValue.size()){
                     MultipartBoundary = ContentTypeValue.substr(pos+9);
+                    std:: cout << "PARSESTATE :      " << MultipartBoundary << "\n\n\n\n\n";
+
                     return SwitchState(READ_MULTIPART_BODY);
                 }
             }
@@ -560,10 +550,10 @@ void ParseRequest::ParseMultiPartBufferBody(std::vector <char >& None) {
 // }
 
 // parse cookies if there is
-void    ParseRequest::parseCookies(std::vector<char >& None)
+void    ParseRequest::parseCookies(std::string& None)
 {
     (void) None;
-    std::string cookie_header = getHeaderValue("Cookie");
+    std::string cookie_header = getHeaderValue("cookie");
 
     if (cookie_header.empty())
         return;
@@ -686,34 +676,61 @@ void        ParseRequest::ResetParserf(){
 
 
 
-std::string&                                         ParseRequest::getMethod()                        { return (Method); }
+std::string&                                         ParseRequest::getMethod()                        	{ return (Method); }
 
-std::string&                                         ParseRequest::getVersion()                      { return (HttpProtocolVersion); }
+std::string&                                         ParseRequest::getVersion()                      	{ return (HttpProtocolVersion); }
 
-std::string&                                         ParseRequest::getUri()                          { return (Url); }
+std::string&                                         ParseRequest::getUri()                          	{ return (Url); }
 
-int                                                 ParseRequest::getParseState()                   { return (CurrntParsState); }
+int                                                 ParseRequest::getParseState()                   	{ return (CurrntParsState); }
 
-int                                                 ParseRequest::getErrorNumber()                    { return (errorNumber);}
+int                                                 ParseRequest::getErrorNumber()                    	{ return (errorNumber);}
 
 
-std::vector<std::pair<std::string, std::string> >&    ParseRequest::getHeaders()                        { return (Headers);}
+std::vector<std::pair<std::string, std::string> >&	ParseRequest::getHeaders()                        	{ return (Headers);}
 
-std::string&                                        ParseRequest::getHost()                            { return (Host);}
+std::string&                                        ParseRequest::getHost()                            	{ return (Host);}
 
-std::string&                                        ParseRequest::getPort()                            { return (Port);}
+std::string&                                        ParseRequest::getPort()                            	{ return (Port);}
 
-int                                                 ParseRequest::getContentEncodingType(int Type)    { (void) Type; return (ContentEncodingType);}
+int                                                 ParseRequest::getContentEncodingType(int Type)   	{ (void) Type; return (ContentEncodingType);}
 
-std::string&                                        ParseRequest::getQueryString()                    { return (QueryString);}
+std::string&                                        ParseRequest::getQueryString()                    	{ return (QueryString);}
 
-std::vector <char >&                                ParseRequest::getBufferBody()                    { return (RequestBufferbody);}
+std::vector <char >&                                ParseRequest::getBufferBody()                    	{ return (RequestBufferbody);}
 
-size_t                                                ParseRequest::getContentLength()                { return (contentLength);}
+std::string                                			ParseRequest::getBufferBody_string()                { 
 
-std::vector <char >&                                ParseRequest::getBufferDecompressedBody()        { return (DecompressedBufferBody);}
+	std::string ReqB(&RequestBufferbody[0], RequestBufferbody.size());	
+	
+	return (ReqB);
 
-std::vector<std::vector <char > >&                    ParseRequest::getMultipartBuferBody()            { return (MultipartBufferBody);}
+}
+
+size_t                                              ParseRequest::getContentLength()                	{ return (contentLength);}
+
+std::vector <char >&                                ParseRequest::getBufferDecompressedBody()        	{ return (DecompressedBufferBody);}
+
+std::string	                                		ParseRequest::getBufferDecompressedBody_string()    { 
+
+	std::string Decompresstring( &DecompressedBufferBody[0], DecompressedBufferBody.size());
+	
+	return (Decompresstring);
+
+}
+
+std::vector<std::vector <char > >&                    ParseRequest::getMultipartBuferBody()            	{ return (MultipartBufferBody);}
+
+std::vector<std::string >                    ParseRequest::getMultipartBuferBody_string()		{
+
+	std::vector<std::string > MultipartStr;
+	
+	for (std::vector<std::vector <char > >::iterator it = MultipartBufferBody.begin(); it != MultipartBufferBody.end();it++){
+		MultipartStr.push_back(std::string(it->begin(), it->end()));
+	}
+	return (MultipartStr);
+
+}
 
 Server                                                ParseRequest::getBlockServer()                     { return *S; }
 
@@ -821,17 +838,16 @@ void    ParseRequest::FindMatchLocation()
 // check if the request parsing is finish or not yet ;
 bool ParseRequest::isFinish(int RecvReturn) {
 
+	(void ) RecvReturn;
     if (CurrntParsState == FINISH)
         std::cout << GRN << "OK " << YLW << "- HTTP request parsed and validated successfully" << RESET << std::endl;
     
-    else if (CurrntParsState != ERROR && CurrntParsState != FINISH){
-        std::cout << "ERROR : Incomplete Request – Client closed connection before completing the request";
-    
-        if (!RecvReturn)
-            SwitchState(CLOSE);
-        else if (RecvReturn == -1)
-            setErrorNumber(400, "Incomplete Request – Client closed connection before completing the request");
-    }
+    // else if (CurrntParsState != ERROR && CurrntParsState != FINISH){    
+    //     if (!RecvReturn)
+    //         SwitchState(CLOSE);
+    //     else if (RecvReturn == -1)
+    //         setErrorNumber(400, "Incomplete Request – Client closed connection before completing the request");
+    // }
     
     return (CurrntParsState == FINISH || CurrntParsState == ERROR || CurrntParsState == CLOSE );
 }
@@ -1166,7 +1182,7 @@ Server*    ParseRequest::findBlockServer(const Config& config, std::string buff,
 
 //_____________________________________________________________________________START_READING_AND_PARSE_____________________________________________________________________________
 
-void    ParseRequest::RaedAndParseRequestBody(std::string&    buff, int fd){
+void    ParseRequest::ReadAndParseRequestBody(std::string&    buff, int fd){
 
     RequestBufferbody.assign( buff.begin(), buff.end());
     buff.clear();
@@ -1176,22 +1192,23 @@ void    ParseRequest::RaedAndParseRequestBody(std::string&    buff, int fd){
         std::memset(ReadingBuffer, 0, READING_BUFFER_SIZE);
         ReadedBytes = recv(fd, ReadingBuffer, READING_BUFFER_SIZE, 0);
 
+        std::cout <<RED<<"\n\n\n\n\n\n\n\n\n\n"<< ReadedBytes << "\n\n\n\n\n\n\n\n" << RESET ;
         if (ReadedBytes > 0){
             RequestBufferbody.insert(RequestBufferbody.end(), ReadingBuffer, ReadingBuffer + ReadedBytes);
-            (this->*ParseRequest::SecondParseTable[CurrntParsState])(RequestBufferbody);
         }
+        (this->*ParseRequest::SecondParseTable[CurrntParsState])(RequestBufferbody);
+	
         if (ReadedBytes <= 0){
             if (isFinish(ReadedBytes))
                 return ;
         }
     }
-
 }
 
 void    ParseRequest::ReadAndParseIntilHeadersFinish(std::string& buff, int fd, const Config& config, Server* server){
 
     int FindBlockServerCheck = 0;
-    while (buff.find(HEADERS_ENDING) == std::string::npos){
+    while (true){
 
         std::memset(ReadingBuffer, 0, READING_BUFFER_SIZE);
         ssize_t ReadedBytes = recv(fd, ReadingBuffer, READING_BUFFER_SIZE, 0);
@@ -1207,18 +1224,24 @@ void    ParseRequest::ReadAndParseIntilHeadersFinish(std::string& buff, int fd, 
                 FindBlockServerCheck++;
             }
             while (!buff.empty() && (pos = buff.find(CLRF)) != std::string::npos){
-                
                 if (Current_PrasingLine.empty()){
+					
                     Current_PrasingLine = buff.substr(0, pos + 2);
+					std::cout << RED << "current Prase Line   : " << Current_PrasingLine << RESET;
                     buff.erase(0, pos + 2);
-                    if (buff.find(CLRF) == 0)
+                    if (Current_PrasingLine.find(CLRF) == 0){
                         buff.erase(0, 2);
+						if (!checkIsThereaHost())
+            				return (setErrorNumber(400, "Bad Request – Missing or empty 'Host' header (required in HTTP/1.1)"));
+        				CheckingForBody();
+						return ;
+					}
                 }
                 (this->*ParseRequest::FirstParseTable[CurrntParsState])(Current_PrasingLine);
             }
         }
         if (ReadedBytes <= 0){
-            if (isFinish(ReadedBytes))
+            if (isFinish(ReadedBytes) && buff.empty())
                 return ;
         }
 
@@ -1232,10 +1255,10 @@ void        ParseRequest::startParse(int fd, const Config& config, Server* serve
             S = server;
         
         ReadAndParseIntilHeadersFinish(buff, fd, config, server);
-        if (CurrntParsState == FINISH || CurrntParsState ==  ERROR || CurrntParsState == CLOSE)
-            return ;
+		std::cout << "HERE\n";
+        parseCookies(buff);
         if (Method == "POST" && CurrntParsState > ADD_HEADER && CurrntParsState < PARSEARRAYSIZE)
-            RaedAndParseRequestBody(buff, fd);
+            ReadAndParseRequestBody(buff, fd);
         return ;
 }
 
@@ -1297,3 +1320,4 @@ void        ParseRequest::startParse(int fd, const Config& config, Server* serve
 //                         break ;
 //         }
 // }
+

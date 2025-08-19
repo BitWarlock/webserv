@@ -6,7 +6,7 @@
 /*   By: mthamir <mthamir@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/16 16:32:33 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/08/19 11:12:17 by mthamir          ###   ########.fr       */
+/*   Updated: 2025/08/19 13:46:02 by mthamir          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -387,7 +387,7 @@ bool    Response::Chunked(void)
 {
 	struct stat info;
 
-	Body = Request.getBufferBody();
+	Body = Request.getBufferBody_string();
 	if (path[path.size() - 1] == '/')
 	{
 		if (stat(path.c_str(), &info) == -1)
@@ -420,7 +420,7 @@ void    Response::PostContentResponse(void)
 
 	if (multipart != std::string::npos)
 	{
-		std::vector<std::string>    body = Request.getMultipartBuferBody();
+		std::vector<std::string>    body = Request.getMultipartBuferBody_string();
 		for (size_t i(0); i < body.size(); i++)
 		{
 			std::string old_path = getPath();
