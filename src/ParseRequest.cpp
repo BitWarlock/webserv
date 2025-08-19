@@ -81,8 +81,8 @@ ParseRequest::~ParseRequest() {}
 
 //_____________________________________________________________________________PARSER_FUNCTIONS_____________________________________________________________________________
 
-// tbale that hold apointers to parse functions;
-const ParseRequest::ParseFuncPtr ParseRequest::ParseTable[] = {
+// tbale that hold apointers to parse functions That parse The REQUEST LINE AND HEADERS ;
+const ParseRequest::ParseFuncPtr ParseRequest::FirstParseTable[] = {
 
 	&ParseRequest::StartNewRequest,  			//	NONE_ (so the parse will start)
 
@@ -97,6 +97,26 @@ const ParseRequest::ParseFuncPtr ParseRequest::ParseTable[] = {
 	&ParseRequest::parseHeaders,				//	HEDERS_VALUE_
 
 	&ParseRequest::parseHeaders,				//	ADDING THE HEADER_
+};
+
+
+
+// tbale that hold apointers to parse functions that parse the REQUEST BODY ;
+const ParseRequest::ParseBodyFuncPtr ParseRequest::SecondParseTable[] = {
+
+	0,  										//	NONE_ (so the parse will start)
+
+	0,         									//	METHOD_ 
+
+	0,         							   		//	URL_
+
+	0, 											//	HTTPVERSION_
+
+	0,											//	HEADERS_KEY_
+
+	0,											//	HEDERS_VALUE_
+
+	0,											//	ADDING THE HEADER_
 
 	&ParseRequest::parseContentlengthBody,		//	CONTENT_LENGHT_BODY_
 
@@ -109,6 +129,7 @@ const ParseRequest::ParseFuncPtr ParseRequest::ParseTable[] = {
 	&ParseRequest::ParseMultiPartBufferBody,	//	READ_MULTYPART_BUFFER_BODY_
 
 	&ParseRequest::parseCookies,				// PARSE_COUCKIES_
+
 };
 
 // start newrequest;
@@ -287,7 +308,6 @@ void ParseRequest::parseHeaders(std::string &str){
 
 		if (!checkIsThereaHost())
 			return (setErrorNumber(400, "Bad Request – Missing or empty 'Host' header (required in HTTP/1.1)"));
-
 		CheckingForBody();
 
 		return;
@@ -295,19 +315,20 @@ void ParseRequest::parseHeaders(std::string &str){
 }
 
 // parse the content length body type ;
-void ParseRequest::parseContentlengthBody(std::string &str){
+void ParseRequest::parseContentlengthBody(std::vector <char >& NONE){
 
+	(void) NONE;
 	if (contentLength == 0)
 		return (SwitchState(FINISH));
 
-	BufferBody +=  str.substr(0);
+	// BufferBody +=  str.substr(0);
 
-	str.erase(0, str.size());
+	// str.erase(0, str.size());
 
-	if (static_cast<size_t> (contentLength) > BufferBody.size())
+	if (static_cast<size_t> (contentLength) > RequestBufferbody.size())
 		return ;
 
-	if (static_cast<size_t> (contentLength) < BufferBody.size())
+	if (static_cast<size_t> (contentLength) < RequestBufferbody.size())
 		return (setErrorNumber(400, "Bad Request – Request body exceeds declared 'Content-Length' value"));
 
 	if (static_cast<size_t> (contentLength) == BufferBody.size()){
@@ -327,15 +348,17 @@ void ParseRequest::parseContentlengthBody(std::string &str){
 }
 
 // parsing the chuncked body type ;
-void ParseRequest::parseChunkedBody(std::string &str){
+void ParseRequest::parseChunkedBody(std::vector<char >& str){
 
 	if (CurrntParsState == READCHUNKSIZE)
 	{
-		pos = str.find(CLRF);
+		std::vector<char>::iterator it = std::search(str.begin(), str.end(), CLRF, CLRF + 2);
+		if (it != str.end())
+			pos = it - str.begin();
 
 		if (pos != std::string::npos)
 		{
-			std::string StringChunkSize = str.substr(0, pos);
+			std::string StringChunkSize(str.begin(), str.begin() + pos);
 
 			for (size_t i(0); i < StringChunkSize.size(); i++)
 			{
@@ -348,7 +371,7 @@ void ParseRequest::parseChunkedBody(std::string &str){
 			if (ChunkSize > S->getClientBodyLimit())
 				return (setErrorNumber(413, "Payload Too Large – Chunk size exceeds maximum allowed limit"));
 	
-			str.erase(0, pos + 2);
+			str.erase(str.begin(), str.begin() + pos + 2);
 
 			ResetBuffPos();
 
@@ -372,8 +395,8 @@ void ParseRequest::parseChunkedBody(std::string &str){
 	{
 		if (str.size() >= ChunkSize + 2)
 		{
-			BufferBody.append(str.substr(0, ChunkSize));
-			str.erase(0, ChunkSize + 2);
+			BufferBody.insert(BufferBody.end(), str.begin(), str.begin() + ChunkSize);  
+			str.erase(str.begin(), str.begin() + ChunkSize + 2);
 			ChunkSize = 0;
 
 			ResetBuffPos();
@@ -383,7 +406,7 @@ void ParseRequest::parseChunkedBody(std::string &str){
 	}
 }
 
-void	ParseRequest::ParseMultipartBodyBoundary(std::string& None){
+void	ParseRequest::ParseMultipartBodyBoundary(std::vector<char >& None){
 	(void ) None;
 
 	std::string ContentTypeValue = getHeaderValue("content-type");
@@ -411,59 +434,133 @@ void	ParseRequest::ParseMultipartBodyBoundary(std::string& None){
 	}
 }
 
-void        ParseRequest::ParseMultiPartBufferBody(std::string& None){
-	(void) None;
-
-	std::string Delimiter = "--" + MultipartBoundary;
-
-	std::string Part;
-
-	size_t StartPart = 0;
-
-	size_t NextPos = 0;
-
-	ResetBuffPos();
-
-	while (true){
-		pos = BufferBody.find(Delimiter, pos);
-
-		if (pos == std::string::npos)
-			return ;
-
-		StartPart = pos + Delimiter.size();
-		if (StartPart + 2 <= BufferBody.size() && !BufferBody.compare(StartPart, 2, "--"))
-			break ;
-
-		if (StartPart + 2 <= BufferBody.size() && !BufferBody.compare(StartPart, 2, CLRF))
-			StartPart += 2;
-		else if (StartPart + 1 <= BufferBody.size() && !BufferBody.compare(StartPart, 1, "\n"))
-			StartPart += 1;
-
-		NextPos = BufferBody.find(Delimiter, StartPart);
-
-		if (NextPos == std::string::npos)
-			break ;
-
-		if (NextPos >= 2 && !BufferBody.compare(NextPos - 2, 2, CLRF))
-			NextPos -= 2;
-		else if (NextPos >= 1 && !BufferBody.compare(NextPos - 1, 1, "\n"))
-			NextPos -= 1;
-
-		Part = BufferBody.substr(StartPart, NextPos - StartPart);
-
-		MultipartBufferBody.push_back(Part);
-
-		pos = NextPos;
-
-		if (getParseState() == FINISH || getParseState() == ERROR)
-			return ;
-	}
-
-	SwitchState(FINISH);
+// Helper function to find a pattern in vector<char>
+size_t ParseRequest::findInVector(const std::vector<char>& haystack, 
+                                  const std::vector<char>& needle, 
+                                  size_t startPos) {
+    if (needle.empty() || startPos >= haystack.size())
+        return std::string::npos;
+        
+    for (size_t i = startPos; i <= haystack.size() - needle.size(); ++i) {
+        bool found = true;
+        for (size_t j = 0; j < needle.size(); ++j) {
+            if (haystack[i + j] != needle[j]) {
+                found = false;
+                break;
+            }
+        }
+        if (found)
+            return i;
+    }
+    return std::string::npos;
 }
 
+void ParseRequest::ParseMultiPartBufferBody(std::vector <char >& None) {
+    (void) None;
+    std::string Delimiter = "--" + MultipartBoundary;
+    std::vector<char> DelimiterVec(Delimiter.begin(), Delimiter.end());
+    std::vector<char> Part;
+    size_t StartPart = 0;
+    size_t NextPos = 0;
+    ResetBuffPos();
+    
+    while (true) {
+        // Find delimiter in vector<char>
+        pos = findInVector(BufferBody, DelimiterVec, pos);
+        if (pos == std::string::npos)
+            return;
+            
+        StartPart = pos + DelimiterVec.size();
+        
+        // Check for end delimiter "--"
+        if (StartPart + 2 <= BufferBody.size() && 
+            BufferBody[StartPart] == '-' && BufferBody[StartPart + 1] == '-')
+            break;
+            
+        // Skip CRLF or LF after boundary
+        if (StartPart + 2 <= BufferBody.size() && 
+            BufferBody[StartPart] == '\r' && BufferBody[StartPart + 1] == '\n')
+            StartPart += 2;
+        else if (StartPart + 1 <= BufferBody.size() && BufferBody[StartPart] == '\n')
+            StartPart += 1;
+            
+        // Find next delimiter
+        NextPos = findInVector(BufferBody, DelimiterVec, StartPart);
+        if (NextPos == std::string::npos)
+            break;
+            
+        // Remove trailing CRLF or LF before next boundary
+        if (NextPos >= 2 && BufferBody[NextPos - 2] == '\r' && BufferBody[NextPos - 1] == '\n')
+            NextPos -= 2;
+        else if (NextPos >= 1 && BufferBody[NextPos - 1] == '\n')
+            NextPos -= 1;
+            
+        // Extract part as vector<char>
+        Part.assign(BufferBody.begin() + StartPart, BufferBody.begin() + NextPos);
+        MultipartBufferBody.push_back(Part);
+        
+        pos = NextPos;
+        if (getParseState() == FINISH || getParseState() == ERROR)
+            return;
+    }
+    
+    SwitchState(FINISH);
+}
+
+
+// void        ParseRequest::ParseMultiPartBufferBody(std::string& None){
+// 	(void) None;
+
+// 	std::string Delimiter = "--" + MultipartBoundary;
+
+// 	std::string Part;
+
+// 	size_t StartPart = 0;
+
+// 	size_t NextPos = 0;
+
+// 	ResetBuffPos();
+
+// 	while (true){
+// 		pos = BufferBody.find(Delimiter, pos);
+
+// 		if (pos == std::string::npos)
+// 			return ;
+
+// 		StartPart = pos + Delimiter.size();
+// 		if (StartPart + 2 <= BufferBody.size() && !BufferBody.compare(StartPart, 2, "--"))
+// 			break ;
+
+// 		if (StartPart + 2 <= BufferBody.size() && !BufferBody.compare(StartPart, 2, CLRF))
+// 			StartPart += 2;
+// 		else if (StartPart + 1 <= BufferBody.size() && !BufferBody.compare(StartPart, 1, "\n"))
+// 			StartPart += 1;
+
+// 		NextPos = BufferBody.find(Delimiter, StartPart);
+
+// 		if (NextPos == std::string::npos)
+// 			break ;
+
+// 		if (NextPos >= 2 && !BufferBody.compare(NextPos - 2, 2, CLRF))
+// 			NextPos -= 2;
+// 		else if (NextPos >= 1 && !BufferBody.compare(NextPos - 1, 1, "\n"))
+// 			NextPos -= 1;
+
+// 		Part = BufferBody.substr(StartPart, NextPos - StartPart);
+
+// 		MultipartBufferBody.push_back(Part);
+
+// 		pos = NextPos;
+
+// 		if (getParseState() == FINISH || getParseState() == ERROR)
+// 			return ;
+// 	}
+
+// 	SwitchState(FINISH);
+// }
+
 // parse cookies if there is
-void	ParseRequest::parseCookies(std::string& None)
+void	ParseRequest::parseCookies(std::vector<char >& None)
 {
 	(void) None;
 	std::string cookie_header = getHeaderValue("Cookie");
@@ -515,8 +612,8 @@ void        ParseRequest::DecompressBody(){
 	Strm.zalloc = Z_NULL;
 	Strm.zfree = Z_NULL;
 	Strm.opaque = Z_NULL;
-	Strm.next_in = (Bytef *)BufferBody.data();
-	Strm.avail_in = BufferBody.size();
+	Strm.next_in = (Bytef *)RequestBufferbody.data();
+	Strm.avail_in = RequestBufferbody.size();
 	if (inflateInit2(&Strm, Bits) != Z_OK)
 		return (setErrorNumber(400, "Decompressing The Body Fails "));
 
@@ -532,8 +629,8 @@ void        ParseRequest::DecompressBody(){
 			inflateEnd(&Strm);
 			return (setErrorNumber(400, "Decompressing the body Fails 2222"));
 		}
-		DecompressedBufferBody.append(outbuffer, sizeof(outbuffer) - Strm.avail_out);
-		
+		DecompressedBufferBody.insert(DecompressedBufferBody.end(), \
+		outbuffer, outbuffer + (sizeof(outbuffer) - Strm.avail_out));
 	}
 	
 	inflateEnd(&Strm);
@@ -610,13 +707,13 @@ int         										ParseRequest::getContentEncodingType(int Type)	{ (void) Ty
 
 std::string&										ParseRequest::getQueryString()					{ return (QueryString);}
 
-std::string&										ParseRequest::getBufferBody()					{ return (BufferBody);}
+std::vector <char >&								ParseRequest::getBufferBody()					{ return (RequestBufferbody);}
 
 size_t												ParseRequest::getContentLength()				{ return (contentLength);}
 
-std::string&                                        ParseRequest::getBufferDecompressedBody()		{ return (DecompressedBufferBody);}
+std::vector <char >&                                ParseRequest::getBufferDecompressedBody()		{ return (DecompressedBufferBody);}
 
-std::vector<std::string >&							ParseRequest::getMultipartBuferBody()			{ return (MultipartBufferBody);}
+std::vector<std::vector <char > >&					ParseRequest::getMultipartBuferBody()			{ return (MultipartBufferBody);}
 
 Server												ParseRequest::getBlockServer() 					{ return *S; }
 
@@ -722,7 +819,22 @@ void	ParseRequest::FindMatchLocation()
 }
 
 // check if the request parsing is finish or not yet ; 
-bool ParseRequest::isFinish()                   { return (getParseState() == FINISH); }
+bool ParseRequest::isFinish(int RecvReturn) { 
+
+	if (CurrntParsState == FINISH)
+		std::cout << GRN << "OK " << YLW << "- HTTP request parsed and validated successfully" << RESET << std::endl;
+	
+	else if (CurrntParsState != ERROR && CurrntParsState != FINISH){
+		std::cout << "ERROR : Incomplete Request – Client closed connection before completing the request";
+	
+		if (!RecvReturn)
+			SwitchState(CLOSE);
+		else if (RecvReturn == -1)
+			setErrorNumber(400, "Incomplete Request – Client closed connection before completing the request");
+	}
+	
+	return (CurrntParsState == FINISH || CurrntParsState == ERROR || CurrntParsState == CLOSE );
+}
 
 // checking the method if its a supporetd one by the server ;
 bool ParseRequest::isSupportedMethod(std::string &RequestMethod)
@@ -1054,61 +1166,134 @@ Server*	ParseRequest::findBlockServer(const Config& config, std::string buff, Se
 
 //_____________________________________________________________________________START_READING_AND_PARSE_____________________________________________________________________________
 
-void ParseRequest::startParse(int fd, const Config& config, Server*server){
-	std::string buff;
+void	ParseRequest::RaedAndParseRequestBody(std::string&	buff, int fd){
 
-	if (PARSER_NONE == CurrntParsState)
-		S = server;
+	RequestBufferbody.assign( buff.begin(), buff.end());
+	buff.clear();
+	ssize_t ReadedBytes = 2;
+	while (true){
 
-	while(true)
-	{
-		char        str[100000];
+		std::memset(ReadingBuffer, 0, READING_BUFFER_SIZE);
+		ReadedBytes = recv(fd, ReadingBuffer, READING_BUFFER_SIZE, 0);
 
-		while ((buff.find("\r\n\r\n") == std::string::npos) ||
-				CurrntParsState > ADD_HEADER ){
-			std::memset(str, 0, sizeof(str));
-			ssize_t bytes = recv(fd, str, 99999, 0);
-			if (bytes > 0)
-			{
-				str[bytes] = 0;
-				buff.append(str, bytes);
-			}
-
-			else if (bytes == 0){
-				if (CurrntParsState == ERROR || CurrntParsState == FINISH || CurrntParsState == PARSER_NONE){
-					if (CurrntParsState == FINISH)
-						std::cout << GRN << "OK " << YLW << "- HTTP request parsed and validated successfully" << RESET << std::endl;
-					return ;
-				}
-				setErrorNumber(400, "Bad Request – Client closed connection before completing the request");
-				return;
-			}
-
-			if (buff.empty() && CurrntParsState <= ADD_HEADER){
-				setErrorNumber(400, "Bad Request – Client closed connection before completing the request 222222222");
+		if (ReadedBytes > 0){
+			RequestBufferbody.insert(RequestBufferbody.end(), ReadingBuffer, ReadingBuffer + ReadedBytes);
+			(this->*ParseRequest::SecondParseTable[CurrntParsState])(RequestBufferbody);
+		}
+		if (ReadedBytes <= 0){
+			if (isFinish(ReadedBytes))
 				return ;
-			}
+		}
+	}
 
-			if (bytes < 0 &&
-					!(CurrntParsState == READ_BOUNDARY || CurrntParsState == READ_MULTIPART_BODY)){
-					break;
-			}
+}
 
+void	ParseRequest::ReadAndParseIntilHeadersFinish(std::string& buff, int fd, const Config& config, Server* server){
 
-			if (CurrntParsState == PARSER_NONE)
+	int FindBlockServerCheck = 0;
+	while (buff.find(HEADERS_ENDING) == std::string::npos){
+
+		std::memset(ReadingBuffer, 0, READING_BUFFER_SIZE);
+		ssize_t ReadedBytes = recv(fd, ReadingBuffer, READING_BUFFER_SIZE, 0);
+		
+		if (ReadedBytes > 0){
+			ReadingBuffer[ReadedBytes] = 0;
+			buff.append(ReadingBuffer, ReadedBytes);
+		}
+		
+		if (buff.find(HEADERS_ENDING) != std::string::npos){
+			if (!FindBlockServerCheck){
 				S = findBlockServer(config, buff, server);
-		}
-		switch(CurrntParsState){
-			case FINISH:
-			case ERROR:
-				return;
-			default :
-				if (CurrntParsState < PARSEARRAYSIZE){
-					(this->*ParseRequest::ParseTable[CurrntParsState])(buff);
-					break;
+				FindBlockServerCheck++;
+			}
+			while (!buff.empty() && (pos = buff.find(CLRF)) != std::string::npos){
+				
+				if (Current_PrasingLine.empty()){
+					Current_PrasingLine = buff.substr(0, pos + 2);
+					buff.erase(0, pos + 2);
+					if (buff.find(CLRF) == 0)
+						buff.erase(0, 2);
 				}
+				(this->*ParseRequest::FirstParseTable[CurrntParsState])(Current_PrasingLine);
+			}
 		}
-		if (CurrntParsState == FINISH || CurrntParsState == ERROR)
-			break ;
+		if (ReadedBytes <= 0){
+			if (isFinish(ReadedBytes))
+				return ;
+		}
+
 	}
 }
+
+void        ParseRequest::startParse(int fd, const Config& config, Server* server){
+        std::string buff;
+
+        if (PARSER_NONE == CurrntParsState)
+            S = server;
+		
+		ReadAndParseIntilHeadersFinish(buff, fd, config, server);
+		if (CurrntParsState == FINISH || CurrntParsState ==  ERROR || CurrntParsState == CLOSE)
+			return ;
+		if (Method == "POST" && CurrntParsState > ADD_HEADER && CurrntParsState < PARSEARRAYSIZE)
+			RaedAndParseRequestBody(buff, fd);
+		return ;
+}
+
+
+
+
+// void ParseRequest::startParse(int fd, const Config& config, Server*server){
+//         std::string buff;
+
+//         if (PARSER_NONE == CurrntParsState)
+//                 S = server;
+
+//         while(true)
+//         {
+//                 char        str[6];
+
+//                 while ((buff.find("\r\n\r\n") == std::string::npos) ||
+//                                 CurrntParsState > ADD_HEADER ){
+//                         std::memset(str, 0, sizeof(str));
+//                         ssize_t bytes = recv(fd, str, 5, 0);
+// 						if (bytes > 0)
+//                         {
+//                                 str[bytes] = 0;
+//                                 buff.append(str, bytes);
+// 								if ((buff.find("\r\n\r\n") != std::string::npos))
+// 									break;
+//                         }
+//                         if (bytes == 0){
+//                                 if (CurrntParsState == ERROR || CurrntParsState == FINISH || CurrntParsState == PARSER_NONE){
+//                                         if (CurrntParsState == FINISH){
+//                                                 std::cout << GRN << "OK " << YLW << "- HTTP request parsed and validated successfully" << RESET << std::endl;
+//                                         		return ;
+// 										}
+//                                 }
+//                                 setErrorNumber(400, "Bad Request – Client closed connection before completing the request");
+//                                 return;
+//                         }
+//                         if (bytes < 0 &&
+//                                         !(CurrntParsState == READ_BOUNDARY || CurrntParsState == READ_MULTIPART_BODY)){
+//                                         break;
+//                         }
+
+//                         if (CurrntParsState == PARSER_NONE)
+//                                 S = findBlockServer(config, buff, server);
+//                 }
+//                 std::cout << buff << "\n";
+// 				std::cout << CurrntParsState << "      \n";
+//                 switch(CurrntParsState){
+//                         case FINISH:
+//                         case ERROR:
+//                                 return;
+//                         default :
+//                                 if (CurrntParsState < PARSEARRAYSIZE){
+//                                         (this->*ParseRequest::ParseTable[CurrntParsState])(buff);
+//                                         break;
+//                                 }
+//                 }
+//                 if (CurrntParsState == FINISH || CurrntParsState == ERROR)
+//                         break ;
+//         }
+// }
