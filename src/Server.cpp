@@ -1,10 +1,12 @@
 #include "../inc/Server.hpp"
+#include <iostream>
 
 Server::Server() 
 	: client_max_body_size(0), autoindex(false)
 {
 	return_d.enabled = false;
-	client_timeout = 5;
+	client_timeout = 4;
+	header_timeout = 60;
 }
 
 Server::Server(const Server &other)  :
@@ -74,6 +76,8 @@ void Server::setClientBodyLimit(size_t limit) {client_max_body_size = limit;}
 
 void Server::addClientTimeout(size_t timeout) {client_timeout = timeout;}
 
+void Server::addHeaderTimeout(size_t timeout) {header_timeout = timeout;}
+
 void Server::setAutoindex(bool autoindex) {this->autoindex = autoindex;}
 
 void Server::addIndex(const std::string& index) {this->index.push_back(index);}
@@ -96,6 +100,8 @@ const std::string& Server::getRoot() const {return root;}
 size_t Server::getClientBodyLimit() const {return client_max_body_size;}
 
 size_t Server::getClientTimeout() const {return client_timeout;}
+
+size_t Server::getHeaderTimeout() const {return header_timeout;}
 
 bool Server::getAutoindex() const {return autoindex;}
 

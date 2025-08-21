@@ -53,7 +53,8 @@ class SetupServers
     private:
         Config&                 config;
         size_t                  sock_number;
-        std::map<int, Server>   servers;
+        std::map<int, Server*>  servers;
+        std::map<int, int>      client_to_server;
         std::vector<int>        fd_sockets;
         int                     fd_epoll;
         int                     number_events;

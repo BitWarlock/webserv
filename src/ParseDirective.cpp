@@ -170,6 +170,8 @@ void DirectiveParser::parseServerDirective(Server* server)
 		parseListen(server, values);
 	else if (directive == "client_timeout")
 		parseTimeout(server, values);
+	else if (directive == "client_header_timeout")
+		parseHeaderTimeout(server, values);
 	else if (directive == "server_name")
 		parseServerName(server, values);
 	else if (directive == "root")
@@ -278,6 +280,23 @@ void DirectiveParser::parseListen(Server* server, const std::vector<std::string>
 		server->setListen(std::make_pair(host, port));
 }
 
+void DirectiveParser::parseHeaderTimeout(Server* server, const std::vector<std::string>& values)
+{
+	if (values.size() != 1)
+		throw ParseException("client_header_timeout requires exactly one value", currentToken.line);
+
+	char*	end;
+	long	timeout = strtol(values[0].c_str(), &end, 10);
+
+	if (*end != '\0')
+		throw ParseException("Invalid client_header_timeout: " + values[0], currentToken.line);
+
+	if (timeout < 4 || timeout > 90)
+		throw ParseException("client_header_timeout must be > 4 and < 90 " + values[0], currentToken.line);
+
+	server->addHeaderTimeout(static_cast<size_t>(timeout));
+}
+
 void DirectiveParser::parseTimeout(Server* server, const std::vector<std::string>& values)
 {
 	if (values.size() != 1)
@@ -289,7 +308,7 @@ void DirectiveParser::parseTimeout(Server* server, const std::vector<std::string
 	if (*end != '\0')
 		throw ParseException("Invalid client_timeout: " + values[0], currentToken.line);
 
-	if (timeout <= 0 || timeout < 4)
+	if (timeout < 4)
 		throw ParseException("client_timeout minimum value is 4: " + values[0], currentToken.line);
 
 	server->addClientTimeout(static_cast<size_t>(timeout));

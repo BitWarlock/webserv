@@ -23,6 +23,7 @@ class Server
 		void setRoot(const std::string& root);
 		void setClientBodyLimit(size_t limit);
 		void addClientTimeout(size_t timeout);
+		void addHeaderTimeout(size_t timeout);
 		void setAutoindex(bool autoindex);
 		void addIndex(const std::string& index);
 		void addReturnDirective(const ReturnDirective);
@@ -40,6 +41,7 @@ class Server
 		const std::string&				getRoot() const;
 		size_t							getClientBodyLimit() const;
 		size_t							getClientTimeout() const;
+		size_t							getHeaderTimeout() const;
 		bool							getAutoindex() const;
 		const std::vector<std::string>& getIndex() const;
 
@@ -56,6 +58,7 @@ class Server
 		std::string					root;
 		size_t						client_max_body_size;
 		size_t						client_timeout;
+		size_t						header_timeout;
 		bool						autoindex;
 		std::vector<std::string>	index;
 };
