@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/16 16:28:12 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/08/21 11:53:19 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/08/21 12:26:33 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -72,6 +72,10 @@ enum ResponseNumberState
     OK = 200,
     Created = 201,
     Moved_Permanently = 301,
+    Found = 302,
+    See_Other = 303,
+    Temporary = 307,
+    Permanent_Redirect = 308,
     Bad_Request = 400,
     Forbidden = 403,
     Not_Found = 404,

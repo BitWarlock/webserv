@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/16 16:32:33 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/08/21 11:52:57 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/08/21 12:29:10 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -110,6 +110,16 @@ std::string Response::getStrState(void) const
 	{
 		case Created:
 			return ("Created");
+		case Moved_Permanently:
+			return ("Moved Permanently");
+		case Found:
+			return ("Found");
+		case See_Other:
+			return ("See Other");
+		case Temporary:
+			return ("Temporary");
+		case Permanent_Redirect:
+			return ("Permanent Redirect");
 		case Bad_Request:
 			return ("Bad Request");
 		case Forbidden:
@@ -140,8 +150,6 @@ std::string Response::getStrState(void) const
 			return ("Conflict");
 		case Length_Required:
 			return ("Length Required");
-		case Moved_Permanently:
-			return ("Moved Permanently");
 		default:
 			return ("OK");
 	}
@@ -238,7 +246,7 @@ bool    Response::ReturnDirective(void)
 		redirecturl = ServerBlock.getReturnDirective().target;
 	}
 
-	responseBody = "HTTP/1.1 " + statuscode.str() + " Redirect\r\n";
+	responseBody = "HTTP/1.1 " + statuscode.str() + getStrState() + "\r\n";
 	responseBody += "Location: " + redirecturl + "\r\n";
 	responseBody += "Content-Length: 0\r\n";
 	responseBody += "Connection: close\r\n\r\n";
