@@ -49,6 +49,9 @@ void Location::inheritFrom(const Server* server)
 	
 	if (client_max_body_size == 0)
 		client_max_body_size = server->getClientBodyLimit();
+	
+	if (return_d.enabled == false)
+		return_d = server->getReturnDirective();
 }
 
 // Getters

@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/16 16:32:33 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/08/21 12:29:10 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/08/21 13:54:41 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -227,29 +227,53 @@ void    Response::BuildGetResponse(void)
 
 bool    Response::ReturnDirective(void)
 {
-	std::ostringstream   statuscode;
+	std::ostringstream	statuscode;
 	std::string         redirecturl;
+	int					code;
+	std::string			body;
 
 	if (location)
 	{
-		if (ServerBlock.getReturnDirective().enabled == false && 
-			location->getReturnDirective().enabled == false)
+		if (location->getReturnDirective().enabled == false)
 			return (true);
+
 		statuscode << location->getReturnDirective().status_code;
 		redirecturl = location->getReturnDirective().target;
+		code = location->getReturnDirective().status_code;
+		SetState(code);
+		body = location->getReturnDirective().target;
 	}
 	else
 	{
 		if (ServerBlock.getReturnDirective().enabled == false)
 			return (true);
+
 		statuscode << ServerBlock.getReturnDirective().status_code;
 		redirecturl = ServerBlock.getReturnDirective().target;
+		code = ServerBlock.getReturnDirective().status_code;
+		body = ServerBlock.getReturnDirective().target;
+		SetState(code);
 	}
 
-	responseBody = "HTTP/1.1 " + statuscode.str() + getStrState() + "\r\n";
-	responseBody += "Location: " + redirecturl + "\r\n";
-	responseBody += "Content-Length: 0\r\n";
-	responseBody += "Connection: close\r\n\r\n";
+	if (code == 301 || code == 302 || code == 303
+		|| code == 307 || code == 308)
+	{
+		responseBody = "HTTP/1.1 " + statuscode.str() + " " + getStrState() + "\r\n";
+		responseBody += "Location: " + redirecturl + "\r\n";
+		responseBody += "Content-Length: 0\r\n";
+		responseBody += "Connection: close\r\n\r\n";
+	}
+
+	else
+	{
+		std::ostringstream  os;
+		os << body.size();
+
+		responseBody = "HTTP/1.1 " + statuscode.str() + " " + getStrState() + "\r\n";
+		responseBody += "Content-Length: " + os.str() + "\r\n";
+		responseBody += "Connection: close\r\n\r\n";
+		responseBody += body;
+	}
 
 	return (false);
 }
@@ -516,7 +540,6 @@ void    Response::ResponseWithError(int serve)
 	if (serve == DEFAULT)
 	{
 		SetPath(DefaultForMatchError());
-		std::cout << path << "\n";
 		BuildGetResponse();
 		return ;
 	}
