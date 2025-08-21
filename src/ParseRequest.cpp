@@ -1164,7 +1164,6 @@ void    ParseRequest::ReadAndParseIntilHeadersFinish(std::string& buff, int fd, 
 					std::cout << RED << "current Prase Line   : " << Current_PrasingLine << RESET;
                     buff.erase(0, pos + 2);
                     if (Current_PrasingLine.find(CLRF) == 0){
-                        buff.erase(0, 2);
 						if (!checkIsThereaHost())
             				return (setErrorNumber(400, "Bad Request – Missing or empty 'Host' header (required in HTTP/1.1)"));
         				CheckingForBody();

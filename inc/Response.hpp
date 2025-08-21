@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Response.hpp                                       :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mthamir <mthamir@student.42.fr>            +#+  +:+       +#+        */
+/*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/16 16:28:12 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/08/19 11:12:26 by mthamir          ###   ########.fr       */
+/*   Updated: 2025/08/21 11:53:19 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -113,7 +113,6 @@ class Response{
 
         bool			shouldExecuteCgi(ParseRequest& request);
         void			sendCgiResponse(const CgiResult& cgi_result);
-        std::string		getScriptPath(const Location& location, const std::string& uri);
         std::string		getFileExtension(const std::string& uri);
         void			setCookie(const std::string& name, const std::string& value, 
                                 const std::string& path = "/", const std::string& expires = "", 

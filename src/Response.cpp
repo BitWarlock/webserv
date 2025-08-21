@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Response.cpp                                       :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mthamir <mthamir@student.42.fr>            +#+  +:+       +#+        */
+/*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/16 16:32:33 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/08/19 13:46:02 by mthamir          ###   ########.fr       */
+/*   Updated: 2025/08/21 11:52:57 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,19 +23,14 @@ void    Response::GetFullPath(std::string& path)
 		std::string	loc_path = location->getPath();
 		std::string	temp_path = path.substr(loc_path.size());
 		
-		if (loc_path[loc_path.size() - 1] != '/')
-			loc_path += '/';
-
 		if (temp_path[0] == '/')
 			temp_path = temp_path.erase(0, 1);
 
-		std::string	path_update = loc_path + temp_path;
-
 		if (!location->getRoot().empty())
-			SetPath(location->getRoot() + path_update.erase(0, 1));
+			SetPath(location->getRoot() + temp_path);
 
 		else if (!ServerBlock.getRoot().empty())
-			SetPath(ServerBlock.getRoot() + path_update.erase(0, 1));
+			SetPath(ServerBlock.getRoot() + path.erase(0, 1));
 	}
 
 	else
@@ -255,8 +250,6 @@ void    Response::GetPageResponse(void)
 {
 	struct stat info;
 
-	GetFullPath(path);
-
 	if (stat(path.c_str(), &info) == -1)
 		return (SetState(Not_Found), ResponseWithError(NONE));
 
@@ -283,8 +276,6 @@ void    Response::BuildDeleteResponse(void)
 void    Response::DeleteContentResponse(void)
 {
 	struct stat info;
-
-	GetFullPath(path);
 
 	if (stat(path.c_str(), &info) == -1)
 		return (SetState(Not_Found), ResponseWithError(NONE));
@@ -415,8 +406,6 @@ void    Response::PostContentResponse(void)
 {
 	std::string ContentType = Request.getHeaderValue("content-type");
 	size_t      multipart = ContentType.find("multipart/form-data");
-
-	GetFullPath(path);
 
 	if (multipart != std::string::npos)
 	{
@@ -571,6 +560,8 @@ void    Response::StartForResponse(ParseRequest request, int fd_client)
 	SetLocation(request.getMatchLocation());
 	this->fd_client = fd_client;
 
+	GetFullPath(path);
+
 	if (ReturnDirective() == false)
 		return ;
 
@@ -603,7 +594,7 @@ void	Response::handleCgiRequest(ParseRequest& request)
 		if (!location->isCgiRequest(request.getUri()))
 			return (SetState(404), ResponseWithError(NONE));
 
-		std::string script_path = getScriptPath(*location, request.getUri());
+		std::string script_path = path;
 
 		if (script_path.empty() || access(script_path.c_str(), F_OK | R_OK) != 0)
 			return (SetState(404), ResponseWithError(NONE));
@@ -642,24 +633,6 @@ void	Response::sendCgiResponse(const CgiResult& cgi_result)
 	responseBody += "Connection: close\r\n";
 	responseBody += "\r\n";
 	responseBody += cgi_result.body;
-}
-
-std::string Response::getScriptPath(const Location& location, const std::string& uri)
-{
-	std::string root = location.getRoot();
-	std::string location_path = location.getPath();
-
-	std::string relative_path = uri.substr(location_path.length());
-	if (relative_path.empty() || relative_path[0] != '/')
-		relative_path = "/" + relative_path;
-
-	std::string script_path = root + location_path + relative_path;
-
-	char abs_path[1024];
-	if (realpath(script_path.c_str(), abs_path) != NULL)
-		script_path = abs_path;
-
-	return script_path;
 }
 
 std::string	Response::getFileExtension(const std::string& uri)
