@@ -6,7 +6,7 @@
 /*   By: hael-ghd <hael-ghd@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/16 16:32:33 by hael-ghd          #+#    #+#             */
-/*   Updated: 2025/08/21 13:54:41 by hael-ghd         ###   ########.fr       */
+/*   Updated: 2025/08/21 14:33:46 by hael-ghd         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -68,6 +68,7 @@ void    Response::CheckIndexAccess(std::vector<std::string> indexs)
 			break;
 		}
 	}
+
 	if (found)
 		BuildGetResponse();
 
@@ -82,25 +83,25 @@ void    Response::SearchForIndex(void)
 {
 	if (location)
 	{
-		if (location->getIndex().empty() && CheckAutoIndex() == ON)
+		if (!location->getIndex().empty())
+			CheckIndexAccess(location->getIndex());
+
+		else if (CheckAutoIndex() == ON)
 			GetListingPage();
 
-		else if (location->getIndex().empty())
-			return (SetState(Forbidden), ResponseWithError(NONE));
-
 		else
-			CheckIndexAccess(location->getIndex());
+			return (SetState(Forbidden), ResponseWithError(NONE));
 	}
 	else
 	{
-		if (ServerBlock.getIndex().empty() && CheckAutoIndex() == ON)
+		if (!ServerBlock.getIndex().empty())
+			CheckIndexAccess(ServerBlock.getIndex());
+
+		else if (CheckAutoIndex() == ON)
 			GetListingPage();
 
-		else if (ServerBlock.getIndex().empty())
-			return (SetState(Forbidden), ResponseWithError(NONE));
-
 		else
-			CheckIndexAccess(ServerBlock.getIndex());
+			return (SetState(Forbidden), ResponseWithError(NONE));
 	}
 }
 
