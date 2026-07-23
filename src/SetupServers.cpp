@@ -344,22 +344,11 @@ void    SetupServers::Run(void)
 						data_to_send = headers.substr(data_offset, MAXBYTES);
 					else
 					{
-						size_t file_offset = data_offset - headers.size();
-						if (file_offset < Responses[fd].GetFileSize())
-						{
-							static std::map<int, std::string> file_chunks;
-
-							if (file_chunks.find(fd) == file_chunks.end() || file_chunks[fd].empty())
-								file_chunks[fd] = Responses[fd].GetNextFileChunk(MAXBYTES);
-
-							if (!file_chunks[fd].empty())
-							{
-								data_to_send = file_chunks[fd];
-								file_chunks[fd].clear();
-							}
+							size_t file_offset = data_offset - headers.size();
+							if (file_offset < Responses[fd].GetFileSize())
+								data_to_send = Responses[fd].GetFileChunk(file_offset, MAXBYTES);
 						}
 					}
-				}
 				else
 				{
 					std::string ResBody = Responses[fd].GetResponseBody();

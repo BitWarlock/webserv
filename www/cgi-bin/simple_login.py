@@ -21,8 +21,16 @@ def set_cookie(name, value, max_age=31536000):
     print(f"Set-Cookie: {name}={value}; Path=/; HttpOnly; SameSite=Strict; Max-Age={max_age}")
 
 
+def valid_session_id(session_id):
+    if not session_id or len(session_id) > 128:
+        return False
+    return all(ch.isalnum() or ch in "_-" for ch in session_id)
+
+
 def load_session(session_id):
     try:
+        if not valid_session_id(session_id):
+            return {"username": "", "login_status": False, "visit_count": 0}
         path = f"/tmp/webserv_sessions/{session_id}.json"
         with open(path, 'r') as f:
             return json.load(f)
@@ -32,6 +40,8 @@ def load_session(session_id):
 
 def save_session(session_id, data):
     try:
+        if not valid_session_id(session_id):
+            return
         path = f"/tmp/webserv_sessions/{session_id}.json"
         with open(path, 'w') as f:
             json.dump(data, f)

@@ -16,6 +16,9 @@
 #include <dirent.h>
 #include <unistd.h>
 #include <string.h>
+#include <fcntl.h>
+#include <iomanip>
+#include <cctype>
 
 SessionManager::SessionManager(const std::string& session_dir) 
 	: session_dir(session_dir)
@@ -35,8 +38,51 @@ static std::string trim(const std::string& s)
 	return s.substr(a, b - a + 1);
 }
 
+static bool	isValidSessionId(const std::string& session_id)
+{
+	if (session_id.size() < 4 || session_id.size() > 128)
+		return false;
+	for (size_t i = 0; i < session_id.size(); ++i)
+	{
+		char c = session_id[i];
+		if (!std::isalnum(static_cast<unsigned char>(c)) && c != '_' && c != '-')
+			return false;
+	}
+	return true;
+}
+
+static std::string	randomHex(size_t bytes_count)
+{
+	unsigned char bytes[32];
+	if (bytes_count > sizeof(bytes))
+		bytes_count = sizeof(bytes);
+
+	int fd = open("/dev/urandom", O_RDONLY);
+	if (fd >= 0)
+	{
+		ssize_t bytes_read = read(fd, bytes, bytes_count);
+		close(fd);
+		if (bytes_read == static_cast<ssize_t>(bytes_count))
+		{
+			std::ostringstream ss;
+			for (size_t i = 0; i < bytes_count; ++i)
+				ss << std::hex << std::setw(2) << std::setfill('0')
+					<< static_cast<int>(bytes[i]);
+			return ss.str();
+		}
+	}
+
+	static unsigned long fallback_counter = 0;
+	std::ostringstream fallback;
+	fallback << std::time(NULL) << "_" << getpid() << "_" << fallback_counter++;
+	return fallback.str();
+}
+
 bool	SessionManager::loadJson(const std::string& session_id, SessionData& out)
 {
+	if (!isValidSessionId(session_id))
+		return false;
+
 	std::string file_path = session_dir + "/" + session_id + ".json";
 	std::ifstream file(file_path.c_str());
 	if (!file.is_open())
@@ -75,6 +121,9 @@ bool	SessionManager::loadJson(const std::string& session_id, SessionData& out)
 
 void	SessionManager::saveJson(const std::string& session_id, const SessionData& data)
 {
+	if (!isValidSessionId(session_id))
+		return;
+
 	std::string file_path = session_dir + "/" + session_id + ".json";
 	std::ofstream file(file_path.c_str());
 	if (!file.is_open())
@@ -89,14 +138,24 @@ void	SessionManager::saveJson(const std::string& session_id, const SessionData& 
 
 std::string	SessionManager::createSession()
 {
-	std::srand(static_cast<unsigned int>(std::time(NULL)));
-	std::stringstream ss;
-	ss << "ws_" << std::time(NULL) << "_" << (std::rand() % 100000);
-	std::string id = ss.str();
 	SessionData init;
 	init.username = "";
 	init.login_status = false;
 	init.visit_count = 0;
+
+	for (int attempts = 0; attempts < 16; ++attempts)
+	{
+		std::string id = "ws_" + randomHex(16);
+		std::string file_path = session_dir + "/" + id + ".json";
+		struct stat st;
+		if (stat(file_path.c_str(), &st) != 0)
+		{
+			saveJson(id, init);
+			return id;
+		}
+	}
+
+	std::string id = "ws_" + randomHex(24);
 	saveJson(id, init);
 	return id;
 }
@@ -104,6 +163,8 @@ std::string	SessionManager::createSession()
 SessionData*	SessionManager::getSession(const std::string& session_id)
 {
 	if (session_id.empty())
+		return NULL;
+	if (!isValidSessionId(session_id))
 		return NULL;
 	if (!loadJson(session_id, cached))
 		return NULL;
@@ -113,6 +174,8 @@ SessionData*	SessionManager::getSession(const std::string& session_id)
 void	SessionManager::updateSessionAccess(const std::string& session_id)
 {
 	if (session_id.empty())
+		return;
+	if (!isValidSessionId(session_id))
 		return;
 	std::string file_path = session_dir + "/" + session_id + ".json";
 	struct stat st;

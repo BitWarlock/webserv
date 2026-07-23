@@ -2,10 +2,13 @@
 #include "../inc/Server.hpp"
 #include <map>
 
-Location::Location(){}
+Location::Location()
+	: autoindex(false), client_max_body_size(0), is_redirect(false),
+	  upload_enabled(false) {return_d.enabled = false;}
 
 Location::Location(const std::string& path) 
-	: path(path), autoindex(false), client_max_body_size(0) {return_d.enabled = false;}
+	: path(path), autoindex(false), client_max_body_size(0),
+	  is_redirect(false), upload_enabled(false) {return_d.enabled = false;}
 
 Location::~Location() {}
 
@@ -35,7 +38,7 @@ void Location::setCgiExtension(const std::string& ext,
 
 void Location::setReturn(const std::string& return_url) {this->return_url = return_url;}
 
-void Location::setUploadStore(const std::string& path) {upload_store = path;}
+void Location::setUploadStore(const std::string& path) {upload_store = path; upload_enabled = true;}
 
 void Location::addReturnDirective(const ReturnDirective rd) {return_d = rd;}
 

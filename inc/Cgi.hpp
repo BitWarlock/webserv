@@ -61,7 +61,7 @@ class Cgi
 		void	killProcess(pid_t pid);
 		void	setBasicEnv(ParseRequest& request);
 		void	setRequestEnv(ParseRequest& request);
-		void	setServerEnv();
+			void	setServerEnv(ParseRequest& request);
 
 		CgiResult	parseCgiOutput(const std::string& raw_output);
 

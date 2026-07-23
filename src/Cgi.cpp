@@ -159,6 +159,7 @@ void	usleep_(int mseconds)
 
 std::string Cgi::readCgiOutput(int pipe_fd, pid_t pid, int timeout_seconds)
 {
+	(void)pid;
 	std::string		output;
 	char			buffer[4096];
 	const size_t	max_output_size = 1024 * 1024 * 10; // 10 MB
@@ -185,14 +186,17 @@ std::string Cgi::readCgiOutput(int pipe_fd, pid_t pid, int timeout_seconds)
 			continue;
 		}
 
-		if (bytes_read == 0 && (got_data || waitpid(pid, NULL, WNOHANG) != 0))
-			break;
+			if (bytes_read == 0)
+				break;
 
-		if (++failed_reads > max_failed_reads)
-		{
-			if (got_data || waitpid(pid, NULL, WNOHANG) != 0) break;
-			failed_reads = 0;
-		}
+			if (bytes_read < 0 && errno != EAGAIN && errno != EWOULDBLOCK)
+				break;
+
+			if (++failed_reads > max_failed_reads)
+			{
+				if (got_data) break;
+				failed_reads = 0;
+			}
 
 		usleep_(1000);
 	}
@@ -315,7 +319,7 @@ void	Cgi::setupEnv(ParseRequest& request)
 
 	setBasicEnv(request);
 	setRequestEnv(request);
-	setServerEnv();
+	setServerEnv(request);
 }
 
 void	Cgi::setBasicEnv(ParseRequest& request)
@@ -358,11 +362,16 @@ void	Cgi::setRequestEnv(ParseRequest& request)
 	}
 }
 
-void	Cgi::setServerEnv()
+void	Cgi::setServerEnv(ParseRequest& request)
 {
-	env_vars["SERVER_NAME"] = "localhost";
-	env_vars["SERVER_PORT"] = "8003";
-	env_vars["SERVER_PROTOCOL"] = "HTTP/1.1";
+	env_vars["SERVER_NAME"] = request.getHost().empty() ? "localhost" : request.getHost();
+	if (!request.getPort().empty())
+		env_vars["SERVER_PORT"] = request.getPort();
+	else if (request.getBlockServer() && !request.getBlockServer()->getListen().empty())
+		env_vars["SERVER_PORT"] = request.getBlockServer()->getListen()[0].second;
+	else
+		env_vars["SERVER_PORT"] = "";
+	env_vars["SERVER_PROTOCOL"] = request.getVersion().empty() ? "HTTP/1.1" : request.getVersion();
 	env_vars["SERVER_SOFTWARE"] = "WebServ/1.0";
 	env_vars["GATEWAY_INTERFACE"] = "CGI/1.1";
 }

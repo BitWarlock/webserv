@@ -10,6 +10,10 @@
 #include <cstring>
 #include <zlib.h>
 #include <ctime>
+#include <cerrno>
+#include <climits>
+#include <cstdlib>
+#include <cctype>
 // #include <brotli/decode.h>
 #include "Server.hpp"
 #include "Config.hpp"
@@ -81,7 +85,7 @@ class ParseRequest{
         std::string                                         HttpProtocolVersion;
         Server                                              *S;
         bool                                                chunkedEncoding;
-        int                                                 contentLength;
+        size_t                                              contentLength;
         int                                                 ContentEncodingType;
         std::vector<std::pair<std::string, std::string> >   Headers;
         bool                                                hasValidHost;
@@ -174,7 +178,7 @@ class ParseRequest{
         const std::vector<std::string>&                     getMatchedLocationAllowedMethods();
         std::vector<std::string>&                           getMultipartBuferBody();
         // std::vector<std::string >	                  		getMultipartBuferBody();
-        int                                                 getMatchedLocationBodySizeMax();
+        size_t                                              getMatchedLocationBodySizeMax();
         Server*                                             getBlockServer();
         std::string                                         getCookie(const std::string& name) const;
         const std::map<std::string, std::string>&           getCookies() const;

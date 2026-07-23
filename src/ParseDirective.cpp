@@ -409,6 +409,8 @@ void DirectiveParser::parseAutoindex(Server* server, Location* location, const s
 {
 	if (values.size() != 1)
 		throw ParseException("autoindex directive requires exactly one value (on/off)", currentToken.line);
+	if (values[0] != "on" && values[0] != "off")
+		throw ParseException("autoindex directive value must be either on or off", currentToken.line);
 
 	bool autoindex = (values[0] == "on");
 	if (location)

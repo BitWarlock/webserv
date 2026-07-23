@@ -8,7 +8,8 @@
 ParseRequest::ParseRequest() : errorNumber(200), pos(0),
     CurrntParsState(PARSER_NONE), Method(""), Url(""),
     HttpProtocolVersion(""), S(NULL),
-    chunkedEncoding(false), contentLength(0), MatchLocation(NULL){
+    chunkedEncoding(false), contentLength(0), ContentEncodingType(IDENTITY),
+    hasValidHost(false), ChunkSize(0), MatchLocation(NULL), Time(0){
 
     BufferBody.clear();
 
@@ -26,7 +27,7 @@ ParseRequest::ParseRequest() : errorNumber(200), pos(0),
 
     NonRepeatablesHeaders["authorization"] = 0;
 
-    NonRepeatablesHeaders["user-agent\t"] = 0;
+    NonRepeatablesHeaders["user-agent"] = 0;
 
     NonRepeatablesHeaders["connection"] = 0;
 
@@ -43,7 +44,9 @@ ParseRequest::ParseRequest() : errorNumber(200), pos(0),
 ParseRequest::ParseRequest(Server *server) : errorNumber(200), pos(0),
     CurrntParsState(PARSER_NONE), Method(""), Url(""),
     HttpProtocolVersion(""),
-    S(server), chunkedEncoding(false), contentLength(0), MatchLocation(NULL){
+    S(server), chunkedEncoding(false), contentLength(0),
+    ContentEncodingType(IDENTITY), hasValidHost(false), ChunkSize(0),
+    MatchLocation(NULL), Time(0){
 
     BufferBody.clear();
 
@@ -61,7 +64,7 @@ ParseRequest::ParseRequest(Server *server) : errorNumber(200), pos(0),
 
     NonRepeatablesHeaders["authorization"] = 0;
 
-    NonRepeatablesHeaders["user-agent    "] = 0;
+    NonRepeatablesHeaders["user-agent"] = 0;
 
     NonRepeatablesHeaders["connection"] = 0;
 
@@ -122,7 +125,7 @@ void ParseRequest::StartNewRequest(std::string& buff){
 // read and parse  the method ;
 void ParseRequest::parseMethod(std::string &str){
 
-    if (std::isspace(str[0]))
+    if (str.empty() || std::isspace(static_cast<unsigned char>(str[0])))
         return (setErrorNumber(400, "Bad Request – HTTP method cannot start with whitespace"));
 
     pos = str.find(SPACE);
@@ -207,7 +210,7 @@ void ParseRequest::parseHttpVersion(std::string &str){
         return (ResetBuffPos());
     }
 
-    if (std::isspace(str[pos - 1]))
+    if (pos == 0 || std::isspace(static_cast<unsigned char>(str[pos - 1])))
         return (setErrorNumber(400, "Bad Request – Unexpected whitespace before CRLF in HTTP version"));
 
     HttpProtocolVersion.append(str.substr(0, pos));
@@ -240,7 +243,8 @@ void ParseRequest::parseHeaders(std::string &str){
 
         pos = Current_header_line.find(':');
 
-        if (pos == std::string::npos || std::isspace(Current_header_line[pos - 1]))
+        if (pos == std::string::npos || pos == 0
+            || std::isspace(static_cast<unsigned char>(Current_header_line[pos - 1])))
             return (setErrorNumber(400, "Bad Request – Invalid header format (missing colon separator or whitespace before colon)"));
 
         Current_key = Current_header_line.substr(0, pos);
@@ -545,6 +549,8 @@ void        ParseRequest::ResetParserf(){
 
     CurrntParsState = PARSER_NONE;
 
+    Current_PrasingLine.clear();
+
     Current_key.clear();
 
     Current_value.clear();
@@ -561,6 +567,8 @@ void        ParseRequest::ResetParserf(){
 
     contentLength = 0;
 
+    ContentEncodingType = IDENTITY;
+
     Headers.clear();
 
     Port.clear();
@@ -573,7 +581,23 @@ void        ParseRequest::ResetParserf(){
 
     BufferBody.clear();
 
+    RequestBufferbody.clear();
+
+    MultipartBoundary.clear();
+
+    MultipartBufferBody.clear();
+
+    DecompressedBufferBody.clear();
+
     QueryString.clear();
+
+    cookies.clear();
+
+    MatchLocation = NULL;
+
+    for (std::map<std::string, int>::iterator it = NonRepeatablesHeaders.begin();
+         it != NonRepeatablesHeaders.end(); ++it)
+        it->second = 0;
 }
 
 
@@ -638,7 +662,7 @@ const std::vector<std::string>&     ParseRequest::getMatchedLocationAllowedMetho
 }
 
 // get the matched location body size limits
-int     ParseRequest::getMatchedLocationBodySizeMax(){
+size_t     ParseRequest::getMatchedLocationBodySizeMax(){
 
     if (MatchLocation)
         return MatchLocation->getClientBodyLimit();
@@ -710,7 +734,10 @@ void    ParseRequest::FindMatchLocation()
     {
         const std::string& locPath = locations[i]->getPath();
 
-        if (urlpath.compare(0, locPath.size(), locPath) == 0){
+        if (urlpath.compare(0, locPath.size(), locPath) == 0
+            && (locPath == "/" || urlpath.size() == locPath.size()
+                || locPath[locPath.size() - 1] == '/'
+                || urlpath[locPath.size()] == '/')){
             if (locations[i]->getPath().size() > size){
                 size = locations[i]->getPath().size();
                 MatchLocation = locations[i];
@@ -765,14 +792,14 @@ int ParseRequest::isKnownMethod()
 }
 
 // checking a character if its valid hexa decimal ;
-bool ParseRequest::isHexa(char characetre)      { return (std::isxdigit(characetre)); }
+bool ParseRequest::isHexa(char characetre)      { return (std::isxdigit(static_cast<unsigned char>(characetre))); }
 
 // checking the unreserved charcter in the querie string in url ;
 bool ParseRequest::Unresreved(char c){
 
     std::string s = "-._~";
 
-    return (std::isalnum(c) || (s.find(c) != std::string::npos));
+    return (std::isalnum(static_cast<unsigned char>(c)) || (s.find(c) != std::string::npos));
 }
 
 // checkin for  the reserved charcters in the querie string in the url ;
@@ -787,7 +814,7 @@ bool ParseRequest::Reserved(char c){
 // cause every percent in it should be followed by a hexadecimal number ;
 bool ParseRequest::PercentEncoded(size_t &i){
 
-    if (i + 2 <= Url.size() && isHexa(Url[i + 1]) && isHexa(Url[i + 2]))
+    if (i + 2 < Url.size() && isHexa(Url[i + 1]) && isHexa(Url[i + 2]))
         return (i += 2, true);
 
     return (false);
@@ -867,7 +894,7 @@ bool ParseRequest::isAllSpaces(std::string &str){
 
     for (size_t i(0); i < str.size(); i++)
     {
-        if (!std::isspace(str[i]))
+        if (!std::isspace(static_cast<unsigned char>(str[i])))
             return (false);
     }
 
@@ -881,7 +908,7 @@ bool ParseRequest::validKey(std::string &key){
 
     for (size_t i(0); i < key.size(); i++)
     {
-        if (!std::isalnum(key[i]) && visbleChar.find(key[i]) == std::string::npos)
+        if (!std::isalnum(static_cast<unsigned char>(key[i])) && visbleChar.find(key[i]) == std::string::npos)
             return false;
     }
 
@@ -918,9 +945,12 @@ bool ParseRequest::checkIsThereaHost(){
 // checking a string if its a number or not ;
 bool ParseRequest::isNumber(std::string toCheck){
 
+    if (toCheck.empty())
+        return (false);
+
     for (size_t i(0); i < toCheck.size(); i++)
     {
-        if (!isdigit(toCheck[i]))
+        if (!isdigit(static_cast<unsigned char>(toCheck[i])))
             return (false);
     }
 
@@ -962,10 +992,14 @@ void ParseRequest::CheckingForBody(){
             if (!isNumber(Headersit->second))
                 return (setErrorNumber(400, "Bad Request – Invalid 'Content-Length' header (must be a non-negative integer)"));
 
-            contentLength = std::atoi(Headersit->second.c_str());
+            errno = 0;
+            char *end = NULL;
+            unsigned long parsed = std::strtoul(Headersit->second.c_str(), &end, 10);
 
-            if (contentLength < 0)
-                return (setErrorNumber(400, "Bad Request – Invalid 'Content-Length' header (cannot be negative)"));
+            if (errno == ERANGE || end == NULL || *end != '\0')
+                return (setErrorNumber(400, "Bad Request – Invalid 'Content-Length' header (out of range)"));
+
+            contentLength = static_cast<size_t>(parsed);
 
             if (contentLength > getMatchedLocationBodySizeMax())
                 return setErrorNumber(413, "Payload Too Large – Request body exceeds maximum allowed size");
@@ -979,12 +1013,14 @@ void ParseRequest::CheckingForBody(){
     if (!chunkedEncoding && !contentLengthPresent)
         return (setErrorNumber(411, "Length Required – Request must include 'Content-Length' or 'Transfer-Encoding: chunked'"));
 
+    CheckContentEncoding();
+    if (CurrntParsState == ERROR)
+        return ;
+
     if (chunkedEncoding)
         return SwitchState(READCHUNKSIZE);
 
     SwitchState(CONTENTLENGTHBODY);
-
-    CheckContentEncoding();
 }
 
 // convert from hexadecimal to decimal ;
@@ -1029,20 +1065,41 @@ void         ParseRequest::CheckContentEncoding(){
 
 Server*    ParseRequest::findBlockServer(const Config& config, std::string buff, Server* server)
 {
-    size_t    pos_start = buff.find("Host: ");
+    std::string lower_buff = buff;
+    toLowerCase(lower_buff);
+    size_t    pos_start = 0;
     
     (void) server;
-    if (pos_start == std::string::npos)
+
+    if (lower_buff.compare(0, 5, "host:") == 0)
+        pos_start = 0;
+    else
+    {
+        pos_start = lower_buff.find("\r\nhost:");
+        if (pos_start == std::string::npos)
+            return S;
+        pos_start += 2;
+    }
+
+    size_t colon = buff.find(':', pos_start);
+    if (colon == std::string::npos)
         return S;
     
-    pos_start += 6;
+    pos_start = colon + 1;
+    while (pos_start < buff.size()
+        && (buff[pos_start] == ' ' || buff[pos_start] == '\t'))
+        pos_start++;
 
-    size_t    pos_end = buff.find_first_of("\r\n", pos_start);
+    size_t    pos_end = buff.find(CLRF, pos_start);
 
     if (pos_end == std::string::npos)
         return S;
 
     std::string host_port = buff.substr(pos_start, pos_end - pos_start);
+    while (!host_port.empty()
+        && (host_port[host_port.size() - 1] == ' '
+            || host_port[host_port.size() - 1] == '\t'))
+        host_port.erase(host_port.size() - 1);
     size_t pos = host_port.find(":");
 
     if (pos == std::string::npos)

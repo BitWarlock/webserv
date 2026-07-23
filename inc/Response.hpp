@@ -157,7 +157,7 @@ class Response{
         std::string MIME_Type(void) const;
         std::string ConnectionState(void) const;
         std::string GetResponseBody(void) const;
-        std::string GetNextFileChunk(size_t chunk_size);
+        std::string GetFileChunk(size_t file_offset, size_t chunk_size);
         
         // Startresponse
 		

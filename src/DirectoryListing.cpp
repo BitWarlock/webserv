@@ -218,7 +218,10 @@ void    Response::GetListingPage(void)
 		std::string modified_str = e.mtime ? formatTime(e.mtime) : "N/A";
 		std::string type_class = e.is_dir ? "type-dir" : (e.is_file ? "type-file" : "type-other");
 		std::string type_label = e.is_dir ? "Directory" : (e.is_file ? "File" : "Other");
-		std::string href = uri + e.name;
+			std::string href = uri;
+			if (href.empty() || href[href.size() - 1] != '/')
+				href += "/";
+			href += e.name;
 		if (e.is_dir) href += "/";
 		out << "<tr>\n";
 		out << "<td><a href='" << escapeHtml(href) << "'>" << escapeHtml(e.name) << (e.is_dir ? "/" : "") << "</a></td>\n";
@@ -242,4 +245,4 @@ void    Response::GetListingPage(void)
 	addCookiesToHeaders();
 	responseBody += "Connection: close\r\n\r\n";
 	responseBody += page;
-} 
+}

@@ -13,9 +13,39 @@
 #include "../inc/Response.hpp"
 #include <ctime>
 
-Response::Response() : sessionManager(NULL), responseBody(""), buildRes(false), 
-                      bytes(0), file_stream(NULL), file_size(0), 
-                      bytes_sent(0), is_large_file_response(false) {}
+static bool	hasParentDirectorySegment(const std::string& uri)
+{
+	size_t	start = 0;
+
+	while (start <= uri.size())
+	{
+		size_t end = uri.find('/', start);
+		std::string segment = uri.substr(start,
+				end == std::string::npos ? std::string::npos : end - start);
+		if (segment == "..")
+			return true;
+		if (end == std::string::npos)
+			break;
+		start = end + 1;
+	}
+	return false;
+}
+
+static bool	isSafeUploadFilename(const std::string& filename)
+{
+	return (!filename.empty()
+		&& filename != "."
+		&& filename != ".."
+		&& filename.find('/') == std::string::npos
+		&& filename.find('\\') == std::string::npos
+		&& filename.find('\0') == std::string::npos);
+}
+
+Response::Response() : fd(-1), fd_client(-1), state(OK), state_path(0),
+	                      location(NULL), sessionManager(NULL),
+	                      responseBody(""), buildRes(false), ignore(false),
+	                      bytes(0), file_stream(NULL), file_size(0),
+	                      bytes_sent(0), is_large_file_response(false) {}
 
 Response::~Response()
 {
@@ -33,23 +63,30 @@ void    Response::GetFullPath(std::string& path)
 		std::string	loc_path = location->getPath();
 		std::string	temp_path = path.substr(loc_path.size());
 		
-		if (temp_path[0] == '/')
-			temp_path = temp_path.erase(0, 1);
+			if (!temp_path.empty() && temp_path[0] == '/')
+				temp_path = temp_path.erase(0, 1);
 
-		if (!location->getRoot().empty())
-			SetPath(location->getRoot() + temp_path);
+			if (!location->getRoot().empty())
+				SetPath(location->getRoot() + temp_path);
 
-		else if (!ServerBlock.getRoot().empty())
-			SetPath(ServerBlock.getRoot() + path.erase(0, 1));
-	}
+			else if (!ServerBlock.getRoot().empty())
+			{
+				std::string request_path = path;
+				if (!request_path.empty() && request_path[0] == '/')
+					request_path.erase(0, 1);
+				SetPath(ServerBlock.getRoot() + request_path);
+			}
+		}
 
-	else
-	{
-		if (path[0] != '/')
-			return SetPath(ServerBlock.getRoot() + path);
+		else
+		{
+			if (path.empty() || path[0] != '/')
+				return SetPath(ServerBlock.getRoot() + path);
 
-		SetPath(ServerBlock.getRoot() + path.erase(0, 1));
-	}
+			std::string request_path = path;
+			request_path.erase(0, 1);
+			SetPath(ServerBlock.getRoot() + request_path);
+		}
 
 	if (Request.getVersion().empty())
 		Request.setVersion("HTTP/1.1");
@@ -222,23 +259,25 @@ bool Response::IsLargeFileResponse() const
     return is_large_file_response && file_size > LARGE_FILE_THRESHOLD;
 }
 
-std::string Response::GetNextFileChunk(size_t chunk_size)
+std::string Response::GetFileChunk(size_t file_offset, size_t chunk_size)
 {
-    if (!is_large_file_response || !file_stream || bytes_sent >= file_size)
+    if (!is_large_file_response || !file_stream || file_offset >= file_size)
         return "";
 
-    char buffer[chunk_size];
-    size_t remaining = file_size - bytes_sent;
-    size_t read_size = (remaining > chunk_size) ? chunk_size : remaining;
+    file_stream->clear();
+    file_stream->seekg(file_offset, std::ios::beg);
+    if (!(*file_stream))
+        return "";
 
-    file_stream->read(buffer, read_size);
+    size_t remaining = file_size - file_offset;
+    size_t read_size = (remaining > chunk_size) ? chunk_size : remaining;
+    std::vector<char> buffer(read_size);
+
+    file_stream->read(&buffer[0], read_size);
     size_t bytes_read = file_stream->gcount();
 
     if (bytes_read > 0)
-    {
-        bytes_sent += bytes_read;
-        return std::string(buffer, bytes_read);
-    }
+        return std::string(&buffer[0], bytes_read);
 
     return "";
 }
@@ -449,6 +488,9 @@ bool	Response::MultiPart(std::string body)
 	if (filename.empty())
 		return (ignore = true, true);
 
+	if (!isSafeUploadFilename(filename))
+		return (SetState(Bad_Request), ResponseWithError(NONE), false);
+
 	size_t clrf = body.find("\r\n\r\n");
 	if (clrf != std::string::npos)
 		Body += body.substr(clrf + 4);
@@ -570,8 +612,11 @@ void    Response::ResponseWithOk(void)
 	else if (Method == POST)
 		PostContentResponse();
 
-	else
+	else if (Method == DELETE)
 		DeleteContentResponse();
+
+	else
+		return (SetState(Not_Implemented), ResponseWithError(NONE));
 }
 
 std::string Response::DefaultForMatchError(void)
@@ -672,6 +717,10 @@ void    Response::StartForResponse(ParseRequest request, int fd_client)
 	SetPath(request.getUri());
 	SetLocation(request.getMatchLocation());
 	this->fd_client = fd_client;
+
+	if (hasParentDirectorySegment(request.getUri()))
+		return (SetState(Forbidden), ResponseWithError(NONE));
+
 	GetFullPath(path);
 
 	if (ReturnDirective() == false)
@@ -815,4 +864,3 @@ void	Response::setSessionManager(SessionManager* sm)
 {
 	sessionManager = sm;
 }
-

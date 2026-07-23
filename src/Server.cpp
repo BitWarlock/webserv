@@ -17,12 +17,13 @@ Server::Server(const Server &other)  :
 	error_pages(other.error_pages),
 	root(other.root),
 	client_max_body_size(other.client_max_body_size),
+	client_timeout(other.client_timeout),
+	header_timeout(other.header_timeout),
 	autoindex(other.autoindex),
 	index(other.index)
 {
 	for (size_t i = 0; i < other.locations.size(); i++)
 		locations.push_back(new Location(*other.locations[i]));
-	client_timeout = other.client_timeout;
 }
 
 Server	&Server::operator=(const Server &other)
@@ -41,13 +42,13 @@ Server	&Server::operator=(const Server &other)
 		root = other.root;
 		client_max_body_size = other.client_max_body_size;
 		autoindex = other.autoindex;
-		index = other.index;
+			index = other.index;
+			client_timeout = other.client_timeout;
+			header_timeout = other.header_timeout;
 
-		for (size_t i = 0; i < other.locations.size(); i++)
-			locations.push_back(new Location(*other.locations[i]));
-
-		client_timeout = other.client_timeout;
-	}
+			for (size_t i = 0; i < other.locations.size(); i++)
+				locations.push_back(new Location(*other.locations[i]));
+		}
 	return (*this);
 }
 
